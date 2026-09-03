@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#007d7d">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+  <title>Tactical QGH Simulator</title>
+  <link rel="stylesheet" href="tactical.css?v=4.0.1.4">
+  <script defer src="simulator-core.js?v=4.0.1.4"></script>
+  <script defer src="tactical-core.js?v=4.0.1.4"></script>
+  <script defer src="tactical-workspace.js?v=4.0.1.4"></script>
+  <script defer src="tactical-simulator.js?v=4.0.1.4"></script>
+</head>
+<body>
+  <main class="tactical-app">
+    <header class="tactical-app-header">
+      <div class="tactical-brand"><h1>TACTICAL QGH SIMULATOR</h1><a class="tactical-mode-home" href="index.html">CHANGE QGH TYPE</a><small>VERSION 1.0</small></div>
+      <div class="tactical-credit"><small>CREATED BY</small><span>Flt Lt Balaram Reddy</span><small>SERVICE NO. 38703</small></div>
+    </header>
+
+    <section class="tactical-screen tactical-setup active" id="tSetup" aria-label="Tactical exercise setup" tabindex="-1">
+      <div class="tactical-setup-card">
+        <div class="tactical-setup-fields">
+          <div class="tactical-field">
+            <label for="tRunway">RUNWAY ORIENTATION · °M</label>
+            <div class="tactical-unit" data-unit="°"><input id="tRunway" type="number" inputmode="numeric" min="0" max="359" value="230"></div>
+          </div>
+          <div class="tactical-field">
+            <label for="tInbound">INBOUND / FINAL TRACK · °M</label>
+            <div class="tactical-unit" data-unit="°"><input id="tInbound" type="number" inputmode="numeric" min="0" max="359" value="225"></div>
+          </div>
+          <div class="tactical-field">
+            <label for="tOutbound">OUTBOUND TRACK · °M</label>
+            <div class="tactical-unit" data-unit="°"><input id="tOutbound" type="number" inputmode="numeric" min="0" max="359" value="065"></div>
+          </div>
+          <div class="tactical-field tactical-procedure-field">
+            <label>PROCEDURE</label>
+            <div class="tactical-choice" role="group" aria-label="Tactical procedure selection">
+              <button id="tProcedureNormal" type="button" aria-pressed="true">NORMAL QGH</button>
+              <button id="tProcedureUs" type="button" aria-pressed="false">U/S COMPASS</button>
+            </div>
+          </div>
+        </div>
+
+        <section class="tactical-fleet-builder" aria-label="Tactical aircraft configuration">
+          <header>
+            <div>
+              <span>TACTICAL FLIGHT</span>
+              <h2>AIRCRAFT PARTICIPATING</h2>
+            </div>
+            <div class="tactical-count" role="group" aria-label="Number of aircraft">
+              <button id="tFleet2" type="button" aria-pressed="false">02</button>
+              <button id="tFleet3" type="button" aria-pressed="true">03</button>
+              <button id="tFleet4" type="button" aria-pressed="false">04</button>
+            </div>
+          </header>
+          <div class="tactical-aircraft-heading" aria-hidden="true">
+            <span>CALLSIGN</span><span>PROFILE</span><span>LEVEL · FT</span><span>SPEED</span><span>TURN RATE</span><span>RANGE</span>
+          </div>
+          <div id="tAircraftRows" class="tactical-aircraft-rows"></div>
+          <section class="tactical-formation-setup" aria-label="Formation flight setup">
+            <div class="tactical-formation-toggle">
+              <span>FORMATION FLIGHT</span>
+              <div class="tactical-choice" role="group" aria-label="Formation flight selection">
+                <button id="tFormationOff" type="button" aria-pressed="true">OFF</button>
+                <button id="tFormationOn" type="button" aria-pressed="false">ON</button>
+              </div>
+            </div>
+            <div class="tactical-formation-options" id="tFormationOptions" hidden>
+              <div class="tactical-field">
+                <label for="tFormationLeader">FORMATION LEADER</label>
+                <select id="tFormationLeader" aria-label="Formation leader"></select>
+              </div>
+              <div class="tactical-formation-members">
+                <label>FORMATION MEMBERS</label>
+                <div id="tFormationMembers" class="tactical-member-chips" role="group" aria-label="Formation members"></div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <button class="tactical-start" id="tStart" type="button">START TACTICAL EXERCISE</button>
+      </div>
+    </section>
+
+    <section class="tactical-screen tactical-console" id="tConsole" aria-label="Tactical QGH controller console">
+      <header class="tactical-console-head">
+        <div>
+          <span class="tactical-kicker">TACTICAL RECOVERY</span>
+          <h2 id="tConsoleTitle" tabindex="-1">Normal QGH console</h2>
+        </div>
+        <div class="tactical-console-meta">
+          <span class="tactical-badge" id="tConsoleBadge">NORMAL QGH</span>
+          <small id="tTrackMeta">RUNWAY — · OUTBOUND — · INBOUND —</small>
+        </div>
+      </header>
+
+      <div class="tactical-console-layout">
+        <aside class="tactical-aircraft-rail" aria-label="Aircraft selection and D/F transmission">
+          <header><span>AIRCRAFT / TRANSMIT</span><small>SELECTED CHANNEL</small></header>
+          <div id="tAircraftRail" class="tactical-rail-list"></div>
+        </aside>
+
+        <section class="tactical-df-stage" aria-label="Direction finding display">
+          <div class="tactical-df-top">
+            <div>
+              <h3>DIRECTION FINDING DISPLAY</h3>
+              <small id="tActiveCallsign">SELECT AN AIRCRAFT</small>
+            </div>
+            <b id="tDfState" aria-live="polite">NO SIGNAL</b>
+          </div>
+          <div class="tactical-display">
+            <div class="tactical-readout">
+              <small id="tBearingType">QDM · HOMING</small>
+              <strong id="tBearing" aria-live="polite">---</strong>
+            </div>
+            <div class="tactical-signal" id="tSignal"><i></i>NO TRANSMISSION</div>
+          </div>
+          <div class="tactical-segmented tactical-df-mode" role="group" aria-label="Direction finding display mode">
+            <button id="tQdm" type="button" aria-pressed="true">QDM · HOMING</button>
+            <button id="tQte" type="button" aria-pressed="false">QTE · TRUE BEARING</button>
+          </div>
+        </section>
+
+        <aside class="tactical-controls" id="tControls" aria-label="Selected aircraft controls">
+          <header><span>COMMANDS</span><strong id="tControlCallsign">—</strong><small id="tFormationStatus">INDEPENDENT</small></header>
+          <div class="tactical-primary-row">
+            <button class="tactical-tx" id="tTransmit" type="button">TRANSMIT FOR D/F</button>
+            <button class="tactical-stop-following" id="tStopFollowing" type="button" hidden>STOP FOLLOWING LEADER</button>
+          </div>
+          <div class="tactical-info-row" id="tInfoRow">
+            <button id="tRequestHeading" type="button">REPORT HEADING<b id="tHeadingReply">HEADING —</b></button>
+            <button id="tRequestDistance" type="button">REQUEST DISTANCE<b id="tDistanceReply">RANGE —</b></button>
+          </div>
+          <div class="tactical-heading-row" id="tNormalControls">
+            <button id="tTurnLeft" type="button">TURN LEFT</button>
+            <div class="tactical-unit" data-unit="°"><input id="tHeadingInput" type="number" inputmode="numeric" min="0" max="359" value="225" aria-label="Assigned magnetic heading"></div>
+            <button id="tTurnRight" type="button">TURN RIGHT</button>
+          </div>
+          <div class="tactical-us-turns" id="tUsControls" hidden>
+            <button id="tUsLeft" type="button">TURN LEFT NOW</button>
+            <button id="tUsRight" type="button">TURN RIGHT NOW</button>
+            <button id="tUsStop" type="button" disabled>STOP TURN NOW</button>
+          </div>
+          <div class="tactical-speed-row">
+            <label for="tLiveSpeed">GROUND SPEED</label>
+            <div class="tactical-unit" data-unit="KT"><input id="tLiveSpeed" type="number" inputmode="numeric" min="60" max="600" step="5" value="240"></div>
+          </div>
+          <div class="tactical-clock">
+            <small>EXERCISE CLOCK</small>
+            <strong id="tClock">00:00</strong>
+            <div>
+              <button id="tClockStart" type="button">START</button>
+              <button id="tClockStop" type="button">STOP</button>
+              <button id="tClockReset" type="button">RESET</button>
+            </div>
+          </div>
+          <div class="tactical-utility-row">
+            <button id="tAdvance" type="button">ADVANCE FLIGHT · 1 MIN</button>
+            <button class="tactical-restart" id="tRestart" type="button">RESTART EXERCISE</button>
+            <button class="tactical-danger" id="tTerminate" type="button">TERMINATE</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="tactical-screen tactical-analysis" id="tAnalysis" aria-label="Tactical flight path review">
+      <header class="tactical-analysis-head">
+        <div>
+          <span class="tactical-kicker">TACTICAL QGH</span>
+          <h2 id="tAnalysisTitle" tabindex="-1">FLIGHT-PATH ANALYSIS</h2>
+        </div>
+        <span class="tactical-badge" id="tReviewBadge">TACTICAL QGH</span>
+      </header>
+      <div class="tactical-analysis-box">
+        <section class="tactical-review-main">
+          <div class="tactical-summary">
+            <div><span>RUNWAY</span><strong id="tSumRunway">—</strong></div>
+            <div><span>OUTBOUND</span><strong id="tSumOutbound">—</strong></div>
+            <div><span>FINAL / INBOUND</span><strong id="tSumInbound">—</strong></div>
+            <div><span>PROCEDURE</span><strong id="tSumProcedure">—</strong></div>
+            <div><span>FLEET</span><strong id="tSumFleet">—</strong></div>
+            <div><span>FORMATION</span><strong id="tSumFormation">—</strong></div>
+          </div>
+          <div class="tactical-formation-review" id="tReviewFormation">VERTICAL SEPARATION · 1,000 FT</div>
+          <div class="tactical-plot">
+          <canvas id="tTacticalPlot" width="960" height="720" tabindex="0" aria-label="Tactical flight path review chart. Enable zoom to inspect the replay with keyboard controls."></canvas>
+            <output class="tactical-replay-elapsed" id="tReplayElapsed" aria-label="Track replay elapsed time">TRACK 00:00</output>
+          </div>
+          <div class="tactical-review-actions tactical-review-toolbar" aria-label="Tactical replay controls">
+            <button id="tReturnConsole" type="button">RETURN TO CONSOLE</button>
+            <button id="tReplay" type="button" aria-pressed="false">REPLAY TRACK</button>
+            <div class="tactical-replay-group" aria-label="Replay speed">
+              <span>REPLAY SPEED</span>
+              <div class="tactical-segmented" role="group" aria-label="Replay speed selection">
+                <button type="button" data-tactical-replay-speed="1" aria-pressed="true">1×</button>
+                <button type="button" data-tactical-replay-speed="2" aria-pressed="false">2×</button>
+                <button type="button" data-tactical-replay-speed="3" aria-pressed="false">3×</button>
+                <button type="button" data-tactical-replay-speed="10" aria-pressed="false">10×</button>
+              </div>
+            </div>
+            <div class="tactical-review-view-tools" role="group" aria-label="Tactical track view controls">
+              <button id="tZoomToggle" type="button" aria-pressed="false" title="Enable pan and zoom for the flight-path view">ZOOM OFF</button>
+              <button id="tFitReview" type="button" title="Fit every flight path in view">FIT</button>
+            </div>
+            <button class="tactical-new-exercise" id="tNewExercise" type="button">NEW EXERCISE</button>
+          </div>
+        </section>
+        <aside class="tactical-review-side">
+          <section class="tactical-review-legend">
+            <header><h3>TRACKS / FOCUS</h3><button id="tFocusAll" type="button">ALL</button></header>
+            <div id="tReviewLegend" class="tactical-review-legend-list"></div>
+          </section>
+          <section class="tactical-review-fleet">
+            <header><h3>FLIGHT SUMMARY</h3></header>
+            <div id="tReviewRows" class="tactical-review-rows"></div>
+          </section>
+          <section class="tactical-log-panel">
+            <header><h3>COMMANDS ISSUED</h3></header>
+            <div class="tactical-logs" id="tLogs"></div>
+          </section>
+        </aside>
+      </div>
+    </section>
+  </main>
+  <dialog class="tactical-terminate-dialog" id="tTerminateDialog" aria-labelledby="tTerminateTitle">
+    <div class="tactical-terminate-copy">
+      <span>EXERCISE CONTROL</span>
+      <h2 id="tTerminateTitle">Terminate this exercise?</h2>
+      <p>All active aircraft tracks will be closed and opened for review.</p>
+    </div>
+    <div class="tactical-terminate-actions">
+      <button id="tCancelTerminate" type="button">KEEP EXERCISE</button>
+      <button class="tactical-confirm-terminate" id="tConfirmTerminate" type="button">TERMINATE EXERCISE</button>
+    </div>
+  </dialog>
+  <div class="tactical-toast" id="tToast" aria-live="polite"></div>
+</body>
+</html>

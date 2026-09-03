@@ -1,0 +1,1345 @@
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('fonts/ibm-plex-sans-400.ttf') format('truetype');
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('fonts/ibm-plex-sans-600.ttf') format('truetype');
+  font-weight: 600;
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('fonts/ibm-plex-mono-500.ttf') format('truetype');
+  font-weight: 500;
+}
+
+:root {
+  --t-paper: #f4f3ef;
+  --t-card: #fffefa;
+  --t-ink: #17262b;
+  --t-muted: #617177;
+  --t-line: #d9dedb;
+  --t-accent: #007d7d;
+  --t-accent-dark: #075e60;
+  --t-amber: #8b5c16;
+  --t-amber-pale: #fff5df;
+  --t-danger: #8d3338;
+  --t-shadow: 0 12px 30px rgba(23, 38, 43, .08);
+}
+
+* { box-sizing: border-box; }
+
+[hidden] { display: none !important; }
+
+html { background: var(--t-paper); }
+
+body {
+  min-width: 320px;
+  margin: 0;
+  color: var(--t-ink);
+  background: var(--t-paper);
+  font-family: 'IBM Plex Sans', Arial, sans-serif;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  min-height: 38px;
+  border: 1px solid #b9c4bf;
+  border-radius: 8px;
+  color: var(--t-ink);
+  background: var(--t-card);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .035em;
+  cursor: pointer;
+  transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .08s ease;
+}
+
+button:hover { border-color: var(--t-accent); }
+button:active { transform: translateY(1px); }
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(0, 125, 125, .22);
+  outline-offset: 2px;
+}
+
+button[aria-pressed='true'] {
+  border-color: var(--t-accent);
+  color: #fff;
+  background: var(--t-accent);
+  box-shadow: inset 0 0 0 1px var(--t-accent-dark);
+}
+
+button:disabled {
+  opacity: .48;
+  cursor: not-allowed;
+}
+
+input,
+select {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  border: 1px solid #b9c4bf;
+  border-radius: 8px;
+  color: var(--t-ink);
+  background: #fff;
+  padding: 8px 12px;
+  font-size: 16px;
+}
+
+.tactical-app {
+  width: min(1500px, 100%);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 32px 42px 46px;
+}
+
+.tactical-app-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid var(--t-line);
+  padding: 10px 0 22px;
+}
+
+.tactical-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.tactical-brand h1,
+.tactical-console-head h2,
+.tactical-analysis-head h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: .06em;
+}
+
+.tactical-brand small,
+.tactical-credit small,
+.tactical-kicker,
+.tactical-fleet-builder > header span,
+.tactical-aircraft-heading,
+.tactical-controls header span,
+.tactical-aircraft-rail header span,
+.tactical-aircraft-rail header small,
+.tactical-summary span,
+.tactical-replay-group > span {
+  color: var(--t-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .12em;
+}
+
+.tactical-brand small { color: var(--t-accent-dark); }
+
+.tactical-mode-home {
+  border-left: 1px solid var(--t-line);
+  color: var(--t-accent-dark);
+  padding-left: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-decoration: none;
+}
+
+.tactical-mode-home:hover { color: var(--t-accent); }
+
+.tactical-mode-home:focus-visible {
+  outline: 3px solid rgba(0, 125, 125, .22);
+  outline-offset: 3px;
+}
+
+.tactical-credit {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+}
+
+.tactical-credit span {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.tactical-screen {
+  display: none;
+  min-height: calc(100vh - 135px);
+}
+
+.tactical-screen.active { display: block; }
+
+.tactical-setup {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 42px 0 18px;
+}
+
+.tactical-setup.active { display: flex; }
+
+.tactical-setup-card {
+  width: min(1140px, 100%);
+  border: 1px solid #ccd4cf;
+  border-radius: 22px;
+  background: var(--t-card);
+  box-shadow: var(--t-shadow);
+  padding: 32px;
+}
+
+.tactical-setup-fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.tactical-field { min-width: 0; }
+
+.tactical-field label,
+.tactical-speed-row label {
+  display: block;
+  margin: 0 0 8px;
+  color: var(--t-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .11em;
+}
+
+.tactical-unit { position: relative; }
+.tactical-unit input { padding-right: 45px; }
+
+.tactical-unit::after {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  color: var(--t-accent-dark);
+  content: attr(data-unit);
+  font: 500 11px 'IBM Plex Mono', monospace;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.tactical-choice,
+.tactical-count,
+.tactical-segmented {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid #b9c4bf;
+  border-radius: 8px;
+}
+
+.tactical-choice { grid-template-columns: 1fr 1fr; }
+.tactical-count { grid-template-columns: repeat(3, 1fr); width: 192px; }
+.tactical-segmented { grid-template-columns: repeat(2, 1fr); }
+
+.tactical-choice button,
+.tactical-count button,
+.tactical-segmented button {
+  min-height: 46px;
+  border: 0;
+  border-right: 1px solid #b9c4bf;
+  border-radius: 0;
+}
+
+.tactical-choice button:last-child,
+.tactical-count button:last-child,
+.tactical-segmented button:last-child { border-right: 0; }
+
+.tactical-procedure-field { grid-column: span 1; }
+
+.tactical-fleet-builder {
+  margin-top: 28px;
+  border-top: 1px solid var(--t-line);
+  padding-top: 24px;
+}
+
+.tactical-fleet-builder > header,
+.tactical-analysis-head,
+.tactical-console-head,
+.tactical-df-top,
+.tactical-review-legend header,
+.tactical-review-fleet header,
+.tactical-log-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.tactical-fleet-builder h2 {
+  margin: 5px 0 0;
+  font-size: 17px;
+  letter-spacing: .06em;
+}
+
+.tactical-aircraft-heading,
+.tactical-aircraft-row {
+  display: grid;
+  grid-template-columns: minmax(134px, 1.22fr) minmax(148px, 1.3fr) 108px 102px 102px 100px;
+  gap: 10px;
+  align-items: center;
+}
+
+.tactical-aircraft-heading {
+  margin: 20px 0 5px 22px;
+}
+
+.tactical-aircraft-rows { display: grid; gap: 8px; }
+
+.tactical-aircraft-row {
+  position: relative;
+  padding-left: 22px;
+}
+
+.tactical-aircraft-row::before,
+.tactical-aircraft-row .tactical-colour-dot,
+.tactical-rail-item::before,
+.tactical-legend-item::before,
+.tactical-summary-chip::before {
+  display: block;
+  border-radius: 999px;
+  background: var(--aircraft-colour, var(--t-accent));
+  content: '';
+}
+
+.tactical-aircraft-row::before {
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: 10px;
+  height: 28px;
+  border-radius: 5px;
+  transform: translateY(-50%);
+}
+
+.tactical-aircraft-row.inactive { display: none; }
+
+.tactical-formation-setup {
+  margin-top: 19px;
+  border-top: 1px solid var(--t-line);
+  padding-top: 16px;
+}
+
+.tactical-formation-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.tactical-formation-toggle > span,
+.tactical-formation-members > label {
+  color: var(--t-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .12em;
+}
+
+.tactical-formation-toggle .tactical-choice {
+  width: 188px;
+}
+
+.tactical-formation-toggle .tactical-choice button {
+  min-height: 38px;
+}
+
+.tactical-formation-options {
+  display: grid;
+  grid-template-columns: minmax(190px, 260px) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 14px;
+  border: 1px solid #d8e2dd;
+  border-radius: 10px;
+  background: #f8fbf9;
+  padding: 13px;
+}
+
+.tactical-formation-options .tactical-field label { font-size: 10px; }
+.tactical-formation-options select { min-height: 40px; font-size: 13px; }
+
+.tactical-formation-members > label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.tactical-member-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.tactical-member-chip {
+  min-height: 34px;
+  border-radius: 999px;
+  padding: 5px 10px;
+  color: var(--t-ink);
+  background: #fff;
+  font-size: 10px;
+}
+
+.tactical-member-chip[aria-pressed='true'] {
+  border-color: var(--aircraft-colour, var(--t-accent));
+  color: #fff;
+  background: var(--aircraft-colour, var(--t-accent));
+  box-shadow: none;
+}
+
+.tactical-member-chip:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.tactical-start,
+.tactical-tx {
+  border-color: var(--t-accent);
+  color: #fff;
+  background: var(--t-accent);
+  box-shadow: inset 0 0 0 1px var(--t-accent-dark);
+}
+
+.tactical-start {
+  width: 100%;
+  min-height: 56px;
+  margin-top: 28px;
+  font-size: 15px;
+  letter-spacing: .08em;
+}
+
+.tactical-console {
+  padding-top: 26px;
+}
+
+.tactical-console-head,
+.tactical-analysis-head {
+  min-height: 64px;
+  border-bottom: 1px solid var(--t-line);
+  padding: 0 0 18px;
+}
+
+.tactical-console-head h2,
+.tactical-analysis-head h2 {
+  margin-top: 5px;
+  font-size: 21px;
+}
+
+.tactical-console-meta {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.tactical-console-meta small {
+  color: var(--t-muted);
+  font: 10px 'IBM Plex Mono', monospace;
+}
+
+.tactical-badge {
+  border: 1px solid var(--t-accent);
+  border-radius: 999px;
+  color: var(--t-accent-dark);
+  background: #ecf8f6;
+  padding: 7px 10px;
+  font: 600 10px 'IBM Plex Mono', monospace;
+  letter-spacing: .09em;
+}
+
+.tactical-badge.us { border-color: #b47a1f; color: var(--t-amber); background: var(--t-amber-pale); }
+
+.tactical-console-layout {
+  display: grid;
+  grid-template-columns: 235px minmax(430px, 1fr) 308px;
+  min-height: 622px;
+  margin-top: 22px;
+  border: 1px solid #ccd4cf;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--t-card);
+  box-shadow: var(--t-shadow);
+}
+
+.tactical-aircraft-rail {
+  border-right: 1px solid var(--t-line);
+  background: #fbfbf8;
+  padding: 18px 12px;
+}
+
+.tactical-aircraft-rail header {
+  display: grid;
+  gap: 4px;
+  padding: 0 5px 10px;
+}
+
+.tactical-aircraft-rail header small { color: var(--t-accent-dark); }
+.tactical-rail-list { display: grid; gap: 7px; }
+
+.tactical-rail-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 7px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 82px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  padding: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.tactical-rail-select {
+  min-width: 0;
+  min-height: 50px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 3px 0;
+  text-align: left;
+}
+
+.tactical-rail-select:hover,
+.tactical-rail-select[aria-pressed='true'] {
+  border: 0;
+  color: var(--t-ink);
+  background: transparent;
+  box-shadow: none;
+}
+
+.tactical-rail-item::before {
+  width: 7px;
+  height: 30px;
+  border-radius: 4px;
+}
+
+.tactical-rail-item.active {
+  border-color: var(--t-accent);
+  background: #ecf8f6;
+}
+
+.tactical-rail-item strong { display: block; font-size: 12px; letter-spacing: .04em; }
+.tactical-rail-item small { display: block; margin-top: 4px; color: var(--t-muted); font-size: 10px; }
+
+.tactical-rail-tx {
+  min-height: 30px;
+  border: 0;
+  border-radius: 5px;
+  color: #fff;
+  background: var(--aircraft-colour, var(--t-accent));
+  padding: 4px 7px;
+  font-size: 10px;
+}
+
+.tactical-df-stage {
+  min-width: 0;
+  padding: 25px 28px 22px;
+}
+
+.tactical-df-top h3 {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: .055em;
+}
+
+.tactical-df-top small {
+  display: inline-block;
+  margin-top: 5px;
+  color: var(--t-accent-dark);
+  font: 11px 'IBM Plex Mono', monospace;
+}
+
+.tactical-df-top b {
+  color: var(--t-accent-dark);
+  font: 600 10px 'IBM Plex Mono', monospace;
+  letter-spacing: .07em;
+}
+
+.tactical-display {
+  position: relative;
+  display: grid;
+  min-height: 350px;
+  margin-top: 20px;
+  border: 1px solid #c3cfca;
+  border-radius: 12px;
+  background: #fafcfb;
+  place-items: center;
+}
+
+.tactical-readout { text-align: center; }
+
+.tactical-readout small {
+  display: block;
+  color: var(--t-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .1em;
+}
+
+.tactical-readout strong {
+  display: block;
+  margin-top: 16px;
+  color: var(--t-ink);
+  font: 500 clamp(46px, 7vw, 84px) 'IBM Plex Mono', monospace;
+  letter-spacing: .04em;
+}
+
+.tactical-signal {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--t-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+}
+
+.tactical-signal i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #b5c0bb;
+}
+
+.tactical-signal.live { color: var(--t-accent-dark); }
+.tactical-signal.live i { background: var(--t-accent); box-shadow: 0 0 0 5px rgba(0, 125, 125, .12); }
+
+.tactical-df-mode {
+  width: min(100%, 330px);
+  margin: 16px auto 0;
+}
+
+.tactical-df-mode button { min-height: 42px; font-size: 11px; }
+
+.tactical-controls {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  border-left: 1px solid var(--t-line);
+  padding: 18px;
+  background: #fbfbf8;
+}
+
+.tactical-controls header { display: grid; gap: 4px; }
+.tactical-controls header strong { color: var(--t-accent-dark); font-size: 13px; letter-spacing: .04em; }
+.tactical-controls header small { color: var(--t-muted); font: 10px 'IBM Plex Mono', monospace; }
+
+.tactical-primary-row { display: grid; gap: 8px; }
+.tactical-primary-row .tactical-tx { width: 100%; }
+
+.tactical-stop-following {
+  min-height: 36px;
+  border-color: #c7a873;
+  color: #754a10;
+  background: #fffaf0;
+  font-size: 10px;
+}
+
+.tactical-stop-following:hover { border-color: var(--t-amber); }
+
+.tactical-info-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tactical-info-row.single { grid-template-columns: 1fr; }
+
+.tactical-info-row button {
+  min-height: 72px;
+  padding: 8px;
+  text-align: left;
+  font-size: 10px;
+}
+
+.tactical-info-row b {
+  display: block;
+  margin-top: 7px;
+  color: var(--t-accent-dark);
+  font: 11px 'IBM Plex Mono', monospace;
+}
+
+.tactical-heading-row {
+  display: grid;
+  grid-template-columns: 1fr 100px 1fr;
+  align-items: stretch;
+  gap: 7px;
+}
+
+.tactical-heading-row .tactical-unit input { min-height: 38px; padding: 6px 30px 6px 8px; font-size: 14px; }
+.tactical-heading-row .tactical-unit::after { right: 7px; font-size: 10px; }
+.tactical-heading-row button { min-height: 38px; font-size: 10px; }
+
+.tactical-us-turns { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 7px; }
+.tactical-us-turns button { min-height: 38px; padding: 5px; font-size: 9px; }
+
+.tactical-speed-row {
+  border-top: 1px solid var(--t-line);
+  padding-top: 12px;
+}
+
+.tactical-speed-row label { margin-bottom: 7px; font-size: 10px; }
+.tactical-speed-row input { min-height: 40px; font-size: 14px; }
+
+.tactical-clock {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 10px;
+  border-top: 1px solid var(--t-line);
+  padding-top: 12px;
+}
+
+.tactical-clock small {
+  color: var(--t-muted);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .1em;
+}
+
+.tactical-clock strong {
+  color: var(--t-accent-dark);
+  font: 500 18px 'IBM Plex Mono', monospace;
+}
+
+.tactical-clock div { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tactical-clock button { min-height: 32px; font-size: 9px; }
+
+.tactical-utility-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.tactical-utility-row button { min-height: 36px; padding: 5px; font-size: 9px; }
+.tactical-utility-row #tAdvance { grid-column: 1 / -1; }
+.tactical-restart { color: var(--t-accent-dark); }
+.tactical-danger { border-color: #b46c70; color: var(--t-danger); background: #fff8f8; }
+
+.tactical-analysis { padding-top: 27px; }
+.tactical-analysis-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  min-height: 680px;
+  margin-top: 22px;
+  border: 1px solid #ccd4cf;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--t-card);
+  box-shadow: var(--t-shadow);
+}
+
+.tactical-review-main {
+  min-width: 0;
+  padding: 20px;
+}
+
+.tactical-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(160px, 1.5fr);
+  gap: 9px;
+  margin-bottom: 16px;
+}
+
+.tactical-summary > div {
+  min-width: 0;
+  border: 1px solid #d3dbd6;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.tactical-summary span { display: block; font-size: 9px; }
+.tactical-summary strong { display: block; overflow: hidden; margin-top: 7px; font: 500 13px 'IBM Plex Mono', monospace; text-overflow: ellipsis; white-space: nowrap; }
+
+.tactical-formation-review {
+  margin: -5px 0 14px;
+  border-left: 3px solid var(--t-accent);
+  color: var(--t-accent-dark);
+  background: #f1faf7;
+  padding: 7px 9px;
+  font: 600 10px 'IBM Plex Mono', monospace;
+  letter-spacing: .035em;
+}
+
+.tactical-plot {
+  position: relative;
+  min-height: 470px;
+  overflow: hidden;
+  border: 1px solid #d0d9d4;
+  border-radius: 10px;
+  background: #fdfdf9;
+}
+
+.tactical-plot canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+}
+
+.tactical-replay-elapsed {
+  position: absolute;
+  right: 13px;
+  bottom: 11px;
+  border: 1px solid #c9d5cf;
+  border-radius: 5px;
+  color: var(--t-accent-dark);
+  background: rgba(255, 255, 252, .92);
+  padding: 5px 7px;
+  font: 10px 'IBM Plex Mono', monospace;
+}
+
+.tactical-review-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 15px;
+}
+
+.tactical-review-actions > button { min-height: 39px; padding: 8px 11px; font-size: 10px; }
+.tactical-new-exercise { margin-left: auto; color: #fff; border-color: var(--t-accent); background: var(--t-accent); }
+
+.tactical-replay-group { display: flex; align-items: center; gap: 8px; }
+.tactical-replay-group > span { font-size: 9px; white-space: nowrap; }
+.tactical-replay-group .tactical-segmented { width: 156px; grid-template-columns: repeat(3, 1fr); }
+.tactical-replay-group .tactical-segmented button { min-height: 34px; font-size: 10px; }
+
+.tactical-review-side {
+  display: grid;
+  align-content: start;
+  gap: 20px;
+  overflow: auto;
+  max-height: 760px;
+  border-left: 1px solid var(--t-line);
+  padding: 20px;
+  background: #fbfbf8;
+}
+
+.tactical-review-side h3 {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: .08em;
+}
+
+.tactical-review-legend header button { min-height: 28px; padding: 4px 8px; font-size: 9px; }
+.tactical-review-legend-list { display: grid; margin-top: 10px; }
+
+.tactical-legend-item {
+  display: grid;
+  grid-template-columns: 11px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  border-bottom: 1px solid #e3e8e5;
+  padding: 9px 0;
+  color: var(--t-ink);
+  background: transparent;
+  text-align: left;
+}
+
+.tactical-legend-item::before { width: 10px; height: 10px; }
+.tactical-legend-item strong { font-size: 11px; letter-spacing: .04em; }
+.tactical-legend-item small {
+  grid-column: 2;
+  color: var(--t-muted);
+  font: 10px 'IBM Plex Mono', monospace;
+  line-height: 1.35;
+}
+.tactical-legend-item[aria-pressed='true'] { color: #fff; background: var(--t-accent); padding-left: 6px; padding-right: 6px; border-radius: 6px; }
+.tactical-legend-item[aria-pressed='true']::before { background: #fff; }
+.tactical-legend-item[aria-pressed='true'] small { color: #e0fffa; }
+
+.tactical-review-rows { display: grid; gap: 8px; margin-top: 10px; }
+
+.tactical-review-row {
+  border: 1px solid #d5dcd8;
+  border-radius: 8px;
+  padding: 9px;
+}
+
+.tactical-review-row header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tactical-summary-chip {
+  display: inline-grid;
+  grid-template-columns: 8px 1fr;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tactical-summary-chip::before { width: 8px; height: 8px; }
+.tactical-review-row header small { color: var(--t-muted); font: 10px 'IBM Plex Mono', monospace; }
+.tactical-review-row p { margin: 8px 0 0; color: var(--t-muted); font-size: 10px; line-height: 1.5; }
+
+.tactical-log-panel { min-height: 200px; }
+.tactical-logs { display: grid; gap: 8px; margin-top: 10px; }
+
+.tactical-log {
+  position: relative;
+  border-left: 4px solid var(--aircraft-colour, var(--t-accent));
+  padding: 5px 0 5px 8px;
+}
+
+.tactical-log span { display: block; color: var(--t-accent-dark); font: 10px 'IBM Plex Mono', monospace; }
+.tactical-log small { display: block; margin-top: 3px; color: var(--t-muted); font-size: 10px; line-height: 1.35; }
+
+.tactical-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 10;
+  max-width: min(90vw, 500px);
+  border-radius: 8px;
+  color: #fff;
+  background: var(--t-ink);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .2);
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 16px);
+  transition: opacity .18s ease, transform .18s ease;
+}
+
+.tactical-toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 1120px) {
+  .tactical-app { padding: 24px; }
+  .tactical-setup-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tactical-procedure-field { grid-column: span 2; }
+  .tactical-console-layout { grid-template-columns: 210px minmax(360px, 1fr) 278px; }
+  .tactical-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .tactical-analysis-box { grid-template-columns: minmax(0, 1fr) 300px; }
+}
+
+@media (max-width: 920px) {
+  .tactical-app { padding: 17px 14px 28px; }
+  .tactical-app-header { padding-top: 2px; }
+  .tactical-brand { display: block; }
+  .tactical-brand h1 { font-size: 19px; }
+  .tactical-brand small { display: inline-block; margin-top: 5px; }
+  .tactical-mode-home { display: inline-block; border-left: 0; margin-top: 6px; padding-left: 0; }
+  .tactical-credit span { font-size: 12px; }
+  .tactical-setup { padding-top: 20px; }
+  .tactical-setup-card { padding: 18px; border-radius: 14px; }
+  .tactical-aircraft-heading { display: none; }
+  .tactical-aircraft-row { grid-template-columns: 1fr 1fr; gap: 7px; padding: 0 0 0 18px; }
+  .tactical-aircraft-row::before { left: 0; }
+  .tactical-aircraft-row .tactical-field:first-child { grid-column: span 2; }
+  .tactical-aircraft-row .tactical-field:last-child { grid-column: span 2; }
+  .tactical-aircraft-row .tactical-field::before {
+    display: block;
+    margin: 0 0 4px;
+    color: var(--t-muted);
+    content: attr(data-label);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .09em;
+  }
+  .tactical-formation-options { grid-template-columns: 1fr; }
+  .tactical-console-layout,
+  .tactical-analysis-box { display: block; margin-top: 14px; }
+  .tactical-aircraft-rail { border-right: 0; border-bottom: 1px solid var(--t-line); }
+  .tactical-aircraft-rail header { display: flex; align-items: center; justify-content: space-between; }
+  .tactical-rail-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tactical-df-stage { padding: 18px; }
+  .tactical-display { min-height: 285px; }
+  .tactical-controls { border-left: 0; border-top: 1px solid var(--t-line); }
+  .tactical-review-side { max-height: none; border-left: 0; border-top: 1px solid var(--t-line); }
+  .tactical-review-actions { flex-wrap: wrap; }
+  .tactical-new-exercise { margin-left: 0; }
+  .tactical-analysis { padding-top: 18px; }
+}
+
+@media (max-width: 520px) {
+  .tactical-app-header { gap: 10px; }
+  .tactical-credit { max-width: 135px; }
+  .tactical-credit small { font-size: 8px; }
+  .tactical-setup-fields { grid-template-columns: 1fr; }
+  .tactical-procedure-field { grid-column: span 1; }
+  .tactical-fleet-builder > header { align-items: flex-start; }
+  .tactical-count { width: 144px; }
+  .tactical-count button { min-height: 38px; }
+  .tactical-formation-toggle { align-items: flex-start; flex-direction: column; }
+  .tactical-formation-toggle .tactical-choice { width: 100%; }
+  .tactical-formation-toggle .tactical-choice button,
+  .tactical-member-chip { min-height: 42px; }
+  .tactical-rail-list { grid-template-columns: 1fr; }
+  .tactical-console-meta { display: none; }
+  .tactical-console-head h2,
+  .tactical-analysis-head h2 { font-size: 17px; }
+  .tactical-display { min-height: 245px; }
+  .tactical-readout strong { font-size: 43px; }
+  .tactical-info-row { grid-template-columns: 1fr; }
+  .tactical-heading-row { grid-template-columns: 1fr 80px 1fr; }
+  .tactical-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tactical-summary > div:last-child { grid-column: span 2; }
+  .tactical-plot { min-height: 310px; }
+  .tactical-plot canvas { min-height: 0; }
+  .tactical-review-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .tactical-review-actions > button,
+  .tactical-replay-group { width: 100%; }
+  .tactical-replay-group { grid-column: span 2; justify-content: space-between; }
+}
+
+/* v4.0.1 — shared operational-console rules for compact, medium and expanded windows. */
+:root {
+  --t-space-1: 4px;
+  --t-space-2: 8px;
+  --t-space-3: 12px;
+  --t-space-4: 16px;
+  --t-space-5: 24px;
+  --t-focus: #78bcb8;
+  --t-surface-soft: #fbfcf9;
+}
+
+body {
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+button,
+input,
+select {
+  touch-action: manipulation;
+  scroll-margin-block: 20vh 30vh;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline-color: var(--t-focus);
+  outline-offset: 3px;
+}
+
+.tactical-app {
+  width: min(1580px, 100%);
+  min-height: 100dvh;
+  padding:
+    max(18px, env(safe-area-inset-top, 0px))
+    max(clamp(16px, 3vw, 48px), env(safe-area-inset-right, 0px))
+    max(28px, env(safe-area-inset-bottom, 0px))
+    max(clamp(16px, 3vw, 48px), env(safe-area-inset-left, 0px));
+}
+
+.tactical-app-header { min-height: 64px; padding: 0 0 var(--t-space-3); }
+.tactical-brand h1 { font-size: 20px; letter-spacing: .055em; }
+.tactical-brand small,
+.tactical-credit small,
+.tactical-kicker,
+.tactical-fleet-builder > header span,
+.tactical-aircraft-heading,
+.tactical-controls header span,
+.tactical-aircraft-rail header span,
+.tactical-aircraft-rail header small,
+.tactical-summary span,
+.tactical-replay-group > span { letter-spacing: .075em; }
+
+.tactical-screen { min-height: calc(100dvh - 82px); }
+.tactical-setup { padding-block: var(--t-space-5); }
+.tactical-setup-card {
+  width: min(1220px, 100%);
+  border-radius: 14px;
+  padding: clamp(22px, 3vw, 36px);
+  box-shadow: 0 12px 28px rgba(23, 38, 43, .06);
+}
+
+.tactical-setup-fields { gap: var(--t-space-4) var(--t-space-3); }
+.tactical-field label,
+.tactical-speed-row label { letter-spacing: .075em; }
+.tactical-field input,
+.tactical-unit input { font-family: 'IBM Plex Mono', monospace; }
+.tactical-field select { font-family: 'IBM Plex Sans', Arial, sans-serif; }
+
+.tactical-fleet-builder { margin-top: var(--t-space-5); padding-top: var(--t-space-4); }
+.tactical-aircraft-row { gap: var(--t-space-2); }
+.tactical-formation-setup { margin-top: var(--t-space-4); }
+.tactical-start { min-height: 54px; margin-top: var(--t-space-5); }
+
+.tactical-console { padding-top: var(--t-space-4); }
+.tactical-console-head,
+.tactical-analysis-head { min-height: 54px; padding-bottom: var(--t-space-3); }
+.tactical-console-head h2,
+.tactical-analysis-head h2 { font-size: clamp(20px, 2vw, 26px); }
+
+.tactical-console-layout {
+  grid-template-columns: minmax(220px, 250px) minmax(360px, 1fr) minmax(280px, 320px);
+  min-height: 0;
+  margin-top: var(--t-space-4);
+  border-radius: 12px;
+  box-shadow: 0 8px 22px rgba(23, 38, 43, .05);
+}
+
+.tactical-aircraft-rail { padding: var(--t-space-3) var(--t-space-2); }
+.tactical-rail-list { gap: 6px; }
+.tactical-rail-item { min-height: 70px; padding: 7px; }
+.tactical-rail-select { min-height: 46px; }
+.tactical-rail-item small { line-height: 1.35; }
+
+.tactical-df-stage {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-self: start;
+  padding: var(--t-space-4);
+}
+
+.tactical-df-top { padding-bottom: var(--t-space-2); border-bottom: 1px solid var(--t-line); }
+.tactical-display {
+  min-height: 245px;
+  height: clamp(245px, 24vw, 310px);
+  margin-top: var(--t-space-3);
+  border-radius: 10px;
+  background: var(--t-surface-soft);
+}
+
+.tactical-df-stage .tactical-display {
+  min-height: 245px;
+  height: clamp(245px, 24vw, 310px);
+}
+
+.tactical-readout strong { margin-top: var(--t-space-2); font-size: clamp(48px, 6vw, 76px); }
+.tactical-signal { bottom: var(--t-space-3); letter-spacing: .075em; }
+.tactical-df-mode { width: min(100%, 350px); margin: var(--t-space-3) auto 0; }
+
+.tactical-controls { gap: var(--t-space-2); padding: var(--t-space-3); }
+.tactical-controls header { padding-bottom: var(--t-space-2); border-bottom: 1px solid var(--t-line); }
+.tactical-primary-row { gap: var(--t-space-2); }
+.tactical-info-row { gap: var(--t-space-2); }
+.tactical-info-row button { min-height: 62px; }
+.tactical-speed-row,
+.tactical-clock { padding-top: var(--t-space-2); }
+.tactical-utility-row { gap: 6px; }
+.tactical-danger { border-style: dashed; }
+.tactical-danger:hover:not(:disabled) { border-color: #aa5b61; background: #fff3f3; }
+
+.tactical-analysis { padding-top: var(--t-space-4); }
+.tactical-analysis-box {
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
+  min-height: 0;
+  margin-top: var(--t-space-4);
+  border-radius: 12px;
+  box-shadow: 0 8px 22px rgba(23, 38, 43, .05);
+}
+
+.tactical-review-main { padding: var(--t-space-4); }
+.tactical-summary { gap: 6px; margin-bottom: var(--t-space-3); }
+.tactical-summary > div { border-radius: 7px; padding: 9px; }
+.tactical-formation-review { margin: 0 0 var(--t-space-3); }
+
+.tactical-plot {
+  min-height: 440px;
+  aspect-ratio: 5 / 4;
+  overflow: hidden;
+  border-radius: 10px;
+  touch-action: pan-y;
+}
+
+.tactical-plot canvas {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  transform-origin: center center;
+  transition: transform 110ms ease-out;
+  will-change: transform;
+}
+
+.tactical-plot.zoom-enabled { cursor: grab; touch-action: none; }
+.tactical-plot.zoom-enabled.is-panning { cursor: grabbing; }
+.tactical-plot.zoom-enabled canvas { transition: none; }
+.tactical-plot canvas:focus-visible { outline: 3px solid var(--t-focus); outline-offset: -3px; }
+
+.tactical-replay-elapsed {
+  right: var(--t-space-3);
+  bottom: var(--t-space-3);
+  z-index: 2;
+  border-radius: 999px;
+}
+
+.tactical-review-toolbar {
+  position: sticky;
+  bottom: max(var(--t-space-2), env(safe-area-inset-bottom, 0px));
+  z-index: 4;
+  margin-top: var(--t-space-3);
+  border: 1px solid var(--t-line);
+  border-radius: 10px;
+  background: var(--t-card);
+  padding: var(--t-space-2);
+  box-shadow: 0 -3px 14px rgba(23, 38, 43, .05);
+}
+
+.tactical-review-actions > button { min-height: 38px; }
+.tactical-replay-group {
+  border: 1px solid #c7d0cb;
+  border-radius: 8px;
+  padding: 3px 3px 3px 9px;
+}
+
+.tactical-replay-group .tactical-segmented {
+  width: 196px;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.tactical-review-view-tools {
+  display: grid;
+  grid-template-columns: auto auto;
+  overflow: hidden;
+  border: 1px solid #b9c4bf;
+  border-radius: 8px;
+}
+
+.tactical-review-view-tools button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 0;
+  color: var(--t-accent-dark);
+  background: var(--t-card);
+  padding-inline: 10px;
+  font: 500 10px 'IBM Plex Mono', monospace;
+}
+
+.tactical-review-view-tools button + button { border-left: 1px solid #b9c4bf; }
+.tactical-review-view-tools button[aria-pressed='true'] { color: var(--t-ink); background: #e7f5f3; }
+
+.tactical-review-side { max-height: min(75vh, 860px); padding: var(--t-space-4); }
+.tactical-legend-item { min-height: 0; }
+.tactical-log { border-left-width: 3px; }
+
+.tactical-terminate-dialog {
+  width: min(440px, calc(100vw - 32px));
+  border: 1px solid #bfc9c5;
+  border-radius: 14px;
+  color: var(--t-ink);
+  background: var(--t-card);
+  box-shadow: 0 24px 60px rgba(23, 38, 43, .25);
+  padding: var(--t-space-5);
+}
+
+.tactical-terminate-dialog::backdrop { background: rgba(23, 38, 43, .28); }
+.tactical-terminate-copy > span { color: var(--t-accent-dark); font: 500 10px 'IBM Plex Mono', monospace; letter-spacing: .08em; }
+.tactical-terminate-copy h2 { margin: var(--t-space-2) 0; font-size: 22px; letter-spacing: -.02em; }
+.tactical-terminate-copy p { margin: 0; color: var(--t-muted); line-height: 1.5; }
+.tactical-terminate-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--t-space-2); margin-top: var(--t-space-5); }
+.tactical-confirm-terminate { border-color: #9d4145; color: #fff; background: #9d4145; }
+
+@media (min-width: 921px) and (max-width: 1120px) {
+  .tactical-console-layout { grid-template-columns: minmax(210px, 250px) minmax(0, 1fr); }
+  .tactical-controls {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--t-line);
+    border-left: 0;
+    grid-template-columns: minmax(190px, .8fr) minmax(0, 1.2fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  .tactical-controls header { grid-column: 1; }
+  .tactical-primary-row { grid-column: 1; }
+  .tactical-info-row,
+  .tactical-heading-row,
+  .tactical-us-turns { grid-column: 2; }
+  .tactical-speed-row,
+  .tactical-clock,
+  .tactical-utility-row { grid-column: 3; border-top: 0; padding-top: 0; }
+  .tactical-analysis-box { grid-template-columns: minmax(0, 1fr) 300px; }
+}
+
+@media (max-width: 920px) {
+  .tactical-app {
+    padding:
+      max(12px, env(safe-area-inset-top, 0px))
+      max(14px, env(safe-area-inset-right, 0px))
+      max(22px, env(safe-area-inset-bottom, 0px))
+      max(14px, env(safe-area-inset-left, 0px));
+  }
+  .tactical-app-header { min-height: 56px; padding-bottom: var(--t-space-2); }
+  .tactical-setup { padding-block: var(--t-space-3); }
+  .tactical-setup-card { padding: var(--t-space-4); }
+  .tactical-console { padding-top: var(--t-space-3); }
+  .tactical-console-layout { border-radius: 10px; }
+  .tactical-aircraft-rail { padding: var(--t-space-3); }
+  .tactical-df-stage { padding: var(--t-space-3); }
+  .tactical-display,
+  .tactical-df-stage .tactical-display { min-height: 180px; height: 180px; margin-top: var(--t-space-2); }
+  .tactical-readout strong { margin-top: 6px; font-size: 50px; }
+  .tactical-signal { bottom: 14px; font-size: 9px; }
+  .tactical-df-mode { width: 100%; margin-top: var(--t-space-2); }
+  .tactical-controls { padding: var(--t-space-3); }
+  .tactical-analysis-box { margin-top: var(--t-space-3); }
+  .tactical-review-main { padding: var(--t-space-3); }
+  .tactical-plot { min-height: 360px; }
+  .tactical-review-side { max-height: none; padding: var(--t-space-3); }
+}
+
+@media (max-width: 600px) {
+  .tactical-brand h1 { font-size: 17px; }
+  .tactical-credit { max-width: 52%; }
+  .tactical-credit span { font-size: 11px; }
+  .tactical-credit small { font-size: 8px; }
+  .tactical-mode-home { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 6px; font-size: 8px; }
+  .tactical-setup-fields { gap: var(--t-space-3); }
+  .tactical-setup-card input,
+  .tactical-setup-card select,
+  .tactical-setup-card button { min-height: 48px; }
+  .tactical-rail-list {
+    display: flex;
+    gap: var(--t-space-2);
+    overflow-x: auto;
+    padding-bottom: var(--t-space-1);
+    scrollbar-width: thin;
+  }
+  .tactical-rail-item { flex: 0 0 min(188px, 67vw); }
+  .tactical-console-head h2,
+  .tactical-analysis-head h2 { font-size: 20px; }
+  .tactical-info-row button,
+  .tactical-heading-row button,
+  .tactical-us-turns button { min-height: 48px; }
+  .tactical-clock button { min-height: 38px; }
+  .tactical-plot {
+    min-width: 0;
+    min-height: 0;
+    aspect-ratio: 5 / 4;
+  }
+  .tactical-rail-tx { min-width: 44px; min-height: 44px; }
+  .tactical-review-toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--t-space-2);
+    bottom: max(var(--t-space-1), env(safe-area-inset-bottom, 0px));
+  }
+  .tactical-review-toolbar > button,
+  .tactical-review-toolbar > div { width: 100%; }
+  .tactical-replay-group { grid-column: 1 / -1; justify-content: space-between; }
+  .tactical-review-view-tools { min-height: 48px; }
+  .tactical-review-view-tools button { min-height: 46px; }
+  .tactical-new-exercise { margin-left: 0; }
+  .tactical-toast { bottom: max(12px, env(safe-area-inset-bottom, 0px)); }
+}
+
+@media (max-width: 400px) {
+  .tactical-app { padding-inline: 10px; }
+  .tactical-brand { display: grid; gap: 2px; }
+  .tactical-mode-home { border-left: 0; margin-top: 0; padding-left: 0; }
+  .tactical-credit { max-width: 48%; }
+  .tactical-review-toolbar { grid-template-columns: 1fr; }
+  .tactical-replay-group { grid-column: auto; align-items: stretch; flex-direction: column; }
+  .tactical-replay-group .tactical-segmented { width: 100%; }
+  .tactical-terminate-actions { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}

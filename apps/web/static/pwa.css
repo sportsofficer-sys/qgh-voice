@@ -1,0 +1,197 @@
+.entry-web-distribution[hidden],
+.entry-native-downloads[hidden],
+.entry-release-availability[hidden] { display: none; }
+
+.entry-web-distribution {
+  margin-top: 22px;
+  border-top: 1px solid var(--entry-line, #d9dedb);
+  padding-top: 20px;
+}
+
+.entry-web-distribution-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--entry-muted, #617177);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .13em;
+}
+
+.entry-web-distribution-head small { font: inherit; white-space: nowrap; }
+
+.entry-web-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.entry-web-install,
+.entry-native-downloads a {
+  min-height: 46px;
+  border: 1px solid var(--entry-accent, #007d7d);
+  border-radius: 9px;
+  color: #fff;
+  background: var(--entry-accent, #007d7d);
+  font: 600 12px/1 'IBM Plex Sans', Arial, sans-serif;
+  letter-spacing: .07em;
+  text-align: center;
+  text-decoration: none;
+  transition: background .16s ease, border-color .16s ease, transform .12s ease;
+}
+
+.entry-web-install { padding: 0 18px; cursor: pointer; }
+
+.entry-native-downloads {
+  display: flex;
+  gap: 8px;
+}
+
+.entry-native-downloads a {
+  display: inline-grid;
+  place-items: center;
+  border-color: #b9c4bf;
+  color: var(--entry-accent-dark, #075e60);
+  background: #fff;
+  padding: 0 14px;
+  font-size: 10px;
+}
+
+.entry-web-install:hover,
+.entry-web-install:focus-visible {
+  background: var(--entry-accent-dark, #075e60);
+}
+
+.entry-native-downloads a:hover,
+.entry-native-downloads a:focus-visible {
+  border-color: var(--entry-accent, #007d7d);
+  color: var(--entry-accent-dark, #075e60);
+}
+
+.entry-web-install:active,
+.entry-native-downloads a:active { transform: translateY(1px); }
+
+.entry-web-install:focus-visible,
+.entry-native-downloads a:focus-visible,
+.pwa-install-close:focus-visible,
+.pwa-update-notice button:focus-visible {
+  outline: 3px solid rgba(0, 125, 125, .28);
+  outline-offset: 3px;
+}
+
+.entry-release-availability {
+  margin: 10px 0 0;
+  color: var(--entry-muted, #617177);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.pwa-install-sheet {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  padding: max(20px, env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px)) max(20px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px));
+  background: transparent;
+}
+
+.pwa-install-sheet:not([open]) { display: none; }
+
+.pwa-install-sheet::backdrop {
+  background: rgba(23, 38, 43, .42);
+}
+
+.pwa-install-sheet-card {
+  position: relative;
+  width: min(420px, 100%);
+  border: 1px solid #d9dedb;
+  border-radius: 16px;
+  background: #fffefa;
+  box-shadow: 0 18px 48px rgba(23, 38, 43, .22);
+  padding: 30px;
+}
+
+.pwa-install-sheet-card > span {
+  color: #617177;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .13em;
+}
+
+.pwa-install-sheet-card h2 {
+  margin: 8px 30px 16px 0;
+  color: #17262b;
+  font: 400 clamp(24px, 5vw, 30px)/1.1 'IBM Plex Sans', Arial, sans-serif;
+  letter-spacing: -.03em;
+}
+
+.pwa-install-sheet-card p {
+  margin: 8px 0;
+  color: #45565b;
+  font: 400 15px/1.55 'IBM Plex Sans', Arial, sans-serif;
+}
+
+.pwa-install-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #d9dedb;
+  border-radius: 50%;
+  color: #17262b;
+  background: #fff;
+  cursor: pointer;
+  font: 400 25px/1 'IBM Plex Sans', Arial, sans-serif;
+}
+
+.pwa-update-notice {
+  position: fixed;
+  z-index: 1100;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(420px, calc(100vw - 32px));
+  border: 1px solid #b9c4bf;
+  border-radius: 10px;
+  color: #17262b;
+  background: #fffefa;
+  box-shadow: 0 12px 30px rgba(23, 38, 43, .16);
+  padding: 12px 14px;
+  font: 400 13px/1.4 'IBM Plex Sans', Arial, sans-serif;
+}
+
+.pwa-update-notice button {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 7px;
+  color: #fff;
+  background: #007d7d;
+  padding: 9px 12px;
+  cursor: pointer;
+  font: 600 11px/1 'IBM Plex Sans', Arial, sans-serif;
+  letter-spacing: .07em;
+}
+
+@media (max-width: 680px) {
+  .entry-web-grid { grid-template-columns: 1fr; }
+  .entry-native-downloads { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .entry-native-downloads a { padding: 0 8px; }
+  .pwa-install-sheet-card { padding: 26px 22px; }
+  .pwa-update-notice { left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entry-web-install,
+  .entry-native-downloads a { transition: none; }
+}

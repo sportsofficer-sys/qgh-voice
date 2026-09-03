@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#007d7d">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+  <title>Single Aircraft QGH Simulator</title>
+  <link rel="stylesheet" href="workspace.css?v=4.0.1.4">
+  <script defer src="simulator-core.js?v=4.0.1.4"></script>
+  <script defer src="workspace.js?v=4.0.1.4"></script>
+  <script defer src="simulator.js?v=4.0.1.4"></script>
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <div class="brand"><h1>QGH SIMULATOR</h1><a class="mode-home-link" href="index.html">CHANGE QGH TYPE</a></div>
+      <div class="credit"><small>CREATED BY</small><span>Flt Lt Balaram Reddy</span><small>SERVICE NO. 38703</small></div>
+    </header>
+
+    <section class="screen setup active" id="setup" aria-label="Exercise setup" tabindex="-1">
+      <div class="setup-card">
+        <div class="fields">
+          <div class="field">
+            <label for="runway">RUNWAY ORIENTATION · °M</label>
+            <div class="unit" data-unit="°"><input id="runway" type="number" inputmode="numeric" min="0" max="359" value="150"></div>
+          </div>
+          <div class="field">
+            <label for="inbound">INBOUND / FINAL TRACK · °M</label>
+            <div class="unit" data-unit="°"><input id="inbound" type="number" inputmode="numeric" min="0" max="359" value="150"></div>
+          </div>
+          <div class="field">
+            <label for="outbound">OUTBOUND TRACK · °M</label>
+            <div class="unit" data-unit="°"><input id="outbound" type="number" inputmode="numeric" min="0" max="359" value="330"></div>
+          </div>
+          <div class="field">
+            <label for="aircraft">AIRCRAFT PROFILE</label>
+            <select id="aircraft">
+              <optgroup label="GENERAL">
+                <option value="fighter">FIGHTER · GENERAL</option>
+                <option value="transport">TRANSPORT · GENERAL</option>
+                <option value="helicopter">HELICOPTER · GENERAL</option>
+              </optgroup>
+              <optgroup label="IAF TRAINING PRESETS">
+                <option value="tejas">TEJAS</option>
+                <option value="rafale">RAFALE</option>
+                <option value="su30">SU-30MKI</option>
+                <option value="mirage">MIRAGE 2000</option>
+                <option value="jaguar">JAGUAR</option>
+                <option value="c17">C-17 GLOBEMASTER III</option>
+                <option value="c130">C-130J SUPER HERCULES</option>
+                <option value="an32">AN-32</option>
+                <option value="mi17">MI-17V-5</option>
+                <option value="chinook">CH-47F CHINOOK</option>
+                <option value="apache">AH-64E APACHE</option>
+                <option value="alh">ALH DHURV</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="field">
+            <label for="distance">INITIAL DISTANCE</label>
+            <div class="unit" data-unit="NM"><input id="distance" type="number" inputmode="numeric" min="5" max="50" value="25"></div>
+          </div>
+          <div class="field">
+            <label for="speed">SIMULATED GROUND SPEED</label>
+            <div class="unit" data-unit="KT"><input id="speed" type="number" inputmode="numeric" min="60" max="600" step="5" value="240"></div>
+          </div>
+          <div class="field">
+            <label for="rate">RATE OF TURN</label>
+            <div class="unit" data-unit="°/SEC"><input id="rate" type="number" inputmode="decimal" min=".5" max="8" step=".1" value="3"></div>
+          </div>
+          <div class="field wide">
+            <label>PROCEDURE</label>
+            <div class="choice" role="group" aria-label="Procedure selection">
+              <button id="normal" type="button" aria-pressed="true" title="Use heading-assignment controls">NORMAL QGH</button>
+              <button id="us" type="button" aria-pressed="false" title="Use timed left, right and stop turn calls">U/S COMPASS</button>
+            </div>
+          </div>
+        </div>
+        <button class="start" id="startExercise" type="button">START SIMULATOR</button>
+      </div>
+    </section>
+
+    <section class="screen console" id="console" aria-label="QGH exercise console">
+      <header class="console-head">
+        <div>
+          <h2 id="consoleTitle" tabindex="-1">Normal QGH console</h2>
+        </div>
+        <div class="badge" id="badge">NORMAL QGH</div>
+      </header>
+      <section class="df-card" aria-label="Direction finding display">
+        <div class="df-top">
+          <div>
+            <h3>Direction finding display</h3>
+          </div>
+          <b id="dfState" aria-live="polite">NO SIGNAL</b>
+        </div>
+        <div class="display">
+          <div class="readout">
+            <small id="bearingType">QDM · HOMING</small>
+            <strong id="bearing" aria-live="polite">---</strong>
+          </div>
+          <div class="signal" id="signal"><i></i>NO TRANSMISSION</div>
+        </div>
+        <div class="segmented df-mode" role="group" aria-label="Direction finding display mode">
+          <button id="qdm" type="button" aria-pressed="true">QDM · HOMING</button>
+          <button id="qte" type="button" aria-pressed="false">QTE · TRUE BEARING</button>
+        </div>
+      </section>
+      <button class="mobile-controls-toggle" id="mobileControlsToggle" type="button" aria-expanded="true">CONTROLS</button>
+
+      <section class="controls" id="controls" aria-label="Controller controls">
+        <div class="primary-row">
+          <button class="tx" id="transmit" type="button" title="Receive a live D/F indication during the transmission window">TRANSMIT FOR D/F</button>
+          <button class="danger" id="terminate" type="button">TERMINATE EXERCISE</button>
+        </div>
+        <div class="advance-row">
+          <button id="advanceFlight" type="button">ADVANCE FLIGHT · 1 MIN</button>
+        </div>
+        <div class="info-row" id="infoRow">
+          <button id="requestHeading" type="button">REPORT HEADING<b id="headingReply">HEADING —</b></button>
+          <button id="requestDistance" type="button">REQUEST DISTANCE<b id="distanceReply">RANGE —</b></button>
+        </div>
+        <div class="heading-row" id="normalCtl">
+          <button id="turnHeadingLeft" type="button">TURN LEFT</button>
+          <input id="headingInput" type="number" inputmode="numeric" min="0" max="359" value="150" aria-label="Assigned magnetic heading">
+          <button id="turnHeadingRight" type="button">TURN RIGHT</button>
+        </div>
+        <div class="us-turns" id="usCtl" hidden>
+          <button id="turnLeft" type="button">TURN LEFT NOW</button>
+          <button id="turnRight" type="button">TURN RIGHT NOW</button>
+          <button id="turnStop" type="button" disabled>STOP TURN NOW</button>
+        </div>
+        <div class="speed-row">
+          <label for="liveSpeed">GROUND SPEED</label>
+          <div class="unit" data-unit="KT"><input id="liveSpeed" type="number" inputmode="numeric" min="60" max="600" step="5" value="240" aria-label="Ground speed in knots"></div>
+        </div>
+        <div class="clock">
+          <small>EXERCISE CLOCK</small>
+          <strong id="clock">00:00</strong>
+          <button id="clockStart" type="button">START</button>
+          <button id="clockStop" type="button">STOP</button>
+          <button id="clockReset" type="button">RESET</button>
+        </div>
+        <button class="restart-session" id="restartExercise" type="button">RESTART EXERCISE</button>
+      </section>
+
+    </section>
+
+    <section class="screen analysis" id="analysis" aria-label="Flight path review">
+      <header class="analysis-head">
+        <div>
+          <h2 id="analysisTitle" tabindex="-1">Flight path analysis</h2>
+        </div>
+      </header>
+      <div class="analysis-box">
+        <div class="review-main">
+          <div class="summary">
+            <div><span>RUNWAY</span><strong id="sumRunway"></strong></div>
+            <div><span>OUTBOUND</span><strong id="sumOutbound"></strong></div>
+            <div><span>FINAL / INBOUND</span><strong id="sumInbound"></strong></div>
+            <div><span>PROCEDURE</span><strong id="sumProcedure"></strong></div>
+          </div>
+          <div class="debrief">
+            <div><span>INITIAL RANGE</span><b id="sumInitial"></b></div>
+            <div><span>TERMINAL RANGE</span><b id="sumTerminal"></b></div>
+            <div><span>TERMINAL SPEED</span><b id="sumSpeed"></b></div>
+            <div><span>D/F TRANSMITS</span><b id="sumTx"></b></div>
+          </div>
+          <div class="turn-summary">
+            <div><span>OVERHEAD TURN</span><b id="sumOverheadTurn">—</b></div>
+            <div><span>BASE TURN</span><b id="sumBaseTurn">—</b></div>
+          </div>
+          <div class="plot">
+          <canvas id="plot" width="900" height="720" tabindex="0" aria-label="Flight path review chart. Enable zoom to inspect the replay with keyboard controls."></canvas>
+            <output class="replay-elapsed" id="replayElapsed" aria-label="Track replay elapsed time">TRACK 00:00</output>
+          </div>
+          <div class="actions review-toolbar" aria-label="Replay controls">
+            <button id="returnConsole" type="button">RETURN TO CONSOLE</button>
+            <button id="replay" type="button" aria-pressed="false">REPLAY TRACK</button>
+            <div class="replay-group" aria-label="Replay speed">
+              <span>REPLAY SPEED</span>
+              <div class="segmented replay-speed" role="group" aria-label="Replay speed selection">
+                <button type="button" data-replay-speed="1" aria-pressed="true">1×</button>
+                <button type="button" data-replay-speed="2" aria-pressed="false">2×</button>
+                <button type="button" data-replay-speed="3" aria-pressed="false">3×</button>
+                <button type="button" data-replay-speed="10" aria-pressed="false">10×</button>
+              </div>
+            </div>
+            <div class="review-view-tools" role="group" aria-label="Track view controls">
+              <button id="zoomToggle" type="button" aria-pressed="false" title="Enable pan and zoom for the flight-path view">ZOOM OFF</button>
+              <button id="fitReview" type="button" title="Fit the complete flight path in view">FIT</button>
+            </div>
+            <button class="new-exercise" id="newExercise" type="button">NEW EXERCISE</button>
+          </div>
+        </div>
+        <aside class="log-panel">
+          <header><h3>Commands issued</h3></header>
+          <div class="logs" id="logs"></div>
+        </aside>
+      </div>
+    </section>
+  </main>
+  <dialog class="terminate-dialog" id="terminateDialog" aria-labelledby="terminateTitle">
+    <div class="terminate-dialog-copy">
+      <span>EXERCISE CONTROL</span>
+      <h2 id="terminateTitle">Terminate this exercise?</h2>
+      <p>The recorded flight path will be closed and opened for review.</p>
+    </div>
+    <div class="terminate-dialog-actions">
+      <button id="cancelTerminate" type="button">KEEP EXERCISE</button>
+      <button class="confirm-terminate" id="confirmTerminate" type="button">TERMINATE EXERCISE</button>
+    </div>
+  </dialog>
+  <div class="toast" id="toast" aria-live="polite"></div>
+</body>
+</html>

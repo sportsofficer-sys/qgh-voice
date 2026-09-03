@@ -1,0 +1,34 @@
+{
+  "name": "qgh-simulator",
+  "version": "4.0.1",
+  "description": "Offline single-aircraft and tactical QGH simulator for Windows",
+  "author": "Flt Lt Balaram Reddy",
+  "license": "MIT",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "dist": "electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "44.0.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "in.qgh.simulator",
+    "productName": "QGH Simulator",
+    "compression": "store",
+    "files": [
+      "main.js",
+      "app/**/*"
+    ],
+    "win": {
+      "icon": "assets/qgh-app-icon.ico",
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    }
+  }
+}

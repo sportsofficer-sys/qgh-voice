@@ -1,0 +1,23 @@
+name: Android Gradle Wrapper Integrity
+
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate-wrapper:
+    name: Validate Gradle wrapper
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Validate Gradle wrapper integrity
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0

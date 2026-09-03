@@ -1,0 +1,8 @@
+.gradle/
+build/
+local.properties
+*.jks
+*.keystore
+*.properties.local
+qgh-release.properties.local
+app/build/

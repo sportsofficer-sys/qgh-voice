@@ -1,0 +1,68 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+local.properties
+*.properties.local
+qgh-release.properties.local
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+*.p8
+*.pk8
+*.crt
+*.der
+*.mobileprovision
+*.cer
+*.provisionprofile
+fastlane/.env*
+
+# Windows / Node
+apps/windows/node_modules/
+apps/windows/dist/
+apps/windows/out/
+*.exe
+*.msi
+*.appx
+*.appxbundle
+
+# Android / Gradle
+.gradle/
+**/.gradle/
+**/build/
+**/build-logs/
+*.apk
+*.aab
+
+# iOS / Xcode
+DerivedData/
+build/
+Pods/
+Carthage/Build/
+.swiftpm/
+*.xcuserstate
+xcuserdata/
+*.ipa
+*.dSYM.zip
+*.xcarchive
+
+# Local release material / temporary exports
+release/
+artifacts/
+*.zip
+*.log
+
+# Generated hosted web package and local preview state
+apps/web/dist/
+packages/qgh-engine/state/
+packages/qgh-engine/screens/

@@ -1,0 +1,6 @@
+# Copy this file to qgh-release.properties.local and replace every placeholder.
+# The .local file is excluded from source control. Keep the keystore and passwords private.
+storeFile=C:\\Users\\YourName\\Documents\\QGH-Simulator\\qgh-upload-key.jks
+storePassword=replace-with-a-strong-password
+keyAlias=qgh-upload
+keyPassword=replace-with-a-strong-password

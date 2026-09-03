@@ -1,0 +1,17 @@
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'none'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()
+  X-Frame-Options: DENY
+
+/service-worker.js
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/manifest.webmanifest
+  Cache-Control: no-cache
+
+/app-version.json
+  Cache-Control: no-cache
