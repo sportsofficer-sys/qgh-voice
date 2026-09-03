@@ -23,4 +23,4 @@ jobs:
         with:
           node-version: 22
       - name: Validate simulator and web package
-        run: node --test packages/qgh-engine/test/*.test.js apps/web/test/build-web.test.mjs apps/web/test/service-worker.test.mjs
+        run: node --test packages/qgh-engine/test/*.test.js apps/web/test/*.test.mjs

@@ -22,7 +22,14 @@ Keep this key. Losing it makes future release management much harder.
 
 ## Build the Play Store upload file
 
-From this folder, run:
+Before every Android release, set the shared simulator version from the repository root. AndroidVersionCode must be a new, larger integer for every Play Store update:
+
+~~~powershell
+.\scripts\Set-QghReleaseVersion.ps1 -Version 4.0.2 -AndroidVersionCode 12
+node .\scripts\verify-release-version.mjs
+~~~
+
+Then, from this folder, run:
 
 ```powershell
 .\gradlew.bat --no-daemon clean :app:lintRelease :app:bundleRelease

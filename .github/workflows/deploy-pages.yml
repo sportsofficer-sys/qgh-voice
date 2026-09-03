@@ -6,8 +6,11 @@ on:
       - main
     paths:
       - apps/web/**
+      - apps/windows/package.json
+      - apps/android/app/build.gradle.kts
       - packages/qgh-engine/**
       - scripts/build-web.mjs
+      - scripts/verify-release-version.mjs
       - .github/workflows/deploy-pages.yml
   workflow_dispatch:
 
@@ -31,7 +34,7 @@ jobs:
         with:
           node-version: 22
       - name: Validate simulator and web package
-        run: node --test packages/qgh-engine/test/*.test.js apps/web/test/build-web.test.mjs apps/web/test/service-worker.test.mjs
+        run: node --test packages/qgh-engine/test/*.test.js apps/web/test/*.test.mjs
       - name: Build web package
         run: node scripts/build-web.mjs
       - name: Upload GitHub Pages artifact

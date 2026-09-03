@@ -39,7 +39,7 @@ The web package is generated rather than deployed directly from `packages/qgh-en
 
 ~~~powershell
 $tests = Get-ChildItem .\packages\qgh-engine\test\*.test.js | ForEach-Object FullName
-node --test $tests .\apps\web\test\build-web.test.mjs .\apps\web\test\service-worker.test.mjs
+node --test $tests .\apps\web\test\*.test.mjs
 ~~~
 
 The verification command creates a fresh `apps/web/dist` package before checking it. To build without running the verification test, use `node .\scripts\build-web.mjs`.
@@ -124,14 +124,23 @@ Use direct HTTPS download URLs. Rebuild and redeploy the PWA afterward. If eithe
 
 Generate the QR code only after the production HTTPS URL and access policy are final. Encode the exact production URL, scan it with an iPhone and Android phone, and verify it opens the intended site. Do not print or circulate a QR code for a preview deployment.
 
-## Updating the web app
+## Releasing an update across web, Windows, and Android
 
-For every web release:
+The PWA release record is the shared version source. For every simulator release:
 
-1. Update the PWA release version only in `apps/web/static/app-version.json`; the web build injects it into the cache name, entry-page label, and asset-version references.
-2. Run the web build and tests.
-3. Deploy the new output.
-4. Existing installed PWAs will show a user-controlled update notice when the new service worker is ready. They never force-reload an active exercise.
+1. Choose a new semantic version and a new, larger Android version code.
+2. From the repository root, run:
+
+   ~~~powershell
+   .\scripts\Set-QghReleaseVersion.ps1 -Version 4.0.2 -AndroidVersionCode 12
+   node .\scripts\verify-release-version.mjs
+   ~~~
+
+3. Run the web tests and the platform-specific checks, then build a fresh Windows installer and signed Android package from that protected commit.
+4. Push or merge the reviewed release to `main`. GitHub Pages automatically deploys the PWA after its version check passes.
+5. Publish or distribute the tested native packages through the approved channel. Native installers are not silently updated by the PWA.
+
+The web build injects the shared release version into the cache name, entry-page label, and asset-version references. Existing installed PWAs show a user-controlled update notice when the new service worker is ready; they never force-reload an active exercise.
 
 ## Security boundaries
 

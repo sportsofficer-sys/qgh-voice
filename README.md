@@ -30,10 +30,21 @@ The hosted web edition is built from the canonical engine as a clean static pack
 ~~~powershell
 node .\scripts\build-web.mjs
 $tests = Get-ChildItem .\packages\qgh-engine\test\*.test.js | ForEach-Object FullName
-node --test $tests .\apps\web\test\build-web.test.mjs .\apps\web\test\service-worker.test.mjs
+node --test $tests .\apps\web\test\*.test.mjs
 ~~~
 
 The generated `apps/web/dist` directory supports a browser-installed PWA on desktop, Android, iPhone, and iPad. It works offline after the first successful load, but exercise data remains in memory and is intentionally cleared by a page reload. See [docs/WEB_PWA_DEPLOYMENT.md](docs/WEB_PWA_DEPLOYMENT.md) for Cloudflare Pages, GitHub, access-control, QR, iPhone installation, and release-download instructions.
+
+### Versioned releases
+
+The PWA release record at 'apps/web/static/app-version.json' is shared by every platform. Set every platform's version together, then verify it before building:
+
+~~~powershell
+.\scripts\Set-QghReleaseVersion.ps1 -Version 4.0.2 -AndroidVersionCode 12
+node .\scripts\verify-release-version.mjs
+~~~
+
+The GitHub checks and Pages deployment refuse a version mismatch. A push to 'main' automatically updates the hosted PWA. Windows and Android are deliberately rebuilt and distributed separately, so their installer or store release is tested before users install it.
 
 ## Building
 
