@@ -3,6 +3,32 @@
 
 .voice-dock [hidden] { display: none !important; }
 
+/* Invisible DOM controls let the local voice adapter reuse the same simulator event
+   path without adding an unnecessary visual control to the controller console. */
+.voice-command-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* A short, consistent acknowledgement makes an accepted voice instruction visible on
+   the same button, tab, or numeric field that the controller would operate manually. */
+.voice-command-effect {
+  animation: qgh-voice-command-effect .82s ease-out;
+  outline: 3px solid rgba(0, 125, 125, .5) !important;
+  outline-offset: 2px;
+}
+
+@keyframes qgh-voice-command-effect {
+  0% { box-shadow: 0 0 0 0 rgba(0, 125, 125, .36); }
+  48% { box-shadow: 0 0 0 7px rgba(0, 125, 125, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 125, 125, 0); }
+}
+
 .voice-dock {
   position: fixed;
   z-index: 40;
@@ -151,6 +177,39 @@
 .voice-assistant strong { color: #17262b; font: 600 10px 'IBM Plex Sans', Arial, sans-serif; letter-spacing: .08em; }
 .voice-assistant small { color: #617177; font: 500 8px 'IBM Plex Mono', monospace; letter-spacing: .07em; }
 
+.voice-confirmation {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  display: grid;
+  gap: 7px;
+  width: min(286px, calc(100vw - 36px));
+  border: 1px solid #8caea8;
+  border-radius: 12px;
+  background: #fffefa;
+  box-shadow: 0 15px 34px rgba(23, 38, 43, .16);
+  padding: 11px 12px;
+}
+
+.voice-confirmation strong {
+  color: #075e60;
+  font: 700 9px 'IBM Plex Sans', Arial, sans-serif;
+  letter-spacing: .1em;
+}
+
+.voice-confirmation small {
+  overflow: hidden;
+  color: #17262b;
+  font: 500 9px 'IBM Plex Mono', monospace;
+  letter-spacing: .045em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-confirmation div { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.voice-dock .voice-confirm { border-color: #007d7d; color: #fff; background: #007d7d; }
+.voice-dock .voice-cancel { color: #5f6b69; }
+
 .voice-dock .voice-assistant-stop {
   min-height: 29px;
   border-color: #aebdba;
@@ -186,6 +245,12 @@
   }
 
   .voice-assistant {
+    right: 0;
+    bottom: calc(100% + 8px);
+    width: min(274px, calc(100vw - 24px));
+  }
+
+  .voice-confirmation {
     right: 0;
     bottom: calc(100% + 8px);
     width: min(274px, calc(100vw - 24px));

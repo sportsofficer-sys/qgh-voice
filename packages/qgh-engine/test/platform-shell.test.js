@@ -74,6 +74,8 @@ test('voice assets use the local-only bridge and are cached by the PWA shell', (
   assert.doesNotMatch(androidOfflineVoice, /GZIPInputStream/);
   assert.match(androidOfflineVoice, /service\.cancel\(\)/);
   assert.match(androidOfflineVoice, /handleStartFailure/);
+  assert.match(androidOfflineVoice, /void onResult\(String hypothesis\)[\s\S]*finishCurrentSession\([\s\S]*serviceForListener, recognizerForListener, transcript, null, false\)/);
+  assert.match(androidOfflineVoice, /speechService != expectedService/);
   assert.match(worker, /'\.\/voice-control\.js'/);
   assert.match(worker, /'\.\/voice-workspace\.js'/);
   assert.match(worker, /'\.\/offline-voice-engine\.js'/);

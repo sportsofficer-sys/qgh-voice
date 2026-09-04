@@ -55,6 +55,28 @@
 .qgh-guide-card h2 { margin: 8px 0 9px; color: #17262b; font: 400 clamp(24px, 7vw, 31px)/1.08 'IBM Plex Sans', Arial, sans-serif; letter-spacing: -.035em; }
 .qgh-guide-card p { margin: 0; color: #405157; font: 400 14px/1.6 'IBM Plex Sans', Arial, sans-serif; }
 
+.qgh-guide-call-pattern {
+  display: grid;
+  gap: 4px;
+  margin: 16px 0 0;
+  border: 1px solid #c8d8d2;
+  border-radius: 8px;
+  background: #fbfdfc;
+  padding: 10px 12px;
+}
+
+.qgh-guide-call-pattern span {
+  color: #557178;
+  font: 500 9px 'IBM Plex Mono', monospace;
+  letter-spacing: .1em;
+}
+
+.qgh-guide-call-pattern strong {
+  color: #075e60;
+  font: 600 11px/1.35 'IBM Plex Sans', Arial, sans-serif;
+  letter-spacing: .055em;
+}
+
 .qgh-guide-examples {
   display: grid;
   gap: 7px;

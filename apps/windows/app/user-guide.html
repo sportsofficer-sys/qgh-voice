@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#007d7d">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
   <title>QGH Simulator User Guide</title>
-  <link rel="stylesheet" href="entry.css?v=4.1.0">
+  <link rel="stylesheet" href="entry.css?v=4.2.0">
 </head>
 <body>
   <main class="entry-app guide-app">
@@ -17,7 +17,7 @@
 
     <article class="guide-card" aria-labelledby="guideTitle">
       <header class="guide-intro">
-        <span>USER GUIDE · VERSION 4.1.0</span>
+        <span>USER GUIDE · VERSION 4.2.0</span>
         <h2 id="guideTitle">QGH Simulator</h2>
         <p>Training use only. Verify all operational procedures against current authorised publications and local instructions.</p>
       </header>
@@ -37,26 +37,16 @@
           <h3 id="guideVoice">LOCAL VOICE CONTROL</h3>
           <span>PRESS TO TALK BY DEFAULT</span>
         </div>
-        <p>Hold <b>PTT</b>, say one complete command, then release. Open <b>VOICE</b> and select <b>SET UP OFFLINE VOICE</b> before first use. Continuous Listening is optional and shows a compact voice-assistant panel with a clear stop action. Recognition uses the local Vosk engine only; no cloud speech fallback is used. The PWA saves its self-hosted voice model after the user-selected setup step, while Windows and Android include it with the app. If setup or microphone access is unavailable, continue with the normal controls.</p>
+        <p>Hold <b>PTT</b>, say one complete controller call, then release. The guided familiarisation teaches these live exercise calls first; setup and review remain deliberately manual in the tour. Open <b>VOICE</b> and prepare local voice before first browser use. Continuous Listening is optional and has a clear stop action. Recognition remains local only; there is no cloud speech fallback.</p>
+        <h4>EXERCISE RT CALLS</h4>
         <div class="guide-command-grid">
-          <section>
-            <h4>SETUP</h4>
-            <p>“Set runway two three zero”</p>
-            <p>“Set inbound track two two five”</p>
-            <p>“Set outbound track zero six five”</p>
-            <p>“Select aircraft profile Rafale”</p>
-            <p>“Set ground speed two four zero knots”</p>
-            <p>“Set rate of turn three degrees per second”</p>
-            <p>“Select Normal QGH” · “Select U/S Compass”</p>
-            <p>“Start simulator”</p>
-          </section>
           <section>
             <h4>NORMAL QGH</h4>
             <p>“Transmit for D/F” · “Show QDM” · “Show QTE”</p>
-            <p>“Turn right heading two seven zero”</p>
-            <p>“Turn left heading zero four five”</p>
+            <p>“Turn right heading zero six zero”</p>
+            <p>“Turn left heading two seven zero”</p>
+            <p>“Continue zero six zero” only while a same-direction turn is active.</p>
             <p>“Report heading” · “Request distance”</p>
-            <p>“Set speed two two zero knots”</p>
             <p>“Start clock” · “Stop clock” · “Reset clock”</p>
             <p>“Advance flight one minute”</p>
           </section>
@@ -66,19 +56,19 @@
             <p>“Turn left now”</p>
             <p>“Turn right now”</p>
             <p>“Stop turn now”</p>
-            <p>“Request distance” · “Set speed two two zero knots”</p>
+            <p>“Report heading” · “Request distance”</p>
             <p>“Start clock” · “Advance flight one minute”</p>
           </section>
           <section>
-            <h4>REVIEW</h4>
-            <p>“Replay track” · “Pause replay” · “Resume replay”</p>
-            <p>“Set replay speed ten times”</p>
-            <p>“Enable zoom” · “Zoom in” · “Pan left”</p>
-            <p>“Fit track” · “Return to console”</p>
-            <p>“New exercise”</p>
+            <h4>TACTICAL QGH</h4>
+            <p>Say the complete callsign first: “Raven Twenty One turn right heading zero six zero”. A unique designator such as Raven is also accepted; use the full callsign if two aircraft share it.</p>
+            <p>“Raven Twenty One continue zero six zero” while Raven Twenty One is already turning that way</p>
+            <p>“Raven Twenty One transmit for D/F”</p>
+            <p>“Raven Twenty One turn right now” · “Raven Twenty One stop turn now”</p>
+            <p>“Raven Twenty One stop following leader”</p>
           </section>
         </div>
-        <p class="guide-note">Use aviation digits for headings: zero, one, two, tree, four, fife, six, seven, eight, niner. Say one command at a time. “Terminate exercise” opens the safety confirmation; say “Confirm termination” or “Keep exercise.”</p>
+        <p class="guide-note">Use aviation digits for headings: zero, one, two, tree, four, fife, six, seven, eight, niner. Plain phrase variations are accepted when the aircraft, action and required heading are clear. Give one call at a time. “Terminate exercise” opens the safety confirmation; say “Confirm termination” or “Keep exercise.”</p>
       </section>
 
       <section class="guide-section" aria-labelledby="guideTactical">
@@ -86,25 +76,21 @@
           <h3 id="guideTactical">TACTICAL QGH</h3>
           <span>02–04 AIRCRAFT</span>
         </div>
-        <p>Configure aircraft callsigns, profiles, levels, speed, turn rate and range. Levels default in 1,000 ft separation. For formation flight, select formation, leader and members before starting.</p>
+        <p>Configure aircraft callsigns, profiles, levels, speed, turn rate and range with the visible setup controls. Levels default in 1,000 ft separation. For formation flight, select formation, leader and members before starting.</p>
         <div class="guide-command-grid guide-command-grid-two">
           <section>
-            <h4>CONFIGURATION</h4>
-            <p>“Set aircraft count four”</p>
-            <p>“Set aircraft one callsign Falcon One One”</p>
-            <p>“Set aircraft Falcon Eleven profile Rafale”</p>
-            <p>“Set aircraft Falcon Eleven level six thousand feet”</p>
-            <p>“Formation flight on”</p>
-            <p>“Select formation leader Falcon Eleven”</p>
+            <h4>CALLSIGN DISCIPLINE</h4>
+            <p>Use the exact callsign visible in the left rail as the first words of every tactical call. A single unique designator is accepted, but the full callsign remains the clearest RT practice.</p>
+            <p>“Raven Twenty One turn right heading zero six zero”</p>
+            <p>“Raven Twenty One transmit for D/F”</p>
+            <p>“Raven Twenty One turn right now” · “Raven Twenty One stop turn now”</p>
           </section>
           <section>
-            <h4>CONSOLE &amp; REVIEW</h4>
-            <p>“Select aircraft Falcon Eleven”</p>
-            <p>“Transmit for D/F Falcon Eleven”</p>
-            <p>“Falcon Eleven turn right heading two seven zero”</p>
-            <p>“Falcon Eleven turn left now”</p>
-            <p>“Stop following leader Falcon Eleven”</p>
-            <p>“Focus aircraft Falcon Eleven” · “Focus all aircraft”</p>
+            <h4>FORMATION CONTROL</h4>
+            <p>Formation aircraft follow their leader until released individually.</p>
+            <p>“Raven Twenty One stop following leader”</p>
+            <p>After release, Raven Twenty One holds its last assigned heading and accepts individual calls.</p>
+            <p>“Raven Twenty One turn left heading two seven zero”</p>
           </section>
         </div>
       </section>

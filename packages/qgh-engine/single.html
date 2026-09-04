@@ -6,17 +6,17 @@
   <meta name="theme-color" content="#007d7d">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
   <title>Single Aircraft QGH Simulator</title>
-  <link rel="stylesheet" href="workspace.css?v=4.1.0">
-  <link rel="stylesheet" href="voice.css?v=4.1.0">
-  <link rel="stylesheet" href="guided-familiarisation.css?v=4.1.0">
-  <script defer src="vendor/vosk-browser-0.0.8.js?v=4.1.0"></script>
-  <script defer src="offline-voice-engine.js?v=4.1.0"></script>
-  <script defer src="voice-control.js?v=4.1.0"></script>
-  <script defer src="simulator-core.js?v=4.1.0"></script>
-  <script defer src="workspace.js?v=4.1.0"></script>
-  <script defer src="simulator.js?v=4.1.0"></script>
-  <script defer src="voice-workspace.js?v=4.1.0"></script>
-  <script defer src="guided-familiarisation.js?v=4.1.0"></script>
+  <link rel="stylesheet" href="workspace.css?v=4.2.0">
+  <link rel="stylesheet" href="voice.css?v=4.2.0">
+  <link rel="stylesheet" href="guided-familiarisation.css?v=4.2.0">
+  <script defer src="vendor/vosk-browser-0.0.8.js?v=4.2.0"></script>
+  <script defer src="offline-voice-engine.js?v=4.2.0"></script>
+  <script defer src="voice-control.js?v=4.2.0"></script>
+  <script defer src="simulator-core.js?v=4.2.0"></script>
+  <script defer src="workspace.js?v=4.2.0"></script>
+  <script defer src="simulator.js?v=4.2.0"></script>
+  <script defer src="voice-workspace.js?v=4.2.0"></script>
+  <script defer src="guided-familiarisation.js?v=4.2.0"></script>
 </head>
 <body>
   <main class="app">
@@ -133,6 +133,7 @@
           <input id="headingInput" type="number" inputmode="numeric" min="0" max="359" value="150" aria-label="Assigned magnetic heading">
           <button id="turnHeadingRight" type="button">TURN RIGHT</button>
         </div>
+        <button class="voice-command-only" id="continueHeading" type="button" tabindex="-1" aria-hidden="true">CONTINUE HEADING</button>
         <div class="us-turns" id="usCtl" hidden>
           <button id="turnLeft" type="button">TURN LEFT NOW</button>
           <button id="turnRight" type="button">TURN RIGHT NOW</button>

@@ -121,7 +121,7 @@ function makeHarness() {
     'setup', 'console', 'analysis', 'runway', 'inbound', 'outbound', 'aircraft', 'distance', 'speed', 'rate',
     'normal', 'us', 'startExercise', 'consoleTitle', 'badge', 'mobileControlsToggle', 'controls', 'transmit',
     'terminate', 'advanceFlight', 'infoRow', 'requestHeading', 'headingReply', 'requestDistance', 'distanceReply', 'normalCtl',
-    'turnHeadingLeft', 'headingInput', 'turnHeadingRight', 'usCtl', 'turnLeft', 'turnRight', 'turnStop', 'liveSpeed',
+    'turnHeadingLeft', 'headingInput', 'turnHeadingRight', 'continueHeading', 'usCtl', 'turnLeft', 'turnRight', 'turnStop', 'liveSpeed',
     'clock', 'clockStart', 'clockStop', 'clockReset', 'restartExercise', 'dfState', 'bearingType', 'bearing', 'signal',
     'qdm', 'qte', 'sumRunway', 'sumOutbound', 'sumInbound', 'sumProcedure', 'sumInitial', 'sumTerminal', 'sumSpeed',
     'sumTx', 'sumOverheadTurn', 'sumBaseTurn', 'plot', 'replayElapsed', 'returnConsole', 'replay', 'newExercise', 'logs', 'toast'
@@ -375,6 +375,26 @@ function assertAdvanceFlightOneMinute(procedure) {
 test('Advance Flight by 1 Minute retains physical flight behaviour in Normal QGH and U/S Compass', () => {
   assertAdvanceFlightOneMinute('normal');
   assertAdvanceFlightOneMinute('us');
+});
+
+test('continue-heading holds the active Normal QGH turn direction while amending its target', () => {
+  const harness = makeHarness();
+  const scenario = { runway: 230, outbound: 65, inbound: 225, aircraft: 'fighter', distance: 8, speed: 360, rate: 4 };
+  setExercise(harness, scenario, 'normal');
+  const { elements, state } = harness;
+  state.plane.heading = 330;
+  state.targetHeading = 330;
+  elements.headingInput.value = '120';
+  harness.click('turnHeadingRight');
+  harness.tick(12);
+  elements.headingInput.value = '060';
+  harness.click('continueHeading');
+
+  assert.equal(state.forcedTurnSide, 'right');
+  assert.equal(state.targetHeading, 60);
+  assert.match(state.commands.at(-1).type, /CONTINUE RIGHT/);
+  harness.tick(Math.ceil(360 / (state.cfg.rate * STEP_SECONDS)) + 4);
+  assert.ok(headingError(state.plane.heading, 60) < .01);
 });
 
 test('replay keeps the fast 1× baseline, supports 10×, and pauses without losing its cursor', () => {

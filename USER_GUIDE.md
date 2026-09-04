@@ -1,6 +1,6 @@
 # QGH Simulator User Guide
 
-Version 4.1.0
+Version 4.2.0
 
 QGH Simulator is an offline-first training aid for practising controller-led QGH procedures. It includes Single Aircraft QGH (Normal and U/S Compass) and Tactical QGH for two to four aircraft.
 
@@ -8,7 +8,7 @@ It is not an operational air-traffic-control system and must not be used for liv
 
 ## Start an exercise
 
-On first opening, the simulator offers an optional **Guided Familiarisation**. It introduces the real controls in a short Single Aircraft or Tactical tour without changing any exercise behaviour. Select **Skip** if you already know the training environment; select **Guided Tour** in the header later to reopen it.
+On first opening, the simulator offers an optional **Guided Familiarisation**. It introduces live controller RT calls in a short Single Aircraft or Tactical tour without changing any exercise behaviour. It deliberately focuses on the exercise console rather than setup or review voice commands. Select **Skip** if you already know the training environment; select **Guided Tour** in the header later to reopen it.
 
 1. Open **Single Aircraft QGH** or **Tactical QGH**.
 2. Enter the runway orientation, inbound/final track, and outbound track.
@@ -43,12 +43,12 @@ Select **Terminate Exercise** when the exercise is complete, then confirm the ex
 
 ## Voice control
 
-Voice control is an additional way to operate the simulator. It does not replace the visible controls.
+Voice control is an additional way to operate the simulator. It does not replace the visible controls. The primary voice flow is the live exercise: direction finding, turns, timing and aircraft-specific tactical instructions.
 
 - **PTT** is the default. Hold **PTT**, say one complete command, then release it.
 - Open **VOICE** for setup and listening choices. On first use, select **SET UP OFFLINE VOICE** and wait until the ready state appears.
 - **Continuous Listening** is optional. Turn it on only in a quiet environment. It opens a compact voice-assistant state with a clear **Stop** action.
-- An exact recognised instruction is executed immediately. An unclear, incomplete, hidden, or disabled command makes no change to the exercise.
+- A clear recognised exercise instruction is executed immediately. An unclear, incomplete, hidden, or disabled command makes no change to the exercise.
 - The simulator requests microphone access only when you start voice control. It does not use a cloud speech fallback.
 
 Voice recognition uses the bundled Vosk offline engine. The browser-installed PWA downloads its self-hosted model once during the user-selected setup step (about 40 MB), then keeps it in local browser storage for offline use. Windows and Android include the same model with the app; Android prepares it locally on first use and does not require an Android speech service or language pack. It never falls back to cloud recognition. If voice setup is unavailable or fails, use the normal controls; simulator operation remains offline and unchanged.
@@ -61,27 +61,19 @@ Speak headings digit by digit. Aviation pronunciations are accepted:
 - Example: **“Turn right heading two seven zero.”**
 - Example: **“Turn left heading zero niner zero.”**
 
-### Common commands
+### Exercise RT calls
 
 Single Aircraft Normal QGH:
 
-- “Set runway two three zero.”
-- “Set inbound track two two five.”
-- “Set outbound track zero six five.”
-- “Select aircraft profile Rafale.”
-- “Normal QGH.” or “U S Compass.”
-- “Start simulator.”
 - “Transmit for D F.”
 - “Show QDM.” or “Show QTE.”
+- “Turn right heading zero six zero.”
 - “Turn left heading two seven zero.”
-- “Turn right heading one eight zero.”
+- “Continue zero six zero.” **Only while a same-direction turn is already active.** If no matching turn is underway, issue a full left or right heading call.
 - “Report heading.”
 - “Request distance.”
-- “Set speed two four zero.”
 - “Start clock.”, “Stop clock.”, or “Reset clock.”
 - “Advance flight one minute.”
-- “Restart exercise.”
-- “Terminate exercise.” followed by “Confirm termination.”
 
 U/S Compass:
 
@@ -89,24 +81,18 @@ U/S Compass:
 - “Turn right now.”
 - “Stop turn now.”
 
-Review:
-
-- “Replay track.”, “Pause replay.”, or “Resume replay.”
-- “Set replay speed three times.”
-- “Enable zoom.”, “Disable zoom.”, or “Fit track.”
-- “Return to console.”
-- “New exercise.”
-
 Tactical QGH:
 
-- “Select aircraft Falcon Eleven.”
-- “Transmit for D/F Falcon Eleven.”
-- “Falcon Eleven turn right heading two seven zero.”
-- “Formation on.” or “Formation off.”
-- “Stop following leader.”
-- “Focus all aircraft.”
+- Begin every call with the exact visible callsign. A unique designator such as Raven is accepted, but use the full callsign if two aircraft share it.
+- “Raven Twenty One turn right heading zero six zero.”
+- “Raven Twenty One continue zero six zero.” **Only while Raven Twenty One is already turning in that direction.**
+- “Raven Twenty One transmit for D/F.”
+- “Raven Twenty One turn right now.” or “Raven Twenty One stop turn now.”
+- “Raven Twenty One stop following leader.”
 
-For a custom callsign, speak one action at a time and use the exact callsign currently visible on screen. If it is not recognised, select or type the callsign normally.
+For a custom callsign, replace `Raven Twenty One` with the complete callsign currently visible on screen. The accepted form is **complete callsign · action · required target**. Say one action at a time; if a callsign is not recognised, select it normally.
+
+The visible setup and review controls remain available. They are intentionally not part of the initial voice demonstration, so a new controller learns the real-time exercise flow first.
 
 ## Voice-control troubleshooting
 

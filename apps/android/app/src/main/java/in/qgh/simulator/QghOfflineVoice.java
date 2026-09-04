@@ -58,7 +58,9 @@ final class QghOfflineVoice {
     private Recognizer recognizer;
     private SpeechService speechService;
     private Listener activeListener;
-    private String grammar = "[\"[unk]\"]";
+    // A null grammar deliberately selects Vosk's open, fully local recognizer. A non-null
+    // grammar remains available as a bounded fallback for constrained recognition contexts.
+    private volatile String grammar;
 
     QghOfflineVoice(Context sourceContext) {
         context = sourceContext.getApplicationContext();
@@ -73,13 +75,18 @@ final class QghOfflineVoice {
 
     void setGrammar(String candidate) {
         String sanitized = sanitizeGrammar(candidate);
-        if (!sanitized.equals(grammar)) {
+        if (!java.util.Objects.equals(sanitized, grammar)) {
             grammar = sanitized;
         }
     }
 
     private static String sanitizeGrammar(String candidate) {
-        if (candidate == null || candidate.length() > MAX_GRAMMAR_BYTES) {
+        // An omitted grammar is intentional: it enables Vosk's local free-form transcription
+        // constructor rather than turning an empty request into an [unk]-only grammar.
+        if (candidate == null || candidate.trim().isEmpty()) {
+            return null;
+        }
+        if (candidate.length() > MAX_GRAMMAR_BYTES) {
             return "[\"[unk]\"]";
         }
         try {
@@ -118,7 +125,10 @@ final class QghOfflineVoice {
         SpeechService nextService = null;
         boolean sessionAttached = false;
         try {
-            nextRecognizer = new Recognizer(model, SAMPLE_RATE, grammar);
+            String activeGrammar = grammar;
+            nextRecognizer = activeGrammar == null
+                    ? new Recognizer(model, SAMPLE_RATE)
+                    : new Recognizer(model, SAMPLE_RATE, activeGrammar);
             nextService = new SpeechService(nextRecognizer, SAMPLE_RATE);
             synchronized (lifecycleLock) {
                 if (modelState != ModelState.READY || model == null) {
@@ -130,6 +140,7 @@ final class QghOfflineVoice {
                 sessionAttached = true;
             }
             final SpeechService serviceForListener = nextService;
+            final Recognizer recognizerForListener = nextRecognizer;
             serviceForListener.startListening(new RecognitionListener() {
                 @Override
                 public void onPartialResult(String hypothesis) {
@@ -138,23 +149,32 @@ final class QghOfflineVoice {
 
                 @Override
                 public void onResult(String hypothesis) {
-                    // The final result is emitted only after the local session finishes.
+                    // Vosk emits this at an utterance boundary while its service is still
+                    // live. Treat it as the one accepted RT call, close this one-phrase
+                    // session, and let the workspace re-arm Continuous Listening. This also
+                    // makes PTT work when Vosk finds an endpoint before button release.
+                    final String transcript = transcriptFrom(hypothesis);
+                    mainHandler.post(() -> finishCurrentSession(
+                            serviceForListener, recognizerForListener, transcript, null, false));
                 }
 
                 @Override
                 public void onFinalResult(String hypothesis) {
                     final String transcript = transcriptFrom(hypothesis);
-                    mainHandler.post(() -> finishCurrentSession(transcript, null));
+                    mainHandler.post(() -> finishCurrentSession(
+                            serviceForListener, recognizerForListener, transcript, null, false));
                 }
 
                 @Override
                 public void onError(Exception exception) {
-                    mainHandler.post(() -> finishCurrentSession(null, "unavailable", true));
+                    mainHandler.post(() -> finishCurrentSession(
+                            serviceForListener, recognizerForListener, null, "unavailable", true));
                 }
 
                 @Override
                 public void onTimeout() {
-                    mainHandler.post(() -> finishCurrentSession(null, "no-speech"));
+                    mainHandler.post(() -> finishCurrentSession(
+                            serviceForListener, recognizerForListener, null, "no-speech", false));
                 }
             });
             listener.onStarted();
@@ -176,7 +196,7 @@ final class QghOfflineVoice {
         try {
             service.stop();
         } catch (RuntimeException unavailable) {
-            finishCurrentSession(null, "unavailable", true);
+            finishCurrentSession(service, null, null, "unavailable", true);
         }
     }
 
@@ -201,10 +221,28 @@ final class QghOfflineVoice {
     }
 
     private void finishCurrentSession(String transcript, String error, boolean cancelService) {
+        finishCurrentSession(null, null, transcript, error, cancelService);
+    }
+
+    private void finishCurrentSession(
+            SpeechService expectedService,
+            Recognizer expectedRecognizer,
+            String transcript,
+            String error,
+            boolean cancelService
+    ) {
         final SpeechService service;
         final Recognizer currentRecognizer;
         final Listener listener;
         synchronized (lifecycleLock) {
+            // Vosk can dispatch a final callback after a continuous-listening session has
+            // already ended and the workspace has armed the next one. Only the session that
+            // created a callback may complete itself; a stale callback must not clear the
+            // newer microphone session or deliver its transcript to the newer listener.
+            if ((expectedService != null && speechService != expectedService)
+                    || (expectedRecognizer != null && recognizer != expectedRecognizer)) {
+                return;
+            }
             service = speechService;
             currentRecognizer = recognizer;
             listener = activeListener;
@@ -234,7 +272,7 @@ final class QghOfflineVoice {
             String error
     ) {
         if (sessionAttached) {
-            finishCurrentSession(null, error, true);
+            finishCurrentSession(service, createdRecognizer, null, error, true);
             return;
         }
         releaseSpeechService(service, true);

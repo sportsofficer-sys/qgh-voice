@@ -108,12 +108,24 @@
     parent.append(block);
   }
 
+  function addCallPattern(parent, label, detail) {
+    if (!label || !detail) return;
+    const pattern = documentRef.createElement('div');
+    pattern.className = 'qgh-guide-call-pattern';
+    const heading = documentRef.createElement('span');
+    heading.textContent = label;
+    const copy = documentRef.createElement('strong');
+    copy.textContent = detail;
+    pattern.append(heading, copy);
+    parent.append(pattern);
+  }
+
   function entryWelcome() {
     const content = documentRef.createElement('div');
     const copy = documentRef.createElement('p');
-    copy.textContent = 'New to the simulator? Take a short guided familiarisation of the real controls, including the offline voice assistant. It is optional and does not change exercise behaviour.';
+    copy.textContent = 'New to the simulator? Take a short, optional guided familiarisation of live controller calls. It teaches the exercise controls without changing flight behaviour.';
     content.append(copy);
-    addExamples(content, ['PTT for a spoken command', 'VOICE → Continuous listening']);
+    addCallPattern(content, 'THE TOUR FOCUSES ON', 'LIVE D/F · TURN CALLS · FORMATION CONTROL');
     const skip = makeButton('SKIP FOR NOW', 'qgh-guide-button--quiet', () => { markSeen(); removeOverlay(); });
     const tactical = makeButton('TACTICAL TOUR', '', () => { writeStore(PENDING_KEY, 'tactical'); root.location.assign('tactical.html'); });
     const single = makeButton('SINGLE AIRCRAFT TOUR', 'qgh-guide-button--primary', () => { writeStore(PENDING_KEY, 'single'); root.location.assign('single.html'); });
@@ -122,47 +134,107 @@
 
   function tourSteps(kind) {
     const single = kind === 'single';
+    const setupSelector = single ? '#setup .fields' : '#tSetup .tactical-setup-fields';
+    const startSelector = single ? '#setup .start' : '#tSetup .tactical-start';
+    const dfSelector = single ? '.df-card' : '.tactical-df-stage';
+    const controlsSelector = single ? '#controls' : '.tactical-controls';
+    const start = {
+      selector: startSelector,
+      title: 'START A PRACTICE EXERCISE',
+      text: 'Start with the values already on screen. The familiarisation then stays with live exercise controls; setup and review are left out so the RT flow stays clear.',
+      startSample: true
+    };
+    const voice = {
+      selector: '.voice-dock',
+      title: 'PREPARE VOICE CONTROL',
+      text: 'Before starting, open VOICE if local voice needs preparation. In the exercise, hold PTT, make one complete controller call, then release. Continuous Listening is optional; use it only in a quiet environment.',
+      pattern: ['PTT DISCIPLINE', 'ONE AIRCRAFT · ONE ACTION · ONE CLEAR TARGET']
+    };
+    const normal = {
+      selector: controlsSelector,
+      title: 'NORMAL QGH · ASSIGN A HEADING',
+      text: 'For Normal QGH, state the turn direction and assigned heading. The aircraft turns at the configured rate; a clear heading target is required for an initial turn.',
+      pattern: ['RT CALL', 'TURN DIRECTION · HEADING'],
+      examples: ['turn right heading zero six zero', 'turn left heading two seven zero']
+    };
+    const usCompass = {
+      selector: controlsSelector,
+      title: 'U/S COMPASS · TURN NOW',
+      text: 'For U/S Compass, use only immediate turn calls. Do not give a heading assignment: turn left now, turn right now, then stop turn now when the required heading is reached.',
+      pattern: ['RT CALL', 'TURN LEFT NOW · TURN RIGHT NOW · STOP TURN NOW'],
+      examples: ['turn right now', 'stop turn now']
+    };
+
+    if (single) {
+      return [
+        {
+          selector: setupSelector,
+          title: 'PREPARE MANUALLY',
+          text: 'Set runway, tracks, aircraft and procedure with the visible controls. Voice familiarisation begins in the live exercise, where controller RT calls matter most.'
+        },
+        voice,
+        start,
+        {
+          selector: dfSelector,
+          title: 'REQUEST DIRECTION FINDING',
+          text: 'Select QDM or QTE, then transmit. The direction-finding indication is shown only for the transmission window and is quiet between calls.',
+          pattern: ['RT CALL', 'MODE · TRANSMIT FOR D/F'],
+          examples: ['show QDM', 'transmit for D/F']
+        },
+        normal,
+        {
+          selector: controlsSelector,
+          title: 'CONTINUE AN ACTIVE TURN',
+          text: '“Continue zero six zero” means continue the turn already in progress until heading 060. Use it only while a same-direction turn is active. If no matching turn is underway, issue a full left or right heading call instead.',
+          pattern: ['ACTIVE TURN ONLY', 'CONTINUE · HEADING'],
+          examples: ['continue zero six zero', 'turn right heading zero six zero']
+        },
+        usCompass
+      ];
+    }
+
     return [
       {
-        selector: single ? '#setup .fields' : '#tSetup .tactical-setup-fields',
-        title: 'SET THE EXERCISE',
-        text: single
-          ? 'Enter runway orientation, final track, outbound track, aircraft profile, range, speed and turn rate. Select Normal QGH or U/S Compass before starting.'
-          : 'Set the common runway, final and outbound tracks, then choose Normal QGH or U/S Compass for the tactical flight.',
-        examples: ['set runway orientation two three zero', 'select normal qgh']
+        selector: setupSelector,
+        title: 'PREPARE THE FLIGHT MANUALLY',
+        text: 'Set the aircraft list, levels and formation before starting. The voice demonstration begins on the live tactical console, not in the setup or review pages.'
+      },
+      voice,
+      start,
+      {
+        selector: '#tAircraftRail',
+        title: 'CALLSIGN FIRST',
+        text: 'Every tactical call begins with the complete aircraft callsign. Replace Raven Twenty One in these examples with the exact callsign shown in the left rail. A full callsign makes the instruction unambiguous.',
+        pattern: ['RT CALL', 'CALLSIGN · ACTION · TARGET'],
+        examples: ['Raven Twenty One turn right heading zero six zero', 'Raven Twenty One transmit for D/F']
       },
       {
-        selector: single ? '#setup .start' : '#tSetup .tactical-start',
-        title: 'START A SAMPLE EXERCISE',
-        text: 'This opens the normal simulator console with the values already on screen. You remain in full control and can terminate or restart at any time.',
-        examples: ['start simulator'],
-        startSample: true
+        selector: dfSelector,
+        title: 'TRANSMIT FOR THAT AIRCRAFT',
+        text: 'Use the callsign in the same call that requests D/F. The selected aircraft channel supplies the momentary QDM or QTE indication; another aircraft is not changed.',
+        pattern: ['RT CALL', 'CALLSIGN · TRANSMIT FOR D/F'],
+        examples: ['show QDM', 'Raven Twenty One transmit for D/F']
       },
       {
-        selector: single ? '.df-card' : '.tactical-df-stage',
-        title: 'READ THE D/F DISPLAY',
-        text: 'Use QDM or QTE, then transmit to receive a momentary direction-finding indication. The display stays quiet between transmissions, just as in the exercise.',
-        examples: ['select qdm', 'transmit for qdm']
+        ...normal,
+        title: 'NORMAL QGH · CALL THE AIRCRAFT',
+        text: 'In tactical Normal QGH, include the callsign, direction and heading. The instruction applies only to that aircraft unless it remains following its formation leader.',
+        pattern: ['RT CALL', 'CALLSIGN · TURN DIRECTION · HEADING'],
+        examples: ['Raven Twenty One turn right heading zero six zero', 'Raven Twenty One continue zero six zero']
       },
       {
-        selector: single ? '#controls' : '.tactical-controls',
-        title: 'ISSUE CONTROLLER CALLS',
-        text: single
-          ? 'Normal QGH uses heading-based turns. U/S Compass uses turn left now, turn right now and stop turn now. The aircraft follows the selected turn rate.'
-          : 'Select an aircraft, transmit on its colour-coded channel, then issue the command. Formation aircraft follow their leader until explicitly released.',
-        examples: single ? ['turn right heading two seven zero', 'advance flight one minute'] : ['select aircraft falcon one one', 'falcon one one turn right heading two seven zero']
+        ...usCompass,
+        title: 'U/S COMPASS · CALL THE AIRCRAFT',
+        text: 'In tactical U/S Compass, include the callsign and use immediate turns only. Stop the named aircraft with a separate stop-turn call.',
+        pattern: ['RT CALL', 'CALLSIGN · TURN RIGHT NOW · STOP TURN NOW'],
+        examples: ['Raven Twenty One turn right now', 'Raven Twenty One stop turn now']
       },
       {
-        selector: '.voice-dock',
-        title: 'USE OFFLINE VOICE',
-        text: 'Open VOICE once to set up the local speech pack. Then hold PTT to speak. Continuous listening is optional and opens a compact voice-assistant panel with a clear stop action.',
-        examples: ['report heading', 'continuous listening on']
-      },
-      {
-        selector: single ? '#terminate' : '#tTerminate',
-        title: 'REVIEW THE FLIGHT PATH',
-        text: 'Terminate the exercise when ready. The review retains the flown path, command history, reference radials and replay controls. No tutorial marks are added to the analysis.',
-        examples: ['terminate exercise', 'replay track']
+        selector: controlsSelector,
+        title: 'RELEASE A FORMATION AIRCRAFT',
+        text: 'A formation aircraft continues to follow its leader until it is released. Say the aircraft callsign first, then stop following leader. It will hold its last assigned heading and can then receive individual calls.',
+        pattern: ['RT CALL', 'CALLSIGN · STOP FOLLOWING LEADER'],
+        examples: ['Raven Twenty One stop following leader', 'Raven Twenty One turn left heading two seven zero']
       }
     ];
   }
@@ -182,6 +254,7 @@
       const copy = documentRef.createElement('p');
       copy.textContent = step.text;
       content.append(count, copy);
+      if (step.pattern) addCallPattern(content, step.pattern[0], step.pattern[1]);
       addExamples(content, step.examples);
       const skip = makeButton('SKIP TOUR', 'qgh-guide-button--quiet', () => { markSeen(); removeOverlay(); });
       const back = index > 0 ? makeButton('BACK', '', () => { index -= 1; render(); }) : null;

@@ -215,13 +215,20 @@ function setActive(screens, screen) {
 
 function createWorkspaceEnvironment(documentRef, additions) {
   const rootListeners = new Map();
+  const timers = new Map();
+  let nextTimer = 1;
   const sandbox = {
     QGHVoiceControl: Voice,
     document: documentRef,
     Event: FakeEvent,
     KeyboardEvent: FakeEvent,
-    clearTimeout() {},
-    setTimeout() { return 1; },
+    clearTimeout(timer) { timers.delete(timer); },
+    setTimeout(callback) {
+      const timer = nextTimer;
+      nextTimer += 1;
+      timers.set(timer, callback);
+      return timer;
+    },
     addEventListener(type, listener) { rootListeners.set(type, listener); },
     location: { assign() {} }
   };
@@ -229,7 +236,7 @@ function createWorkspaceEnvironment(documentRef, additions) {
   sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
   vm.runInContext(workspaceSource, sandbox);
-  return { workspace: sandbox.QGHVoiceWorkspace, rootListeners, sandbox };
+  return { workspace: sandbox.QGHVoiceWorkspace, rootListeners, sandbox, timers };
 }
 
 function bootWorkspace(documentRef) {
@@ -251,8 +258,10 @@ function createSingleHarness() {
     headingInput: add(documentRef, consoleScreen, 'input', { id: 'headingInput', type: 'number', min: '0', max: '359', value: '150' }),
     turnHeadingLeft: add(documentRef, consoleScreen, 'button', { id: 'turnHeadingLeft', textContent: 'TURN LEFT' }),
     turnHeadingRight: add(documentRef, consoleScreen, 'button', { id: 'turnHeadingRight', textContent: 'TURN RIGHT' }),
+    continueHeading: add(documentRef, consoleScreen, 'button', { id: 'continueHeading', textContent: 'CONTINUE HEADING' }),
     turnLeft: add(documentRef, consoleScreen, 'button', { id: 'turnLeft', textContent: 'TURN LEFT NOW', hidden: true }),
     turnRight: add(documentRef, consoleScreen, 'button', { id: 'turnRight', textContent: 'TURN RIGHT NOW', hidden: true }),
+    restartExercise: add(documentRef, consoleScreen, 'button', { id: 'restartExercise', textContent: 'RESTART EXERCISE' }),
     replay: add(documentRef, analysis, 'button', {
       id: 'replay',
       attributes: { 'aria-pressed': 'false' },
@@ -267,7 +276,8 @@ function createSingleHarness() {
     speed10: add(documentRef, analysis, 'button', { dataset: { replaySpeed: '10' }, attributes: { 'aria-pressed': 'false' } })
   };
   setActive(screens, setup);
-  return { workspace: bootWorkspace(documentRef), screens, setup, consoleScreen, analysis, controls };
+  const environment = createWorkspaceEnvironment(documentRef);
+  return { workspace: environment.workspace, timers: environment.timers, screens, setup, consoleScreen, analysis, controls };
 }
 
 function createTacticalHarness() {
@@ -280,16 +290,22 @@ function createTacticalHarness() {
   const createAircraft = (id, callsign) => {
     const row = add(documentRef, setup, 'article', { classes: ['tactical-aircraft-row'], dataset: { aircraftId: id } });
     add(documentRef, row, 'input', { dataset: { tacticalField: 'callsign' }, value: callsign });
+    const profile = add(documentRef, row, 'select', { dataset: { tacticalField: 'profile' } });
+    const rafale = add(documentRef, profile, 'option', { value: 'rafale', textContent: 'RAFALE' });
+    profile.options = [rafale];
     const rail = add(documentRef, consoleScreen, 'article', { classes: ['tactical-rail-item'], dataset: { aircraftId: id } });
     const select = add(documentRef, rail, 'button', { classes: ['tactical-rail-select'], textContent: `${callsign} SELECT` });
     const transmit = add(documentRef, rail, 'button', { classes: ['tactical-rail-tx'], textContent: `${callsign} TRANSMIT` });
-    return { row, rail, select, transmit };
+    return { row, rail, select, transmit, profile };
   };
 
   const controls = {
     falcon: createAircraft('A', 'FALCON 11'),
-    raven: createAircraft('B', 'RAVEN 21')
+    raven: createAircraft('B', 'RAVEN 21'),
+    formationLeader: add(documentRef, setup, 'select', { id: 'tFormationLeader' })
   };
+  const ravenLeader = add(documentRef, controls.formationLeader, 'option', { value: 'B', textContent: 'RAVEN 21' });
+  controls.formationLeader.options = [ravenLeader];
   setActive(screens, consoleScreen);
   return { workspace: bootWorkspace(documentRef), screens, setup, consoleScreen, analysis, controls };
 }
@@ -307,6 +323,15 @@ test('voice DOM router uses existing Normal and U/S Compass controls and refuses
   assert.equal(normal.ok, true);
   assert.equal(controls.headingInput.value, '270');
   assert.equal(controls.turnHeadingRight.clickCount, 1);
+  assert.equal(controls.headingInput.classList.contains('voice-command-effect'), true);
+  assert.equal(controls.turnHeadingRight.classList.contains('voice-command-effect'), true);
+
+  controls.continueHeading.dataset.turnSide = 'right';
+  const continued = workspace.runCommand(command('continue-turn-heading', { heading: 60 }));
+  assert.equal(continued.ok, true);
+  assert.equal(controls.headingInput.value, '60');
+  assert.equal(controls.continueHeading.clickCount, 1);
+  assert.equal(controls.turnHeadingRight.classList.contains('voice-command-effect'), true);
 
   controls.turnHeadingLeft.hidden = true;
   controls.turnHeadingRight.hidden = true;
@@ -322,6 +347,51 @@ test('voice DOM router uses existing Normal and U/S Compass controls and refuses
   assert.equal(controls.turnLeft.clickCount, 1);
 });
 
+test('voice router requires an explicit confirmation before restart and accepts spoken confirmation', () => {
+  const harness = createSingleHarness();
+  const { workspace, screens, consoleScreen, controls } = harness;
+  setActive(screens, consoleScreen);
+
+  const pending = workspace.dispatchTranscript('restart exercise');
+  assert.equal(pending.ok, true);
+  assert.equal(controls.restartExercise.clickCount, 0);
+  assert.match(pending.message, /CONFIRM/);
+
+  const confirmed = workspace.dispatchTranscript('confirm voice command');
+  assert.equal(confirmed.ok, true);
+  assert.equal(controls.restartExercise.clickCount, 1);
+});
+
+test('a pending voice confirmation expires when its exercise screen changes', () => {
+  const harness = createSingleHarness();
+  const { workspace, screens, setup, consoleScreen, controls } = harness;
+  setActive(screens, consoleScreen);
+
+  const pending = workspace.dispatchTranscript('restart exercise');
+  assert.equal(pending.ok, true);
+  setActive(screens, setup);
+
+  const expired = workspace.dispatchTranscript('confirm voice command');
+  assert.equal(expired.ok, false);
+  assert.match(expired.message, /EXPIRED/);
+  assert.equal(controls.restartExercise.clickCount, 0);
+});
+
+test('a pending destructive voice confirmation expires after its short acceptance window', () => {
+  const harness = createSingleHarness();
+  const { workspace, timers, screens, consoleScreen, controls } = harness;
+  setActive(screens, consoleScreen);
+
+  const pending = workspace.dispatchTranscript('restart exercise');
+  assert.equal(pending.ok, true);
+  [...timers.values()].forEach(callback => callback());
+
+  const expired = workspace.dispatchTranscript('confirm voice command');
+  assert.equal(expired.ok, false);
+  assert.match(expired.message, /NO VOICE COMMAND/);
+  assert.equal(controls.restartExercise.clickCount, 0);
+});
+
 test('voice DOM router canonicalises a setup 360 heading to 000 and drives review controls', () => {
   const harness = createSingleHarness();
   const { workspace, screens, setup, analysis, controls } = harness;
@@ -333,6 +403,7 @@ test('voice DOM router canonicalises a setup 360 heading to 000 and drives revie
   const customProfile = workspace.dispatchTranscript('select aircraft profile custom trainer');
   assert.equal(customProfile.ok, true);
   assert.equal(controls.aircraft.value, 'custom-trainer');
+  assert.equal(controls.aircraft.classList.contains('voice-command-effect'), true);
 
   setActive(screens, analysis);
   assert.equal(workspace.runCommand(command('replay-play')).ok, true);
@@ -349,7 +420,7 @@ test('voice DOM router canonicalises a setup 360 heading to 000 and drives revie
 
 test('voice DOM router resolves live tactical aircraft rows for selection and D/F transmit', () => {
   const harness = createTacticalHarness();
-  const { workspace, controls } = harness;
+  const { workspace, screens, setup, controls } = harness;
 
   const selected = workspace.dispatchTranscript('select aircraft raven twenty one');
   assert.equal(selected.ok, true);
@@ -360,6 +431,25 @@ test('voice DOM router resolves live tactical aircraft rows for selection and D/
   assert.equal(transmitted.ok, true);
   assert.equal(controls.raven.transmit.clickCount, 1);
   assert.equal(controls.falcon.transmit.clickCount, 0);
+
+  const unnamed = workspace.runCommand(command('normal-turn-heading', { side: 'right', heading: 60 }));
+  assert.equal(unnamed.ok, false);
+  assert.match(unnamed.message, /CALLSIGN/);
+
+  const unnamedSpeed = workspace.runCommand(command('set-field', { field: 'speed', value: 240 }));
+  assert.equal(unnamedSpeed.ok, false);
+  assert.match(unnamedSpeed.message, /CALLSIGN/);
+
+  setActive(screens, setup);
+  const profile = workspace.runCommand(command('set-aircraft-profile', { aircraft: 'B', profile: 'rafale' }));
+  assert.equal(profile.ok, true);
+  assert.equal(controls.raven.profile.value, 'rafale');
+  assert.equal(controls.raven.profile.classList.contains('voice-command-effect'), true);
+
+  const leader = workspace.runCommand(command('set-formation-leader', { aircraft: 'B' }));
+  assert.equal(leader.ok, true);
+  assert.equal(controls.formationLeader.value, 'B');
+  assert.equal(controls.formationLeader.classList.contains('voice-command-effect'), true);
 });
 
 function tick() {

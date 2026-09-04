@@ -6,7 +6,7 @@
   'use strict';
 
   // This adapter owns only local microphone capture and Vosk WebAssembly. It deliberately
-  // exposes final text to the workspace; the existing strict command parser remains the
+  // exposes final text to the workspace; the local voice command parser remains the
   // authority that decides whether a simulator control may be activated.
   const MODEL_FILE = 'voice-models/qgh-vosk-en-us-small-0.15.tar.gz';
   const MODEL_CACHE = 'qgh-offline-voice-pack-v1';
@@ -138,6 +138,13 @@
     cachedGrammarKey = cacheKey;
     cachedGrammar = Object.freeze([...phrases]);
     return [...cachedGrammar];
+  }
+
+  // Vosk performs this transcription entirely on-device. The semantic command parser is
+  // intentionally responsible for interpreting wording variation after recognition, rather
+  // than trying to enumerate every controller phrase in a fragile closed grammar.
+  function buildRecognitionPlan() {
+    return Object.freeze({ grammar: null });
   }
 
   function supportsOfflineVoice() {
@@ -346,6 +353,7 @@
     MODEL_SIZE_BYTES,
     MODEL_CACHE,
     supportsOfflineVoice,
+    buildRecognitionPlan,
     buildQghGrammar,
     create
   });

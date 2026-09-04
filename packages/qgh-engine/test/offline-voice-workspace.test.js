@@ -141,7 +141,7 @@ function makeOfflineEngine(options) {
     engine,
     api: {
       supportsOfflineVoice: () => true,
-      buildQghGrammar: () => ['turn right heading two seven zero', '[unk]'],
+      buildRecognitionPlan: () => ({ grammar: null }),
       create(nextHooks) { hooks = nextHooks; return engine; }
     }
   };
@@ -286,7 +286,11 @@ test('Android native bridge can report a preparing offline pack until it is read
   assert.equal(mic.disabled, false);
 });
 
-test('the offline grammar keeps unknown speech explicit and includes active callsigns', () => {
+test('the offline recognition plan uses open local transcription instead of a closed phrase list', () => {
+  const plan = OfflineVoice.buildRecognitionPlan();
+  assert.deepEqual(plan, { grammar: null });
+
+  // Retained solely as a compatibility fallback for old cached application shells.
   const grammar = OfflineVoice.buildQghGrammar({ callsigns: ['FALCON 11'] });
   assert.ok(grammar.includes('[unk]'));
   assert.ok(grammar.includes('turn right heading two seven zero'));

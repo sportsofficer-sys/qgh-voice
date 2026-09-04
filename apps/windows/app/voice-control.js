@@ -256,10 +256,15 @@
     const candidates = callsignCandidates(options).filter(candidate => candidate.spoken === normalized);
     if (candidates.length === 1) return { aircraft: candidates[0].value };
     if (candidates.length > 1) return { reason: 'ambiguous-aircraft' };
-
-    const ordinal = { one: '1', two: '2', three: '3', four: '4' }[normalized]
-      || (/^[1-4]$/.test(normalized) ? normalized : null);
-    return ordinal ? { aircraft: ordinal } : { reason: 'unknown-aircraft' };
+    const hasAlphabeticDesignator = normalized.split(' ').some(token => /^[a-z]{3,}$/.test(token));
+    const abbreviated = hasAlphabeticDesignator
+      ? callsignCandidates(options).filter(candidate => candidate.spoken.startsWith(normalized + ' '))
+      : [];
+    if (abbreviated.length === 1) return { aircraft: abbreviated[0].value };
+    if (abbreviated.length > 1) return { reason: 'ambiguous-aircraft' };
+    // Tactical voice control always names a configured callsign. A row number is not a
+    // reliable RT target and must never be substituted for a callsign or a heading digit.
+    return { reason: 'unknown-aircraft' };
   }
 
   function profileFor(value, options) {
@@ -288,9 +293,15 @@
     const prefix = tokens.slice(0, numericStart);
     const suffix = tokens.slice(numericStart);
     const digitSuffix = suffix.map(digitFor);
+    const spokenChunks = suffix.map(token => parseNumber(token));
+    const cardinalNumber = parseNumber(suffix.join(' '));
     const number = digitSuffix.every(digit => digit !== null)
       ? digitSuffix.join('')
-      : parseNumber(suffix.join(' '));
+      : cardinalNumber !== null
+        ? cardinalNumber
+        // Controllers can naturally say a mixed callsign such as "twelve three".
+        // When it is not a cardinal number, preserve each unambiguous spoken chunk.
+        : spokenChunks.every(chunk => Number.isInteger(chunk)) ? spokenChunks.join('') : null;
     if (number === null || number === '' || Number(number) > 999) return null;
 
     const callsign = `${prefix.join(' ').toUpperCase()} ${number}`;
@@ -408,7 +419,7 @@
       : reject(transcript);
   }
 
-  function parseCommand(value, options) {
+  function parseStrictCommand(value, options) {
     const transcript = normalizeTranscript(value);
     if (!transcript) return reject(transcript, 'empty-transcript');
 
@@ -625,11 +636,467 @@
     return reject(transcript);
   }
 
+  // Flexible voice recognition is deliberately conservative. It accepts natural RT word order
+  // and filler words only after the intent has every essential slot (for example: direction +
+  // valid heading). A lone keyword must never move an aircraft or alter an exercise.
+  const SEMANTIC_FILLERS = new Set([
+    'a', 'an', 'and', 'can', 'could', 'do', 'it', 'kindly', 'please', 'the', 'this', 'that',
+    'to', 'we', 'will', 'would', 'you', 'your'
+  ]);
+  const SEMANTIC_ALIASES = Object.freeze({
+    begin: 'start', commence: 'start', launch: 'start', fresh: 'new',
+    direct: 'turn', steer: 'turn', vector: 'turn',
+    port: 'left', starboard: 'right',
+    stopwatch: 'clock', timer: 'clock',
+    approach: 'inbound', final: 'inbound', radial: 'track',
+    bearing: 'df', range: 'distance',
+    make: 'set', adjust: 'set', update: 'set',
+    end: 'terminate', finish: 'terminate',
+    faster: 'replay', slower: 'replay',
+    view: 'track'
+  });
+  const CONFIRMATION_INTENTS = new Set([
+    'new-exercise', 'restart-exercise', 'return-to-mode-selection', 'select-simulator-mode',
+    'set-aircraft-callsign'
+  ]);
+
+  function semanticTokens(transcript) {
+    return normalizeTranscript(transcript).split(' ')
+      .filter(Boolean)
+      .map(token => SEMANTIC_ALIASES[token] || token)
+      .filter(token => !SEMANTIC_FILLERS.has(token));
+  }
+
+  function hasToken(tokens, ...candidates) {
+    return candidates.some(candidate => tokens.includes(candidate));
+  }
+
+  function exactlyOneToken(tokens, candidates) {
+    const matches = candidates.filter(candidate => tokens.includes(candidate));
+    return matches.length === 1 ? matches[0] : null;
+  }
+
+  function firstTokenIndex(tokens, ...candidates) {
+    const indexes = candidates.map(candidate => tokens.indexOf(candidate)).filter(index => index !== -1);
+    return indexes.length ? Math.min(...indexes) : -1;
+  }
+
+  function numberFromTokens(tokens) {
+    const normalized = tokens.join(' ').trim();
+    if (!normalized) return null;
+    return parseNumber(normalized);
+  }
+
+  function integerFromTokens(tokens, allowed) {
+    const values = [];
+    const permitted = new Set(allowed || []);
+    for (let start = 0; start < tokens.length; start += 1) {
+      for (let length = 1; length <= 4 && start + length <= tokens.length; length += 1) {
+        const value = parseNumber(tokens.slice(start, start + length).join(' '));
+        if (Number.isInteger(value) && permitted.has(value) && !values.includes(value)) values.push(value);
+      }
+    }
+    return values.length === 1 ? values[0] : null;
+  }
+
+  function parseLooseHeading(value) {
+    const normalized = normalizeTranscript(value);
+    const strict = parseCommandHeading(normalized);
+    if (strict !== null) return strict;
+    if (/^\d{1,3}$/.test(normalized)) {
+      const numeric = Number(normalized);
+      return numeric >= 0 && numeric <= 360 ? numeric : null;
+    }
+    const tokens = normalized.split(' ').filter(Boolean);
+    if (tokens.length === 2) {
+      const hundred = digitFor(tokens[0]);
+      const tens = TENS[tokens[1]];
+      if (hundred !== null && Number.isFinite(tens)) {
+        const heading = Number(hundred) * 100 + tens;
+        return heading >= 0 && heading <= 360 ? heading : null;
+      }
+    }
+    const cardinal = numberFromTokens(tokens);
+    return Number.isInteger(cardinal) && cardinal >= 100 && cardinal <= 360 ? cardinal : null;
+  }
+
+  function valueFromTokens(tokens, field) {
+    const candidates = [];
+    const maximumTokens = Math.min(tokens.length, field === 'heading' ? 5 : 6);
+    for (let start = 0; start < tokens.length; start += 1) {
+      for (let length = 1; length <= maximumTokens && start + length <= tokens.length; length += 1) {
+        const raw = tokens.slice(start, start + length).join(' ');
+        const parsed = field === 'heading'
+          ? (() => {
+            const heading = parseLooseHeading(raw);
+            return heading === null ? null : { value: heading, unit: 'degrees' };
+          })()
+          : parseFieldValue(raw, field);
+        if (parsed) candidates.push({ ...parsed, length });
+      }
+    }
+    if (!candidates.length) return null;
+    // A spoken cardinal number contains valid shorter prefixes ("two hundred" within
+    // "two hundred seventy"). Prefer the longest valid span rather than treating its
+    // component as a competing controller value.
+    const longest = Math.max(...candidates.map(candidate => candidate.length));
+    const values = candidates.filter(candidate => candidate.length === longest)
+      .filter((candidate, index, list) => list.findIndex(item => item.value === candidate.value) === index);
+    return values.length === 1 ? { value: values[0].value, unit: values[0].unit } : null;
+  }
+
+  function semanticAccept(transcript, intent, detail, confidence) {
+    const command = accept(transcript, intent, detail);
+    command.match = 'semantic';
+    command.confidence = confidence || 'high';
+    if (CONFIRMATION_INTENTS.has(intent) || command.confidence === 'review') command.requiresConfirmation = true;
+    return command;
+  }
+
+  const TARGET_ACTION_TOKENS = new Set([
+    'turn', 'transmit', 'send', 'report', 'request', 'show', 'continue', 'maintain',
+    'stop', 'break', 'select', 'focus', 'set', 'change', 'assign', 'add', 'remove',
+    'include', 'exclude', 'formation'
+  ]);
+
+  function isNumericCallsignContinuation(token) {
+    if (!token) return false;
+    if (/^\d+$/.test(token)) return true;
+    return Number.isFinite(parseNumber(token));
+  }
+
+  function exactAircraftMention(tokens, options) {
+    const candidates = callsignCandidates(options);
+    const exact = [];
+    for (let start = 0; start < tokens.length; start += 1) {
+      for (let length = 1; length <= 6 && start + length <= tokens.length; length += 1) {
+        const phrase = tokens.slice(start, start + length).join(' ');
+        const normalized = normalizedCallsign(phrase);
+        const matches = candidates.filter(candidate => candidate.spoken === normalized);
+        // Do not treat a configured numeric suffix as complete when the speaker continues
+        // with another number. For example, "Raven Twelve Three" must not be routed to
+        // configured "Raven Twelve" when "Raven 123" is not an aircraft in the exercise.
+        if (matches.length === 1 && !isNumericCallsignContinuation(tokens[start + length])) {
+          exact.push({ aircraft: matches[0].value, start, end: start + length });
+        }
+      }
+    }
+
+    const exactTargets = exact.filter((match, index, all) => (
+      all.findIndex(candidate => candidate.aircraft === match.aircraft) === index
+    ));
+    if (exactTargets.length === 1) return exactTargets[0];
+    if (exactTargets.length > 1) return null;
+
+    // A shortened designator is allowed only when it is unique and immediately followed by
+    // an RT action. This prevents "Raven 13" from being silently routed to "Raven 12".
+    const abbreviated = [];
+    for (let start = 0; start < tokens.length; start += 1) {
+      for (let length = 1; length <= 5 && start + length < tokens.length; length += 1) {
+        const normalized = normalizedCallsign(tokens.slice(start, start + length).join(' '));
+        const hasAlphabeticDesignator = normalized.split(' ').some(token => /^[a-z]{3,}$/.test(token));
+        if (!hasAlphabeticDesignator || !TARGET_ACTION_TOKENS.has(tokens[start + length])) continue;
+        const matches = candidates.filter(candidate => candidate.spoken.startsWith(normalized + ' '));
+        if (matches.length === 1) abbreviated.push({ aircraft: matches[0].value, start, end: start + length });
+      }
+    }
+    const abbreviatedTargets = abbreviated.filter((match, index, all) => (
+      all.findIndex(candidate => candidate.aircraft === match.aircraft) === index
+    ));
+    return abbreviatedTargets.length === 1 ? abbreviatedTargets[0] : null;
+  }
+
+  function hasUnresolvedCallsignAttempt(tokens, options) {
+    const designators = new Set(callsignCandidates(options)
+      .map(candidate => candidate.spoken.split(' ').find(token => /^[a-z]{3,}$/.test(token)))
+      .filter(Boolean));
+    return tokens.some(token => designators.has(token));
+  }
+
+  function valueAfter(tokens, anchors, field) {
+    const index = firstTokenIndex(tokens, ...anchors);
+    return index === -1 ? null : valueFromTokens(tokens.slice(index + 1), field);
+  }
+
+  function profileFromTokens(tokens, options) {
+    for (let start = 0; start < tokens.length; start += 1) {
+      const profile = profileFor(tokens.slice(start).join(' '), options);
+      if (profile) return profile;
+    }
+    return null;
+  }
+
+  function fieldAnchor(tokens) {
+    const anchors = [
+      { terms: ['runway'], field: 'runway' },
+      { terms: ['inbound'], field: 'inbound' },
+      { terms: ['outbound'], field: 'outbound' },
+      { terms: ['distance'], field: 'distance' },
+      { terms: ['speed'], field: 'speed' },
+      { terms: ['rate'], field: 'turn-rate' },
+      { terms: ['level'], field: 'level' },
+      { terms: ['heading'], field: 'heading' }
+    ];
+    for (const anchor of anchors) {
+      const index = firstTokenIndex(tokens, ...anchor.terms);
+      if (index !== -1) return { field: anchor.field, index };
+    }
+    return null;
+  }
+
+  function parseSemanticCommand(value, options) {
+    const transcript = normalizeTranscript(value);
+    if (!transcript) return null;
+    const tokens = semanticTokens(transcript);
+    if (!tokens.length) return null;
+    const target = exactAircraftMention(tokens, options);
+    if (!target && hasUnresolvedCallsignAttempt(tokens, options)) return null;
+    const targetDetail = target ? { aircraft: target.aircraft } : {};
+    const direction = hasToken(tokens, 'left') && !hasToken(tokens, 'right')
+      ? 'left'
+      : hasToken(tokens, 'right') && !hasToken(tokens, 'left') ? 'right' : null;
+
+    if (tokens.length === 1 && (tokens[0] === 'qdm' || tokens[0] === 'qte')) {
+      return semanticAccept(transcript, 'set-bearing-mode', { mode: tokens[0] });
+    }
+
+    if (hasToken(tokens, 'single') && hasToken(tokens, 'qgh') && hasToken(tokens, 'open', 'select', 'start')) {
+      return semanticAccept(transcript, 'select-simulator-mode', { mode: 'single' }, 'high');
+    }
+    if (hasToken(tokens, 'tactical') && hasToken(tokens, 'qgh') && hasToken(tokens, 'open', 'select', 'start')) {
+      return semanticAccept(transcript, 'select-simulator-mode', { mode: 'tactical' }, 'high');
+    }
+    if (hasToken(tokens, 'qgh') && hasToken(tokens, 'mode', 'type') && hasToken(tokens, 'change', 'set', 'return')) {
+      return semanticAccept(transcript, 'return-to-mode-selection', {}, 'high');
+    }
+    const normalProcedure = hasToken(tokens, 'normal') && hasToken(tokens, 'qgh', 'mode');
+    const usProcedure = hasToken(tokens, 'us') && hasToken(tokens, 'compass', 'mode');
+    if (normalProcedure && usProcedure) return null;
+    if (normalProcedure) {
+      return semanticAccept(transcript, 'set-procedure', { procedure: 'normal' });
+    }
+    if (usProcedure) {
+      return semanticAccept(transcript, 'set-procedure', { procedure: 'us' });
+    }
+
+    if (hasToken(tokens, 'confirm') && hasToken(tokens, 'voice', 'command', 'instruction')) {
+      return semanticAccept(transcript, 'confirm-voice-command');
+    }
+    if (hasToken(tokens, 'cancel', 'reject', 'ignore') && hasToken(tokens, 'voice', 'command', 'instruction')) {
+      return semanticAccept(transcript, 'cancel-voice-command');
+    }
+
+    const clockAction = exactlyOneToken(tokens, ['start', 'stop', 'reset']);
+    if (hasToken(tokens, 'clock') && clockAction) {
+      const action = clockAction;
+      return semanticAccept(transcript, 'clock', { action });
+    }
+    if (hasToken(tokens, 'clock') && hasToken(tokens, 'start', 'stop', 'reset')) return null;
+    if (hasToken(tokens, 'advance') && hasToken(tokens, 'flight', 'minute')) {
+      return semanticAccept(transcript, 'advance-flight', { seconds: 60 });
+    }
+    if (hasToken(tokens, 'terminate') && hasToken(tokens, 'exercise', 'flight')) {
+      return semanticAccept(transcript, 'terminate-exercise');
+    }
+    if (hasToken(tokens, 'restart') && hasToken(tokens, 'exercise', 'flight')) {
+      return semanticAccept(transcript, 'restart-exercise');
+    }
+    if (hasToken(tokens, 'new') && hasToken(tokens, 'exercise', 'flight')) {
+      return semanticAccept(transcript, 'new-exercise');
+    }
+    if (hasToken(tokens, 'start') && hasToken(tokens, 'simulator', 'exercise', 'tactical')) {
+      return semanticAccept(transcript, 'start-exercise');
+    }
+
+    if (hasToken(tokens, 'replay') && hasToken(tokens, 'speed', 'times', 'time', 'x')) {
+      const speed = integerFromTokens(tokens, [1, 2, 3, 10]);
+      if ([1, 2, 3, 10].includes(speed)) return semanticAccept(transcript, 'set-replay-speed', { speed });
+    }
+    const replayPause = hasToken(tokens, 'pause', 'stop');
+    const replayPlay = hasToken(tokens, 'play', 'resume', 'start');
+    if (hasToken(tokens, 'replay', 'track') && replayPause && replayPlay) return null;
+    if (hasToken(tokens, 'replay', 'track') && replayPause) {
+      return semanticAccept(transcript, 'replay-pause');
+    }
+    if (hasToken(tokens, 'replay', 'track') && replayPlay) {
+      return semanticAccept(transcript, 'replay-play');
+    }
+    const zoomEnabled = hasToken(tokens, 'enable', 'on');
+    const zoomDisabled = hasToken(tokens, 'disable', 'off');
+    if (hasToken(tokens, 'zoom') && zoomEnabled && zoomDisabled) return null;
+    if (hasToken(tokens, 'zoom') && zoomEnabled) return semanticAccept(transcript, 'review-zoom', { enabled: true });
+    if (hasToken(tokens, 'zoom') && zoomDisabled) return semanticAccept(transcript, 'review-zoom', { enabled: false });
+    const zoomDirection = exactlyOneToken(tokens, ['in', 'out']);
+    if (hasToken(tokens, 'zoom') && zoomDirection) {
+      return semanticAccept(transcript, 'review-zoom-step', { direction: zoomDirection });
+    }
+    if (hasToken(tokens, 'pan', 'move')) {
+      const panDirection = exactlyOneToken(tokens, ['left', 'right', 'up', 'down']);
+      if (panDirection) return semanticAccept(transcript, 'review-pan', { direction: panDirection });
+      if (hasToken(tokens, 'left', 'right', 'up', 'down')) return null;
+    }
+    if (hasToken(tokens, 'fit') && hasToken(tokens, 'track', 'all', 'view')) return semanticAccept(transcript, 'fit-review');
+    if (hasToken(tokens, 'return') && hasToken(tokens, 'console')) return semanticAccept(transcript, 'return-console');
+
+    if (hasToken(tokens, 'focus', 'show') && hasToken(tokens, 'all') && hasToken(tokens, 'aircraft')) {
+      return semanticAccept(transcript, 'focus-all-aircraft');
+    }
+    if (target && hasToken(tokens, 'focus', 'show') && hasToken(tokens, 'track', 'aircraft')) {
+      return semanticAccept(transcript, 'focus-aircraft', targetDetail);
+    }
+    if (target && hasToken(tokens, 'select')) return semanticAccept(transcript, 'select-aircraft', targetDetail);
+
+    if (hasToken(tokens, 'formation')) {
+      const formationEnabled = hasToken(tokens, 'on', 'enable', 'start');
+      const formationDisabled = hasToken(tokens, 'off', 'disable', 'stop');
+      if (formationEnabled && formationDisabled) return null;
+      if (formationEnabled) return semanticAccept(transcript, 'set-formation', { enabled: true });
+      if (formationDisabled) return semanticAccept(transcript, 'set-formation', { enabled: false });
+      if (target && hasToken(tokens, 'leader')) return semanticAccept(transcript, 'set-formation-leader', targetDetail);
+      if (target && hasToken(tokens, 'add', 'include')) return semanticAccept(transcript, 'set-formation-member', { ...targetDetail, enabled: true });
+      if (target && hasToken(tokens, 'remove', 'exclude')) return semanticAccept(transcript, 'set-formation-member', { ...targetDetail, enabled: false });
+    }
+    if (target && hasToken(tokens, 'stop') && hasToken(tokens, 'following', 'formation', 'leader')) {
+      return semanticAccept(transcript, 'stop-following-leader', targetDetail);
+    }
+    if (target && hasToken(tokens, 'break') && hasToken(tokens, 'formation')) {
+      return semanticAccept(transcript, 'stop-following-leader', targetDetail);
+    }
+
+    const bearingMode = exactlyOneToken(tokens, ['qdm', 'qte']);
+    if (hasToken(tokens, 'qdm', 'qte') && !bearingMode) return null;
+    if (bearingMode && hasToken(tokens, 'show', 'select', 'set')) {
+      return semanticAccept(transcript, 'set-bearing-mode', { mode: bearingMode });
+    }
+    if (hasToken(tokens, 'transmit', 'send') && (target || hasToken(tokens, 'df', 'qdm', 'qte'))) {
+      const detail = { ...targetDetail };
+      if (bearingMode === 'qdm' || bearingMode === 'qte') detail.mode = bearingMode;
+      return semanticAccept(transcript, 'transmit-df', detail);
+    }
+    if (hasToken(tokens, 'report', 'request', 'show') && hasToken(tokens, 'heading')) {
+      return semanticAccept(transcript, 'report-heading', targetDetail);
+    }
+    if (hasToken(tokens, 'report', 'request', 'show') && hasToken(tokens, 'distance')) {
+      return semanticAccept(transcript, 'request-distance', targetDetail);
+    }
+
+    if (hasToken(tokens, 'continue', 'maintain') && !direction && !hasToken(tokens, 'speed', 'flight')) {
+      const heading = valueAfter(tokens, ['continue', 'maintain'], 'heading');
+      if (heading) return semanticAccept(transcript, 'continue-turn-heading', target ? { ...targetDetail, heading: heading.value } : { heading: heading.value });
+    }
+    if (hasToken(tokens, 'stop') && hasToken(tokens, 'turn') && !hasToken(tokens, 'heading')) {
+      return target ? semanticAccept(transcript, 'us-turn-stop', targetDetail) : semanticAccept(transcript, 'us-turn-stop');
+    }
+    if (direction && hasToken(tokens, 'turn') && hasToken(tokens, 'now') && !hasToken(tokens, 'heading')) {
+      const detail = target ? { ...targetDetail, side: direction } : { side: direction };
+      return semanticAccept(transcript, 'us-turn', detail);
+    }
+    if (direction && (hasToken(tokens, 'turn', 'heading') || target)) {
+      const heading = valueAfter(tokens, ['heading'], 'heading') || valueAfter(tokens, [direction], 'heading');
+      if (heading) {
+        const detail = target ? { ...targetDetail, side: direction, heading: heading.value } : { side: direction, heading: heading.value };
+        return semanticAccept(transcript, 'normal-turn-heading', detail);
+      }
+    }
+    // In tactical U/S Compass control a callsign is essential for a terse RT call
+    // such as "Raven turn right". The page router still enforces the active procedure.
+    if (target && direction && hasToken(tokens, 'turn')) {
+      return semanticAccept(transcript, 'us-turn', { ...targetDetail, side: direction });
+    }
+    if (target && hasToken(tokens, 'stop') && hasToken(tokens, 'turn')) {
+      return semanticAccept(transcript, 'us-turn-stop', targetDetail);
+    }
+
+    const callsignIndex = firstTokenIndex(tokens, 'callsign', 'rename');
+    if (callsignIndex !== -1) {
+      const reference = exactAircraftMention(tokens.slice(0, callsignIndex), options)
+        || exactAircraftMention(tokens.slice(0, callsignIndex).filter(token => token !== 'aircraft'), options);
+      const callsign = callsignFor(tokens.slice(callsignIndex + 1).join(' '));
+      if (reference?.aircraft && callsign) {
+        return semanticAccept(transcript, 'set-aircraft-callsign', { aircraft: reference.aircraft, callsign }, 'review');
+      }
+    }
+
+    const profile = profileFromTokens(tokens, options);
+    if (profile && hasToken(tokens, 'set', 'select', 'change')) {
+      return target
+        ? semanticAccept(transcript, 'set-aircraft-profile', { ...targetDetail, profile })
+        : semanticAccept(transcript, 'set-aircraft-profile', { profile });
+    }
+
+    const anchor = fieldAnchor(tokens);
+    if (anchor && anchor.field !== 'heading' && hasToken(tokens, 'set', 'change', 'assign')) {
+      const fieldTokens = tokens.slice(anchor.index + 1);
+      const parsed = valueFromTokens(fieldTokens, anchor.field);
+      if (parsed) {
+        if (target && ['speed', 'distance', 'turn-rate', 'level'].includes(anchor.field)) {
+          return semanticAccept(transcript, 'set-aircraft-field', { ...targetDetail, field: anchor.field, ...parsed });
+        }
+        return semanticAccept(transcript, 'set-field', { field: anchor.field, ...parsed });
+      }
+    }
+
+    if (hasToken(tokens, 'fleet', 'aircraft') && hasToken(tokens, 'set', 'select', 'choose')) {
+      const count = integerFromTokens(tokens, [2, 3, 4]);
+      if ([2, 3, 4].includes(count)) return semanticAccept(transcript, 'set-fleet-size', { count });
+    }
+
+    if (hasToken(tokens, 'controls') && hasToken(tokens, 'show', 'open')) return semanticAccept(transcript, 'mobile-controls', { expanded: true });
+    if (hasToken(tokens, 'controls') && hasToken(tokens, 'hide', 'close')) return semanticAccept(transcript, 'mobile-controls', { expanded: false });
+    const continuousEnabled = hasToken(tokens, 'on', 'start', 'enable');
+    const continuousDisabled = hasToken(tokens, 'off', 'stop', 'disable');
+    if (hasToken(tokens, 'continuous') && continuousEnabled && continuousDisabled) return null;
+    if (hasToken(tokens, 'continuous') && continuousEnabled) return semanticAccept(transcript, 'set-listening-mode', { mode: 'continuous' });
+    if (hasToken(tokens, 'continuous') && continuousDisabled) return semanticAccept(transcript, 'set-listening-mode', { mode: 'push-to-talk' });
+    if (hasToken(tokens, 'press') && hasToken(tokens, 'talk', 'ptt')) return semanticAccept(transcript, 'set-listening-mode', { mode: 'push-to-talk' });
+
+    return null;
+  }
+
+  function parseCommand(value, options) {
+    const strict = parseStrictCommand(value, options);
+    if (strict.accepted) return strict;
+    // A strict parser can distinguish an unknown or ambiguous callsign. Never let a
+    // permissive semantic pass reinterpret a rejected aircraft target as a different one.
+    const semantic = parseSemanticCommand(value, options);
+    if (strict.reason === 'ambiguous-aircraft') return strict;
+    if (strict.reason === 'unknown-aircraft') {
+      // Natural lead-ins such as "would you" can make the rigid grammar think it saw an
+      // aircraft. Allow the semantic result only when it independently resolved a configured
+      // callsign, or when every word before the first RT action is a recognized filler.
+      if (!semantic?.accepted) return strict;
+      if (semantic.aircraft) return semantic;
+      const rawTokens = normalizeTranscript(value).split(' ').filter(Boolean);
+      const actionIndex = rawTokens.findIndex(token => TARGET_ACTION_TOKENS.has(SEMANTIC_ALIASES[token] || token));
+      const onlyFillersBeforeAction = actionIndex > 0 && rawTokens.slice(0, actionIndex)
+        .every(token => SEMANTIC_FILLERS.has(SEMANTIC_ALIASES[token] || token));
+      return onlyFillersBeforeAction ? semantic : strict;
+    }
+    return semantic || strict;
+  }
+
+  function requiresVoiceConfirmation(command) {
+    return Boolean(command?.requiresConfirmation || CONFIRMATION_INTENTS.has(command?.intent));
+  }
+
+  function describeCommand(command) {
+    if (!command?.accepted) return 'COMMAND NOT RECOGNISED';
+    const target = command.aircraft ? `${String(command.aircraft).toUpperCase()} · ` : '';
+    if (command.intent === 'normal-turn-heading') return `${target}TURN ${String(command.side || '').toUpperCase()} HEADING ${String(command.heading).padStart(3, '0')}`;
+    if (command.intent === 'us-turn') return `${target}TURN ${String(command.side || '').toUpperCase()} NOW`;
+    if (command.intent === 'set-field' || command.intent === 'set-aircraft-field') return `${target}${String(command.field || '').toUpperCase()} ${command.value}`;
+    if (command.intent === 'set-replay-speed') return `REPLAY SPEED ${command.speed}×`;
+    if (command.intent === 'set-bearing-mode') return String(command.mode || '').toUpperCase();
+    return `${target}${String(command.intent || '').replace(/-/g, ' ').toUpperCase()}`;
+  }
+
   return Object.freeze({
     normalizeTranscript,
     normaliseTranscript: normalizeTranscript,
     parseNumber,
     parseHeading,
-    parseCommand
+    parseCommand,
+    requiresVoiceConfirmation,
+    describeCommand
   });
 });

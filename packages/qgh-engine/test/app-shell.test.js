@@ -31,3 +31,18 @@ test('each simulator page offers a local return to the QGH entry page', () => {
   assert.match(single, /href="index\.html"/);
   assert.match(tactical, /href="index\.html"/);
 });
+
+test('guided familiarisation teaches exercise-first RT calls for each QGH mode', () => {
+  const guidedTour = readEngineFile('guided-familiarisation.js');
+  const userGuide = readEngineFile('user-guide.html');
+
+  assert.match(guidedTour, /continue zero six zero/);
+  assert.match(guidedTour, /while a same-direction turn is active/i);
+  assert.match(guidedTour, /turn right heading zero six zero/);
+  assert.match(guidedTour, /turn right now/);
+  assert.match(guidedTour, /stop turn now/);
+  assert.match(guidedTour, /Raven Twenty One turn right heading zero six zero/);
+  assert.match(guidedTour, /Raven Twenty One transmit for D\/F/);
+  assert.match(guidedTour, /Raven Twenty One stop following leader/);
+  assert.match(userGuide, /EXERCISE RT CALLS/);
+});

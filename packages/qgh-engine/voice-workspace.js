@@ -7,7 +7,9 @@
 
   const OfflineVoice = root.QGHOfflineVoiceEngine;
   const RECENT_TRANSCRIPT_WINDOW_MS = 900;
+  const VOICE_CONFIRMATION_WINDOW_MS = 15_000;
   const $ = id => documentRef.getElementById(id);
+  const voiceEffectTimers = new WeakMap();
   const state = {
     engine: null,
     listening: false,
@@ -31,7 +33,14 @@
     continuousInput: null,
     prepareButton: null,
     assistantPanel: null,
-    engineNote: null
+    engineNote: null,
+    pendingCommand: null,
+    pendingContext: null,
+    pendingTimer: null,
+    confirmationPanel: null,
+    confirmationDetail: null,
+    confirmationButton: null,
+    cancellationButton: null
   };
 
   function pageKind() {
@@ -43,6 +52,19 @@
   function activeScreen(id) {
     const screen = $(id);
     return Boolean(screen && screen.classList.contains('active'));
+  }
+
+  function currentVoiceContext() {
+    const kind = pageKind();
+    if (kind === 'single') {
+      const screen = ['setup', 'console', 'analysis'].find(activeScreen) || 'unknown';
+      return `${kind}:${screen}`;
+    }
+    if (kind === 'tactical') {
+      const screen = ['tSetup', 'tConsole', 'tAnalysis'].find(activeScreen) || 'unknown';
+      return `${kind}:${screen}`;
+    }
+    return 'entry';
   }
 
   function buttonText(button) {
@@ -106,7 +128,7 @@
         ? 'OFFLINE VOICE READY'
         : 'ON-DEVICE SPEECH ONLY';
     }
-    if (state.assistantPanel) state.assistantPanel.hidden = !(state.continuous && (state.listening || state.starting));
+    if (state.assistantPanel) state.assistantPanel.hidden = Boolean(state.pendingCommand) || !(state.continuous && (state.listening || state.starting));
   }
 
   function updatePrepareVisibility(visible) {
@@ -122,6 +144,19 @@
 
   function emitChange(element, type) {
     element.dispatchEvent(new root.Event(type, { bubbles: true }));
+  }
+
+  function markVoiceAffected(element) {
+    if (!element?.classList) return;
+    const priorTimer = voiceEffectTimers.get(element);
+    if (priorTimer !== undefined) root.clearTimeout(priorTimer);
+    element.classList.remove('voice-command-effect');
+    element.classList.add('voice-command-effect');
+    const timer = root.setTimeout(() => {
+      element.classList?.remove('voice-command-effect');
+      voiceEffectTimers.delete(element);
+    }, 900);
+    voiceEffectTimers.set(element, timer);
   }
 
   function applyInputValue(element, value, events) {
@@ -143,7 +178,16 @@
     }
     element.value = String(value);
     (events || []).forEach(type => emitChange(element, type));
+    markVoiceAffected(element);
     return result(true, 'VALUE SET');
+  }
+
+  function applySelectValue(element, value) {
+    if (!element) return result(false, 'CONTROL IS NOT AVAILABLE');
+    element.value = String(value);
+    emitChange(element, 'change');
+    markVoiceAffected(element);
+    return result(true, 'VALUE SELECTED');
   }
 
   function applyHeading(element, heading) {
@@ -158,6 +202,7 @@
 
   function clickElement(element, label) {
     if (!isAvailable(element)) return result(false, `${label || 'CONTROL'} IS NOT AVAILABLE`);
+    markVoiceAffected(element);
     element.click();
     return result(true, label || buttonText(element));
   }
@@ -208,7 +253,6 @@
     const value = String(reference || '');
     const direct = rows.find(row => row.dataset.aircraftId === value);
     if (direct) return direct.dataset.aircraftId;
-    if (/^[1-4]$/.test(value)) return rows[Number(value) - 1]?.dataset.aircraftId || null;
     return null;
   }
 
@@ -355,9 +399,8 @@
       if (required) return required;
       const aircraft = $('aircraft');
       if (!aircraft?.querySelector(`option[value="${command.profile}"]`)) return result(false, 'AIRCRAFT PROFILE IS NOT AVAILABLE');
-      aircraft.value = command.profile;
-      emitChange(aircraft, 'change');
-      return result(true, 'AIRCRAFT PROFILE SELECTED');
+      const selected = applySelectValue(aircraft, command.profile);
+      return selected.ok ? result(true, 'AIRCRAFT PROFILE SELECTED') : selected;
     }
     if (command.intent === 'start-exercise') {
       const required = requireActiveScreen('setup');
@@ -382,6 +425,15 @@
       if (!isAvailable($('turnHeadingLeft'))) return result(false, 'TURN CONTROL IS NOT AVAILABLE');
       const heading = applyHeading($('headingInput'), command.heading);
       return heading.ok ? clickId(command.side === 'left' ? 'turnHeadingLeft' : 'turnHeadingRight', `TURN ${command.side.toUpperCase()} ${String(command.heading).padStart(3, '0')}°`) : heading;
+    }
+    if (command.intent === 'continue-turn-heading') {
+      if (command.aircraft) return result(false, 'AIRCRAFT CALLSIGN COMMANDS APPLY TO TACTICAL QGH');
+      if (isHidden($('turnHeadingLeft'))) return result(false, 'CONTINUE HEADING IS NOT AVAILABLE IN U/S COMPASS');
+      const heading = applyHeading($('headingInput'), command.heading);
+      if (!heading.ok) return heading;
+      const side = $('continueHeading')?.dataset.turnSide;
+      if (side === 'left' || side === 'right') markVoiceAffected($(side === 'left' ? 'turnHeadingLeft' : 'turnHeadingRight'));
+      return clickId('continueHeading', `CONTINUE ACTIVE TURN ${String(command.heading).padStart(3, '0')}°`);
     }
     if (command.intent === 'us-turn') {
       if (isHidden($('turnLeft'))) return result(false, 'U/S TURNS ARE NOT AVAILABLE IN NORMAL QGH');
@@ -429,9 +481,8 @@
         const row = tacticalRow(command.aircraft);
         const field = row?.querySelector('[data-tactical-field="profile"]');
         if (!field || !field.querySelector(`option[value="${command.profile}"]`)) return result(false, 'AIRCRAFT PROFILE IS NOT AVAILABLE');
-        field.value = command.profile;
-        emitChange(field, 'change');
-        return result(true, `${tacticalCallsign(command.aircraft)} PROFILE SELECTED`);
+        const selected = applySelectValue(field, command.profile);
+        return selected.ok ? result(true, `${tacticalCallsign(command.aircraft)} PROFILE SELECTED`) : selected;
       }
       if (command.intent === 'set-aircraft-field') {
         const row = tacticalRow(command.aircraft);
@@ -445,9 +496,8 @@
         const id = tacticalId(command.aircraft);
         const leader = $('tFormationLeader');
         if (!isAvailable(leader) || !id) return result(false, 'FORMATION LEADER IS NOT AVAILABLE');
-        leader.value = id;
-        emitChange(leader, 'change');
-        return result(true, `${tacticalCallsign(id)} IS FORMATION LEADER`);
+        const selected = applySelectValue(leader, id);
+        return selected.ok ? result(true, `${tacticalCallsign(id)} IS FORMATION LEADER`) : selected;
       }
       if (command.intent === 'toggle-formation-member') {
         const callsign = tacticalCallsign(command.aircraft);
@@ -456,12 +506,29 @@
         ));
         return clickElement(chip, `${callsign} FORMATION MEMBERSHIP UPDATED`);
       }
+      if (command.intent === 'set-formation-member') {
+        const callsign = tacticalCallsign(command.aircraft);
+        const chip = Array.from(documentRef.querySelectorAll('.tactical-member-chip')).find(button => (
+          Voice.normalizeTranscript(button.textContent) === Voice.normalizeTranscript(callsign)
+        ));
+        if (!chip) return result(false, 'FORMATION MEMBER IS NOT AVAILABLE');
+        const included = chip.getAttribute('aria-pressed') === 'true';
+        if (included === command.enabled) return result(true, `${callsign} ALREADY ${included ? 'IN' : 'OUT OF'} FORMATION`);
+        return clickElement(chip, `${callsign} ${command.enabled ? 'ADDED TO' : 'REMOVED FROM'} FORMATION`);
+      }
       if (command.intent === 'start-exercise') return clickId('tStart', 'TACTICAL EXERCISE STARTED');
       return result(false, 'COMMAND IS NOT AVAILABLE IN TACTICAL SETUP');
     }
 
     if (!activeScreen('tConsole')) return result(false, 'COMMAND IS NOT AVAILABLE ON THIS SCREEN');
     if (command.aircraft && !tacticalId(command.aircraft)) return result(false, 'AIRCRAFT IS NOT AVAILABLE');
+    const callsignRequired = new Set([
+      'transmit-df', 'normal-turn-heading', 'continue-turn-heading', 'us-turn', 'us-turn-stop',
+      'report-heading', 'request-distance', 'set-field', 'set-aircraft-field', 'stop-following-leader'
+    ]);
+    if (callsignRequired.has(command.intent) && !command.aircraft) {
+      return result(false, 'SAY THE AIRCRAFT CALLSIGN FOR A TACTICAL COMMAND');
+    }
     if (command.intent === 'select-aircraft') return selectTacticalAircraft(command.aircraft);
     if (command.intent === 'set-bearing-mode') return clickId(command.mode === 'qdm' ? 'tQdm' : 'tQte', `${command.mode.toUpperCase()} SELECTED`);
     if (command.intent === 'transmit-df') {
@@ -480,6 +547,18 @@
       if (!isAvailable($('tTurnLeft'))) return result(false, 'TURN CONTROL IS NOT AVAILABLE');
       const heading = applyHeading($('tHeadingInput'), command.heading);
       return heading.ok ? clickId(command.side === 'left' ? 'tTurnLeft' : 'tTurnRight', `TURN ${command.side.toUpperCase()} ${String(command.heading).padStart(3, '0')}°`) : heading;
+    }
+    if (command.intent === 'continue-turn-heading') {
+      if (command.aircraft) {
+        const selected = selectTacticalAircraft(command.aircraft);
+        if (!selected.ok) return selected;
+      }
+      if (isHidden($('tTurnLeft'))) return result(false, 'CONTINUE HEADING IS NOT AVAILABLE IN U/S COMPASS');
+      const heading = applyHeading($('tHeadingInput'), command.heading);
+      if (!heading.ok) return heading;
+      const side = $('tContinueHeading')?.dataset.turnSide;
+      if (side === 'left' || side === 'right') markVoiceAffected($(side === 'left' ? 'tTurnLeft' : 'tTurnRight'));
+      return clickId('tContinueHeading', `CONTINUE ACTIVE TURN ${String(command.heading).padStart(3, '0')}°`);
     }
     if (command.intent === 'us-turn') {
       if (command.aircraft) {
@@ -517,10 +596,6 @@
       const change = applyInputValue($('tLiveSpeed'), command.value, ['input', 'change']);
       return change.ok ? result(true, `${tacticalCallsign(command.aircraft)} SPEED ${command.value} KT SET`) : change;
     }
-    if (command.intent === 'set-field' && command.field === 'speed') {
-      const change = applyInputValue($('tLiveSpeed'), command.value, ['input', 'change']);
-      return change.ok ? result(true, `SPEED ${command.value} KT SET`) : change;
-    }
     if (command.intent === 'clock') return clickId(`tClock${command.action[0].toUpperCase()}${command.action.slice(1)}`, `CLOCK ${command.action.toUpperCase()}`);
     if (command.intent === 'advance-flight') return clickId('tAdvance', 'FLIGHT ADVANCED ONE MINUTE');
     if (command.intent === 'restart-exercise') return clickId('tRestart', 'EXERCISE RESTARTED');
@@ -557,14 +632,120 @@
     return runEntryCommand(command);
   }
 
+  function clearPendingVoiceCommand() {
+    root.clearTimeout(state.pendingTimer);
+    state.pendingCommand = null;
+    state.pendingContext = null;
+    state.pendingTimer = null;
+    if (state.confirmationPanel) state.confirmationPanel.hidden = true;
+    updateMicState();
+  }
+
+  function canQueueVoiceConfirmation(command) {
+    if (command.intent === 'select-simulator-mode') {
+      return pageKind() === 'entry'
+        ? result(true, 'COMMAND AVAILABLE')
+        : result(false, 'COMMAND IS NOT AVAILABLE ON THIS SCREEN');
+    }
+    if (command.intent === 'set-aircraft-callsign') {
+      const row = tacticalRow(command.aircraft);
+      const field = row?.querySelector('[data-tactical-field="callsign"]');
+      return pageKind() === 'tactical' && activeScreen('tSetup') && isAvailable(field)
+        ? result(true, 'COMMAND AVAILABLE')
+        : result(false, 'COMMAND IS NOT AVAILABLE ON THIS SCREEN');
+    }
+    if (command.intent === 'restart-exercise') {
+      const control = pageKind() === 'tactical' ? $('tRestart') : $('restartExercise');
+      const screen = pageKind() === 'tactical' ? 'tConsole' : 'console';
+      return activeScreen(screen) && isAvailable(control)
+        ? result(true, 'COMMAND AVAILABLE')
+        : result(false, 'COMMAND IS NOT AVAILABLE ON THIS SCREEN');
+    }
+    if (command.intent === 'new-exercise') {
+      const tactical = pageKind() === 'tactical';
+      const control = $(tactical ? 'tNewExercise' : 'newExercise');
+      return activeScreen(tactical ? 'tAnalysis' : 'analysis') && isAvailable(control)
+        ? result(true, 'COMMAND AVAILABLE')
+        : result(false, 'COMMAND IS NOT AVAILABLE ON THIS SCREEN');
+    }
+    return result(true, 'COMMAND AVAILABLE');
+  }
+
+  function queueVoiceConfirmation(command) {
+    const available = canQueueVoiceConfirmation(command);
+    if (!available.ok) return available;
+    state.pendingCommand = command;
+    state.pendingContext = currentVoiceContext();
+    const description = typeof Voice.describeCommand === 'function'
+      ? Voice.describeCommand(command)
+      : String(command.intent || 'COMMAND').replace(/-/g, ' ').toUpperCase();
+    if (state.confirmationDetail) state.confirmationDetail.textContent = `HEARD · ${description}`;
+    if (state.confirmationPanel) state.confirmationPanel.hidden = false;
+    markVoiceAffected(state.confirmationButton);
+    updateMicState();
+    state.pendingTimer = root.setTimeout(() => {
+      if (state.pendingCommand !== command) return;
+      clearPendingVoiceCommand();
+      setStatus('VOICE COMMAND EXPIRED', 'error');
+    }, VOICE_CONFIRMATION_WINDOW_MS);
+    return result(true, `CONFIRM · ${description}`);
+  }
+
+  function pendingVoiceResponse(transcript, command) {
+    if (command?.intent === 'confirm-voice-command') return 'confirm';
+    if (command?.intent === 'cancel-voice-command') return 'cancel';
+    const normalized = Voice.normalizeTranscript(transcript);
+    if (['yes', 'confirm', 'proceed', 'go ahead', 'execute'].includes(normalized)) return 'confirm';
+    if (['no', 'cancel', 'reject', 'ignore'].includes(normalized)) return 'cancel';
+    return null;
+  }
+
+  function confirmPendingVoiceCommand() {
+    const command = state.pendingCommand;
+    if (!command) return result(false, 'NO VOICE COMMAND AWAITS CONFIRMATION');
+    if (state.pendingContext !== currentVoiceContext()) {
+      clearPendingVoiceCommand();
+      setStatus('VOICE COMMAND EXPIRED AFTER SCREEN CHANGE', 'error');
+      return result(false, 'VOICE COMMAND EXPIRED AFTER SCREEN CHANGE');
+    }
+    clearPendingVoiceCommand();
+    const outcome = runCommand(command);
+    setStatus(outcome.message, outcome.ok ? 'success' : 'error');
+    return outcome;
+  }
+
+  function cancelPendingVoiceCommand() {
+    if (!state.pendingCommand) return result(false, 'NO VOICE COMMAND AWAITS CONFIRMATION');
+    clearPendingVoiceCommand();
+    setStatus('VOICE COMMAND CANCELLED', 'neutral');
+    return result(true, 'VOICE COMMAND CANCELLED');
+  }
+
   function dispatchTranscript(transcript) {
     const command = Voice.parseCommand(transcript, {
       callsigns: tacticalCallsignOptions(),
       profiles: availableProfileOptions()
     });
+    if (state.pendingCommand) {
+      const response = pendingVoiceResponse(transcript, command);
+      if (response === 'confirm') return confirmPendingVoiceCommand();
+      if (response === 'cancel') return cancelPendingVoiceCommand();
+      setStatus('CONFIRM OR CANCEL THE PENDING VOICE COMMAND', 'error');
+      return result(false, 'CONFIRM OR CANCEL THE PENDING VOICE COMMAND');
+    }
     if (!command.accepted) {
       setStatus('COMMAND NOT RECOGNISED', 'error');
       return result(false, 'COMMAND NOT RECOGNISED');
+    }
+    if (command.intent === 'confirm-voice-command' || command.intent === 'cancel-voice-command') {
+      const noPending = result(false, 'NO VOICE COMMAND AWAITS CONFIRMATION');
+      setStatus(noPending.message, 'error');
+      return noPending;
+    }
+    if (typeof Voice.requiresVoiceConfirmation === 'function' && Voice.requiresVoiceConfirmation(command)) {
+      const pending = queueVoiceConfirmation(command);
+      setStatus(pending.message, 'active');
+      return pending;
     }
     const outcome = runCommand(command);
     setStatus(outcome.message, outcome.ok ? 'success' : 'error');
@@ -583,14 +764,13 @@
   // The browser path below is deliberately independent of browser-provider speech services. Windows and
   // the PWA use the bundled Vosk WebAssembly worker; Android presents the same contract
   // through its bundled Vosk bridge.
-  function grammarContext() {
-    return { callsigns: tacticalCallsignOptions() };
-  }
-
-  function currentGrammar() {
-    return typeof OfflineVoice?.buildQghGrammar === 'function'
-      ? OfflineVoice.buildQghGrammar(grammarContext())
-      : [];
+  function currentRecognitionGrammar() {
+    if (typeof OfflineVoice?.buildRecognitionPlan === 'function') {
+      return OfflineVoice.buildRecognitionPlan().grammar;
+    }
+    // A missing plan in an older cached shell must remain local and conservative. This blank
+    // grammar selects Vosk's grammar-free on-device recognizer rather than a cloud fallback.
+    return null;
   }
 
   function clearReadinessTimer() {
@@ -810,7 +990,8 @@
     updateMicState();
     if (bridge) {
       try {
-        if (typeof bridge.setGrammar === 'function') bridge.setGrammar(JSON.stringify(currentGrammar()));
+        const grammar = currentRecognitionGrammar();
+        if (typeof bridge.setGrammar === 'function') bridge.setGrammar(grammar ? JSON.stringify(grammar) : '');
         bridge.start(Boolean(continuous));
         return true;
       } catch {
@@ -825,8 +1006,9 @@
       return false;
     }
     try {
+      const grammar = currentRecognitionGrammar();
       await engine.start({
-        grammar: currentGrammar(),
+        grammar,
         onStarted: () => {
           const stillRequested = continuous
             ? state.continuous && !state.manuallyStopped
@@ -964,10 +1146,34 @@
     assistantStop.className = 'voice-assistant-stop';
     assistantStop.textContent = 'STOP';
     assistant.append(pulse, assistantCopy, assistantStop);
-    dock.append(mic, settingsToggle, status, settings, assistant);
+
+    const confirmation = documentRef.createElement('section');
+    confirmation.className = 'voice-confirmation';
+    confirmation.hidden = true;
+    confirmation.setAttribute('aria-live', 'assertive');
+    const confirmationTitle = documentRef.createElement('strong');
+    confirmationTitle.textContent = 'CONFIRM VOICE COMMAND';
+    const confirmationDetail = documentRef.createElement('small');
+    confirmationDetail.textContent = 'HEARD · —';
+    const confirmationActions = documentRef.createElement('div');
+    const confirmationButton = documentRef.createElement('button');
+    confirmationButton.type = 'button';
+    confirmationButton.className = 'voice-confirm';
+    confirmationButton.textContent = 'CONFIRM';
+    const cancellationButton = documentRef.createElement('button');
+    cancellationButton.type = 'button';
+    cancellationButton.className = 'voice-cancel';
+    cancellationButton.textContent = 'CANCEL';
+    confirmationActions.append(confirmationButton, cancellationButton);
+    confirmation.append(confirmationTitle, confirmationDetail, confirmationActions);
+    dock.append(mic, settingsToggle, status, settings, assistant, confirmation);
     documentRef.body.appendChild(dock);
 
-    Object.assign(state, { mic, status, settings, settingsToggle, continuousInput, prepareButton: prepare, assistantPanel: assistant, engineNote });
+    Object.assign(state, {
+      mic, status, settings, settingsToggle, continuousInput, prepareButton: prepare,
+      assistantPanel: assistant, engineNote, confirmationPanel: confirmation, confirmationDetail,
+      confirmationButton, cancellationButton
+    });
     settingsToggle.addEventListener('click', () => {
       const opening = settings.hidden;
       setSettingsOpen(opening);
@@ -976,6 +1182,8 @@
     prepare.addEventListener('click', prepareLocalVoice);
     continuousInput.addEventListener('change', () => setListeningMode(continuousInput.checked ? 'continuous' : 'push-to-talk'));
     assistantStop.addEventListener('click', () => setListeningMode('push-to-talk'));
+    confirmationButton.addEventListener('click', confirmPendingVoiceCommand);
+    cancellationButton.addEventListener('click', cancelPendingVoiceCommand);
 
     const beginPressToTalk = event => {
       if (state.continuous) return;
@@ -1007,9 +1215,17 @@
       if (state.listening || state.starting) stopListening({ cancel: true });
       else beginListening(true);
     });
-    root.addEventListener('blur', () => { state.pressHeld = false; stopListening({ cancel: true }); });
+    root.addEventListener('blur', () => {
+      state.pressHeld = false;
+      clearPendingVoiceCommand();
+      stopListening({ cancel: true });
+    });
     documentRef.addEventListener('visibilitychange', () => {
-      if (documentRef.visibilityState !== 'visible') { state.pressHeld = false; stopListening({ cancel: true }); }
+      if (documentRef.visibilityState !== 'visible') {
+        state.pressHeld = false;
+        clearPendingVoiceCommand();
+        stopListening({ cancel: true });
+      }
     });
     updateMicState();
     checkLocalAvailability({ force: true });

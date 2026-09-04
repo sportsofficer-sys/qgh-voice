@@ -323,6 +323,7 @@
     checkPendingLeg(motion.distanceNm);
     if (state.dfLive) renderDF();
     record();
+    updateNormalContinueControl();
   }
 
   function advanceFlight() {
@@ -356,7 +357,14 @@
     }
   }
 
-  function issueHeading(side) {
+  function updateNormalContinueControl() {
+    const control = $('continueHeading');
+    if (!control) return;
+    control.disabled = state.procedure !== 'normal' || !state.forcedTurnSide;
+    control.dataset.turnSide = state.forcedTurnSide || '';
+  }
+
+  function issueHeading(side, continuation = false) {
     const heading = inputDegrees('headingInput');
     const turn = turnDescriptor(side, state.plane.heading, heading);
     state.initialTurnSide = null;
@@ -365,9 +373,19 @@
     state.forcedTurnSide = side;
     establishLegIfNeeded(side, heading, .2, turn);
     const radius = turnRadiusNm(state.cfg.speed, state.cfg.rate);
-    logCommand(`TURN ${side.toUpperCase()}`, `Heading ${padHeading(heading)}°M · ${Math.round(turn.degrees)}° turn · nominal radius ${radius.toFixed(2)} NM.`);
+    const label = continuation ? `CONTINUE ${side.toUpperCase()}` : `TURN ${side.toUpperCase()}`;
+    logCommand(label, `Heading ${padHeading(heading)}°M · ${Math.round(turn.degrees)}° turn · nominal radius ${radius.toFixed(2)} NM.`);
+    updateNormalContinueControl();
     startFlightLoop();
-    showToast(`TURN ${side.toUpperCase()} ACCEPTED`);
+    showToast(`${label} ACCEPTED`);
+  }
+
+  function continueHeading() {
+    if (!state.plane || state.procedure !== 'normal' || !state.forcedTurnSide) {
+      showToast('NO HEADING TURN TO CONTINUE');
+      return;
+    }
+    issueHeading(state.forcedTurnSide, true);
   }
 
   function updateUsTurnControls() {
@@ -403,6 +421,7 @@
     }
     state.manualTurnRecord = null;
     updateUsTurnControls();
+    updateNormalContinueControl();
     logCommand('STOP TURN NOW', `Aircraft levels on ${padHeading(state.plane.heading)}°M.`);
     startFlightLoop();
     showToast('TURN STOPPED');
@@ -417,6 +436,7 @@
     $('usCtl').hidden = !usCompass;
     $('requestHeading').hidden = usCompass;
     $('infoRow').classList.toggle('single', usCompass);
+    updateNormalContinueControl();
   }
 
   function resetConsole() {
@@ -701,6 +721,7 @@
     $('requestDistance').addEventListener('click', requestDistance);
     $('turnHeadingLeft').addEventListener('click', () => issueHeading('left'));
     $('turnHeadingRight').addEventListener('click', () => issueHeading('right'));
+    $('continueHeading').addEventListener('click', continueHeading);
     $('turnLeft').addEventListener('click', () => startTurn('left'));
     $('turnRight').addEventListener('click', () => startTurn('right'));
     $('turnStop').addEventListener('click', stopTurn);

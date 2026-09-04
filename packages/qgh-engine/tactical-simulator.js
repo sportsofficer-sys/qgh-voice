@@ -384,6 +384,13 @@
     $('tUsStop').disabled = !turning;
   }
 
+  function updateNormalContinueControl() {
+    const aircraft = currentAircraft();
+    const control = $('tContinueHeading');
+    control.disabled = state.procedure !== 'normal' || !aircraft?.forcedTurnSide;
+    control.dataset.turnSide = aircraft?.forcedTurnSide || '';
+  }
+
   function renderSelectedAircraft() {
     const aircraft = currentAircraft();
     if (!aircraft) return;
@@ -399,6 +406,7 @@
     $('tHeadingReply').textContent = 'HEADING —';
     $('tDistanceReply').textContent = 'RANGE —';
     updateUsTurnControls();
+    updateNormalContinueControl();
     renderDF();
   }
 
@@ -467,6 +475,7 @@
     $('tUsControls').hidden = !usCompass;
     $('tRequestHeading').hidden = usCompass;
     $('tInfoRow').classList.toggle('single', usCompass);
+    updateNormalContinueControl();
   }
 
   function showScreen(id) {
@@ -728,6 +737,7 @@
     if (state.dfLive) renderDF();
     renderRail();
     updateUsTurnControls();
+    updateNormalContinueControl();
   }
 
   function issueHeading(side) {
@@ -744,6 +754,27 @@
       showToast(result.aircraft.callsign + ' TURN ' + side.toUpperCase() + ' ACCEPTED');
     } catch (error) {
       showToast(error.message || 'Heading command unavailable.');
+    }
+  }
+
+  function continueHeading() {
+    if (!state.exercise || !currentAircraft()) return;
+    try {
+      const heading = inputDegrees('tHeadingInput', 'Assigned heading');
+      const result = Tactical.continueHeading(state.exercise, state.activeAircraftId, heading);
+      if (!result) {
+        showToast('NO HEADING TURN TO CONTINUE');
+        return;
+      }
+      const turn = result.turn;
+      if (result.events && result.events.length) logEvents(result.events);
+      logCommand(result.aircraft.id, 'CONTINUE ' + turn.side.toUpperCase(), 'Heading ' + padHeading(heading) + '°M · ' + Math.round(turn.degrees) + '° turn · ' + turn.way + ' · nominal radius ' + result.radius.toFixed(2) + ' NM.');
+      startFlightLoop();
+      renderRail();
+      renderSelectedAircraft();
+      showToast(result.aircraft.callsign + ' CONTINUE ' + turn.side.toUpperCase() + ' ACCEPTED');
+    } catch (error) {
+      showToast(error.message || 'Continue heading unavailable.');
     }
   }
 
@@ -1130,6 +1161,7 @@
     $('tRequestDistance').addEventListener('click', requestDistance);
     $('tTurnLeft').addEventListener('click', () => issueHeading('left'));
     $('tTurnRight').addEventListener('click', () => issueHeading('right'));
+    $('tContinueHeading').addEventListener('click', continueHeading);
     $('tUsLeft').addEventListener('click', () => startTurn('left'));
     $('tUsRight').addEventListener('click', () => startTurn('right'));
     $('tUsStop').addEventListener('click', stopTurn);

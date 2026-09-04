@@ -163,6 +163,28 @@ test('formation wingmen follow the leader through curved flight and detach on a 
   assert.ok(Tactical.rangeFor(remainingWingman) > 0);
 });
 
+test('continue heading retains an active normal-turn direction rather than choosing a new turn', () => {
+  const exercise = makeExercise('normal', 2);
+  const aircraft = Tactical.getAircraft(exercise, 'A');
+  aircraft.plane.heading = 330;
+  aircraft.targetHeading = 330;
+  Tactical.issueHeading(exercise, 'A', 'right', 120);
+  Tactical.advance(exercise, 5);
+  const before = aircraft.plane.heading;
+
+  const result = Tactical.continueHeading(exercise, 'A', 60);
+  assert.equal(result.turn.side, 'right');
+  assert.equal(aircraft.forcedTurnSide, 'right');
+  assert.equal(aircraft.targetHeading, 60);
+  assert.ok(result.turn.degrees > 0);
+  assert.notEqual(before, 60);
+
+  Tactical.advance(exercise, 60);
+  assert.ok(headingError(aircraft.plane.heading, 60) < .01);
+  assert.equal(aircraft.forcedTurnSide, null);
+  assert.equal(Tactical.continueHeading(exercise, 'A', 120), null);
+});
+
 test('a selected wingman can stop following and continue on its current heading', () => {
   const exercise = Tactical.createExercise({
     procedure: 'normal',

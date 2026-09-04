@@ -39,7 +39,7 @@ test('exposes the same parser as a browser global without network or recognition
   assert.doesNotMatch(source, /\b(fetch|XMLHttpRequest|SpeechRecognition|webkitSpeechRecognition)\b/);
 });
 
-test('maps strict Normal QGH and U/S Compass turn commands without guessing', () => {
+test('maps Normal QGH and U/S Compass turns, including a clear spoken variant', () => {
   assert.deepEqual(Voice.parseCommand('turn right heading two seven zero'), {
     accepted: true,
     transcript: 'turn right heading two seven zero',
@@ -71,10 +71,145 @@ test('maps strict Normal QGH and U/S Compass turn commands without guessing', ()
     reason: 'unrecognized-command'
   });
   assert.deepEqual(Voice.parseCommand('turn right heading two seven zero please'), {
-    accepted: false,
+    accepted: true,
     transcript: 'turn right heading two seven zero please',
-    reason: 'unrecognized-command'
+    intent: 'normal-turn-heading',
+    side: 'right',
+    heading: 270,
+    match: 'semantic',
+    confidence: 'high'
   });
+});
+
+test('interprets flexible local RT phrasing only when the essential command slots are present', () => {
+  const options = { callsigns: [{ id: 'A', callsign: 'FALCON 11' }, { id: 'B', callsign: 'RAVEN 21' }] };
+
+  assert.deepEqual(Voice.parseCommand('vector right two seventy', options), {
+    accepted: true,
+    transcript: 'vector right two seventy',
+    intent: 'normal-turn-heading',
+    side: 'right',
+    heading: 270,
+    match: 'semantic',
+    confidence: 'high'
+  });
+  assert.equal(Voice.parseCommand('vector right two hundred seventy', options).heading, 270);
+  assert.equal(Voice.parseCommand('set speed two hundred forty', options).value, 240);
+  assert.deepEqual(Voice.parseCommand('Falcon Eleven right heading two seven zero please', options), {
+    accepted: true,
+    transcript: 'falcon eleven right heading two seven zero please',
+    intent: 'normal-turn-heading',
+    aircraft: 'A',
+    side: 'right',
+    heading: 270,
+    match: 'semantic',
+    confidence: 'high'
+  });
+  assert.equal(Voice.parseCommand('make the runway two three zero', options).intent, 'set-field');
+  assert.equal(Voice.parseCommand('set final to two two five', options).field, 'inbound');
+  assert.equal(Voice.parseCommand('make it a fleet of four', options).intent, 'set-fleet-size');
+  assert.equal(Voice.parseCommand('Falcon Eleven set level six thousand', options).field, 'level');
+  assert.equal(Voice.parseCommand('set Falcon Eleven profile Rafale', options).intent, 'set-aircraft-profile');
+  assert.equal(Voice.parseCommand('Falcon Eleven break formation', options).intent, 'stop-following-leader');
+  assert.equal(Voice.parseCommand('replay at ten times', options).speed, 10);
+  assert.equal(Voice.parseCommand('start the stopwatch', options).intent, 'clock');
+  assert.equal(Voice.parseCommand('show Falcon Eleven track', options).intent, 'focus-aircraft');
+  assert.deepEqual(Voice.parseCommand('continue zero six zero', options), {
+    accepted: true,
+    transcript: 'continue zero six zero',
+    intent: 'continue-turn-heading',
+    heading: 60,
+    match: 'semantic',
+    confidence: 'high'
+  });
+  assert.deepEqual(Voice.parseCommand('Raven Twenty One turn right', options), {
+    accepted: true,
+    transcript: 'raven twenty one turn right',
+    intent: 'us-turn',
+    aircraft: 'B',
+    side: 'right',
+    match: 'semantic',
+    confidence: 'high'
+  });
+  assert.equal(Voice.parseCommand('Raven turn right heading zero six zero', options).aircraft, 'B');
+  assert.equal(Voice.parseCommand('Raven transmit for D/F', options).aircraft, 'B');
+  assert.deepEqual(Voice.parseCommand('Raven turn right two two zero', options), {
+    accepted: true,
+    transcript: 'raven turn right two two zero',
+    intent: 'normal-turn-heading',
+    aircraft: 'B',
+    side: 'right',
+    heading: 220,
+    match: 'semantic',
+    confidence: 'high'
+  });
+  assert.deepEqual(Voice.parseCommand('Raven Twenty One transmit for D/F', options), {
+    accepted: true,
+    transcript: 'raven twenty one transmit for df',
+    intent: 'transmit-df',
+    aircraft: 'B',
+    match: 'semantic',
+    confidence: 'high'
+  });
+  assert.deepEqual(Voice.parseCommand('add Raven Twenty One to formation', options), {
+    accepted: true,
+    transcript: 'add raven twenty one to formation',
+    intent: 'set-formation-member',
+    aircraft: 'B',
+    enabled: true,
+    match: 'semantic',
+    confidence: 'high'
+  });
+  assert.deepEqual(Voice.parseCommand('remove Raven Twenty One from formation', options), {
+    accepted: true,
+    transcript: 'remove raven twenty one from formation',
+    intent: 'set-formation-member',
+    aircraft: 'B',
+    enabled: false,
+    match: 'semantic',
+    confidence: 'high'
+  });
+
+  for (const incomplete of ['right', 'turn', 'heading', 'two seven zero', 'transmit', 'continue', 'Falcon Eleven right']) {
+    assert.equal(Voice.parseCommand(incomplete, options).accepted, false, `must not execute incomplete command: ${incomplete}`);
+  }
+  assert.equal(Voice.parseCommand('Falcon turn right heading zero six zero', {
+    callsigns: ['FALCON 11', 'FALCON 12']
+  }).accepted, false, 'an abbreviated callsign must be rejected when it is not unique');
+  assert.equal(Voice.parseCommand('continue right zero six zero', options).accepted, false, 'continue must not ignore a stated turn direction');
+  assert.equal(Voice.parseCommand('Raven stop', options).accepted, false, 'a U/S stop call requires the word turn');
+  assert.equal(Voice.parseCommand('Raven right now', options).accepted, false, 'a U/S turn call requires the word turn');
+  assert.equal(Voice.parseCommand('Raven Twelve Three transmit for D/F', {
+    callsigns: [{ id: 'R12', callsign: 'RAVEN 12' }]
+  }).accepted, false, 'a longer unknown numeric callsign must not route to a configured prefix');
+  assert.equal(Voice.parseCommand('Raven Twelve Three transmit for D/F', {
+    callsigns: [{ id: 'R123', callsign: 'RAVEN 123' }]
+  }).aircraft, 'R123', 'a mixed spoken numeric callsign must resolve when configured');
+  assert.equal(Voice.parseCommand('Raven One Two Three transmit for D/F', {
+    callsigns: [{ id: 'R12', callsign: 'RAVEN 12' }, { id: 'R123', callsign: 'RAVEN 123' }]
+  }).aircraft, 'R123', 'the complete configured numeric callsign must win over its prefix');
+  assert.equal(Voice.parseCommand('would you turn right heading two seven zero', options).heading, 270, 'recognized lead-in fillers must not block a valid RT call');
+  assert.equal(Voice.parseCommand('Tiger turn right heading two seven zero', options).accepted, false, 'an unknown callsign must not become a generic command');
+  assert.equal(Voice.parseCommand('the speed is two hundred', options).accepted, false, 'conversation must not alter a field');
+  [
+    'start stop clock',
+    'formation on off',
+    'show qdm qte',
+    'enable disable zoom',
+    'replay play pause',
+    'continuous listening on off'
+  ].forEach(transcript => {
+    assert.equal(Voice.parseCommand(transcript, options).accepted, false, `conflicting call must be rejected: ${transcript}`);
+  });
+});
+
+test('flags semantic navigation and reset actions for a separate confirmation step', () => {
+  const restart = Voice.parseCommand('start a fresh exercise please');
+  const changeType = Voice.parseCommand('go back and change qgh mode');
+  assert.equal(restart.accepted, true);
+  assert.equal(restart.requiresConfirmation, true);
+  assert.equal(changeType.accepted, true);
+  assert.equal(changeType.requiresConfirmation, true);
 });
 
 test('maps D/F, reports, clock, advance, and exercise commands', () => {
@@ -204,11 +339,11 @@ test('maps tactical aircraft and formation commands only when a selected callsig
 
 test('accepts complete callsign, targeted-turn, voice-mode, and review-focus commands', () => {
   const options = { callsigns: [{ id: 'A', callsign: 'FALCON 11' }, { id: 'B', callsign: 'RAVEN 21' }] };
-  assert.deepEqual(Voice.parseCommand('set aircraft one callsign Falcon One One', options), {
+  assert.deepEqual(Voice.parseCommand('set aircraft Falcon Eleven callsign Falcon One One', options), {
     accepted: true,
-    transcript: 'set aircraft one callsign falcon one one',
+    transcript: 'set aircraft falcon eleven callsign falcon one one',
     intent: 'set-aircraft-callsign',
-    aircraft: '1',
+    aircraft: 'A',
     callsign: 'FALCON 11'
   });
   assert.deepEqual(Voice.parseCommand('set aircraft Falcon Eleven profile Rafale', options), {
@@ -252,9 +387,29 @@ test('accepts complete callsign, targeted-turn, voice-mode, and review-focus com
     value: 6000,
     unit: 'feet'
   });
+  assert.equal(Voice.parseCommand('two turn right heading two two zero', options).accepted, false, 'a row number is not a tactical callsign');
+  assert.equal(Voice.parseCommand('Raven Thirteen turn right heading two two zero', {
+    callsigns: [{ id: 'B', callsign: 'RAVEN 12' }]
+  }).accepted, false, 'an unknown numeric callsign must not resolve to a shortened designator');
+  const sharedDesignators = {
+    callsigns: [{ id: 'B', callsign: 'RAVEN 21' }, { id: 'C', callsign: 'RAVEN 22' }]
+  };
+  assert.equal(Voice.parseCommand('Raven turn right heading two two zero', sharedDesignators).accepted, false, 'a shared designator is ambiguous');
+  assert.equal(Voice.parseCommand('Raven Twenty One turn right heading two two zero', sharedDesignators).aircraft, 'B', 'the full callsign remains valid when a designator is shared');
+
+  const ravenTwelve = { callsigns: [{ id: 'B', callsign: 'RAVEN 12' }] };
+  [
+    'Raven Thirteen turn right two two zero',
+    'Raven Thirteen turn right now',
+    'Raven Thirteen continue zero six zero',
+    'Raven Thirteen transmit',
+    'Raven Thirteen stop following leader'
+  ].forEach(transcript => {
+    assert.equal(Voice.parseCommand(transcript, ravenTwelve).accepted, false, `unknown callsign must not route: ${transcript}`);
+  });
 });
 
-test('parses every documented v4.1.0 voice-command example', () => {
+test('parses every documented v4.2.0 voice-command example', () => {
   const options = {
     callsigns: [
       { id: 'A', callsign: 'FALCON 11' },

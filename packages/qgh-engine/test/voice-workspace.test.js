@@ -36,5 +36,6 @@ test('the in-app guide documents the shipped local voice workflow', () => {
   assert.match(guide, /continuous listening/i);
   assert.match(guide, /no cloud speech fallback/i);
   assert.match(guide, /Confirm termination/);
-  assert.match(guide, /Falcon Eleven turn right heading two seven zero/);
+  assert.match(guide, /Raven Twenty One turn right heading zero six zero/);
+  assert.match(guide, /unique designator/i);
 });

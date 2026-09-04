@@ -495,6 +495,16 @@
     };
   }
 
+  // A controller may amend the target while an aircraft is already turning. The existing
+  // turn direction is retained deliberately: "continue 060" must not silently choose a
+  // shorter-way turn or reverse an active controller instruction.
+  function continueHeading(exercise, id, heading) {
+    if (exercise.procedure !== 'normal') throw new Error('Heading assignment is available only in Normal QGH.');
+    const aircraft = getAircraft(exercise, id);
+    if (!TURN_SIDES.has(aircraft.forcedTurnSide) || aircraft.manualTurnSide || aircraft.initialTurnSide) return null;
+    return issueHeading(exercise, id, aircraft.forcedTurnSide, heading);
+  }
+
   function startTurn(exercise, id, side) {
     if (exercise.procedure !== 'us') throw new Error('Timed turns are available only in U/S Compass.');
     if (!TURN_SIDES.has(side)) throw new Error('Turn side must be left or right.');
@@ -553,6 +563,7 @@
     formationRoleFor,
     stopFollowingLeader,
     issueHeading,
+    continueHeading,
     startTurn,
     stopTurn,
     setSpeed,
