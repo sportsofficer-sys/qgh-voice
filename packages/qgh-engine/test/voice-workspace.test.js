@@ -1,0 +1,35 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const test = require('node:test');
+
+const workspace = fs.readFileSync(path.join(__dirname, '..', 'voice-workspace.js'), 'utf8');
+const guide = fs.readFileSync(path.join(__dirname, '..', 'user-guide.html'), 'utf8');
+
+test('voice workspace is a local DOM adapter and does not contain flight-model logic', () => {
+  assert.match(workspace, /element\.click\(\)/);
+  assert.match(workspace, /new root\.Event\(type, \{ bubbles: true \}\)/);
+  assert.match(workspace, /recognition\.processLocally = true/);
+  assert.match(workspace, /interimResults = false/);
+  assert.match(workspace, /RECENT_TRANSCRIPT_WINDOW_MS/);
+  assert.doesNotMatch(workspace, /\b(fetch|XMLHttpRequest|WebSocket)\b/);
+  assert.doesNotMatch(workspace, /\b(physicsStep|turnRadiusNm|simulateFlight|Tactical\.)\b/);
+});
+
+test('voice workspace preserves UI safety gates for procedures, formation, and termination', () => {
+  assert.match(workspace, /HEADING TURNS ARE NOT AVAILABLE IN U\/S COMPASS/);
+  assert.match(workspace, /U\/S TURNS ARE NOT AVAILABLE IN NORMAL QGH/);
+  assert.match(workspace, /FORMATION FOLLOWING STOPPED/);
+  assert.match(workspace, /NO TERMINATION CONFIRMATION IS OPEN/);
+  assert.match(workspace, /VALUE DOES NOT MATCH CONTROL STEP/);
+});
+
+test('the in-app guide documents the shipped local voice workflow', () => {
+  assert.match(guide, /PRESS TO TALK BY DEFAULT/);
+  assert.match(guide, /continuous listening/i);
+  assert.match(guide, /no cloud speech fallback/i);
+  assert.match(guide, /Confirm termination/);
+  assert.match(guide, /Falcon Eleven turn right heading two seven zero/);
+});

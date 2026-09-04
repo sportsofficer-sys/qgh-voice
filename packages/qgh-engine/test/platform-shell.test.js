@@ -28,11 +28,15 @@ test('asset synchronization includes the entry, single, and tactical QGH surface
   const required = [
     'index.html',
     'entry.css',
+    'user-guide.html',
     'single.html',
     'workspace.css',
     'workspace.js',
     'simulator-core.js',
     'simulator.js',
+    'voice-control.js',
+    'voice-workspace.js',
+    'voice.css',
     'tactical.html',
     'tactical.css',
     'tactical-core.js',
@@ -44,4 +48,18 @@ test('asset synchronization includes the entry, single, and tactical QGH surface
     assert.match(sync, new RegExp("'" + file.replace('.', '\\.') + "'"));
     assert.match(verify, new RegExp("'" + file.replace('.', '\\.') + "'"));
   });
+});
+
+test('voice assets use the local-only bridge and are cached by the PWA shell', () => {
+  const workspace = readRepositoryFile('packages/qgh-engine/voice-workspace.js');
+  const worker = readRepositoryFile('apps/web/static/service-worker.js');
+  const single = readRepositoryFile('packages/qgh-engine/single.html');
+  const tactical = readRepositoryFile('packages/qgh-engine/tactical.html');
+
+  assert.match(workspace, /processLocally\s*=\s*true/);
+  assert.doesNotMatch(workspace, /\bfetch\s*\(/);
+  assert.match(worker, /'\.\/voice-control\.js'/);
+  assert.match(worker, /'\.\/voice-workspace\.js'/);
+  assert.match(single, /voice-workspace\.js/);
+  assert.match(tactical, /voice-workspace\.js/);
 });

@@ -11,9 +11,13 @@ const outputRoot = resolve(webRoot, 'dist');
 const engineFiles = [
   'index.html',
   'entry.css',
+  'user-guide.html',
   'single.html',
   'simulator-core.js',
   'simulator.js',
+  'voice-control.js',
+  'voice-workspace.js',
+  'voice.css',
   'workspace.css',
   'workspace.js',
   'tactical.html',
@@ -27,7 +31,7 @@ const engineFiles = [
   'fonts/OFL-1.1.txt',
 ];
 
-const pageFiles = ['index.html', 'single.html', 'tactical.html'];
+const pageFiles = ['index.html', 'user-guide.html', 'single.html', 'tactical.html'];
 const pwaFiles = [
   'manifest.webmanifest',
   'service-worker.js',

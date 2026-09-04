@@ -1,10 +1,10 @@
-# QGH Simulator web and iPhone deployment
+# QGH Voice web and iPhone deployment
 
 ## Purpose
 
-The web edition makes QGH Simulator available from a browser on iPhone, iPad, Android, Windows, macOS, and Linux. It packages the canonical simulator engine and is designed to work offline after the first successful load.
+The web edition makes QGH Voice available from a browser on iPhone, iPad, Android, Windows, macOS, and Linux. It packages the canonical simulator engine and is designed to work offline after the first successful load.
 
-It is a Progressive Web App (PWA), not an App Store package. The current simulator does not use a backend, cloud account, analytics, microphone, location, or device files. Its service worker stores only the application shell for offline use; no personal data or exercise state is retained after a reload.
+It is a Progressive Web App (PWA), not an App Store package. The current simulator does not use a backend, cloud account, analytics, location, or device files. Voice control requests microphone permission only when the user activates it and operates only with a compatible local speech-recognition service; it remains unavailable rather than using a cloud fallback. QGH itself makes no network request for audio, recognised speech, or exercise data. Its service worker stores only the application shell for offline use; no personal data or exercise state is retained after a reload.
 
 The hosted PWA is the supported iPhone and iPad route for this release.
 
@@ -22,7 +22,7 @@ This decision also controls how Windows and Android installers are distributed. 
 
 ## 1. Create and connect the GitHub repository
 
-Create a GitHub repository named `reds_atc_38703_AF` under the approved owner or organisation. Choose its visibility based on the access decision above. Do not upload installers, APKs, keystores, provisioning profiles, certificates, passwords, or local signing files.
+Create a GitHub repository named `qgh-voice` under the approved owner or organisation. Choose its visibility based on the access decision above. Do not upload installers, APKs, keystores, provisioning profiles, certificates, passwords, or local signing files.
 
 Build the public source release from a clean checkout. Do not run `git add .`; inspect and stage only the reviewed source paths. Never add generated installers, APKs, build folders, dependency folders, signing material, local state, or validation files for platforms that are not part of the release.
 
@@ -50,7 +50,7 @@ The output directory is `apps/web/dist`. The build copies only the current entry
 
 The repository includes a GitHub Actions deployment workflow. In the repository's **Settings** → **Pages**, select **GitHub Actions** as the build and deployment source. A push to `main` builds the PWA and deploys it to:
 
-`https://sportsofficer-sys.github.io/reds_atc_38703_AF/`
+`https://sportsofficer-sys.github.io/qgh-voice/`
 
 Wait for the **Deploy QGH PWA to GitHub Pages** workflow to complete, then run the checks in the next section before sharing the URL.
 
@@ -60,7 +60,7 @@ Before relying on the public deployment, protect `main` in **Settings** → **Br
 
 1. Sign in to the approved Cloudflare account.
 2. Open **Workers & Pages** and choose **Create application** → **Pages** → **Connect to Git**.
-3. Select the `reds_atc_38703_AF` repository.
+3. Select the `qgh-voice` repository.
 4. Use these build settings:
    - Framework preset: **None**
    - Build command: `node scripts/build-web.mjs`
@@ -81,10 +81,11 @@ Test the deployed URL on at least one desktop browser and one Android or iPhone 
 1. Open the entry page and run a Normal QGH exercise.
 2. Run a U/S Compass exercise.
 3. Run a Tactical QGH exercise.
-4. Terminate and review an exercise, including replay speed and zoom controls.
-5. Reload once after the initial successful load, then put the device into airplane mode and reopen the PWA. The application shell should still open.
-6. Confirm that starting a new exercise after a reload is expected; current exercise data is intentionally not persistent.
-7. Publish a harmless update to a test deployment and confirm the update notice does not reload an active console. Finish or terminate first, then choose **UPDATE**.
+4. Confirm manual controls still operate, then test press-to-talk with a compatible local speech service.
+5. Terminate and review an exercise, including replay speed and zoom controls.
+6. Reload once after the initial successful load, then put the device into airplane mode and reopen the PWA. The application shell should still open.
+7. Confirm that starting a new exercise after a reload is expected; current exercise data is intentionally not persistent.
+8. Publish a harmless update to a test deployment and confirm the update notice does not reload an active console. Finish or terminate first, then choose **UPDATE**.
 
 Safari requires manual device testing because it does not offer Chromium's `beforeinstallprompt` event. Test the actual **Add to Home Screen** flow rather than assuming a desktop browser represents Safari.
 
@@ -132,7 +133,7 @@ The PWA release record is the shared version source. For every simulator release
 2. From the repository root, run:
 
    ~~~powershell
-   .\scripts\Set-QghReleaseVersion.ps1 -Version 4.0.2 -AndroidVersionCode 12
+   .\scripts\Set-QghReleaseVersion.ps1 -Version 4.0.3 -AndroidVersionCode 13
    node .\scripts\verify-release-version.mjs
    ~~~
 

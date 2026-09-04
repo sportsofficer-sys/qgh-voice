@@ -1,0 +1,150 @@
+.voice-dock,
+.voice-dock * { box-sizing: border-box; }
+
+.voice-dock [hidden] { display: none !important; }
+
+.voice-dock {
+  position: fixed;
+  z-index: 40;
+  top: max(88px, calc(env(safe-area-inset-top, 0px) + 72px));
+  right: max(18px, env(safe-area-inset-right, 0px));
+  display: grid;
+  grid-template-columns: minmax(122px, 1fr) auto;
+  gap: 6px;
+  width: min(230px, calc(100vw - 36px));
+  border: 1px solid #b9c4bf;
+  border-radius: 12px;
+  background: #fffefa;
+  box-shadow: 0 10px 24px rgba(23, 38, 43, .12);
+  padding: 7px;
+}
+
+.voice-dock button {
+  min-height: 34px;
+  border: 1px solid #aebdba;
+  border-radius: 7px;
+  color: #17262b;
+  background: #fff;
+  font: 600 10px 'IBM Plex Sans', Arial, sans-serif;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+
+.voice-dock button:hover:not(:disabled) { border-color: #007d7d; }
+.voice-dock button:active:not(:disabled) { transform: translateY(1px); }
+
+.voice-dock button:focus-visible,
+.voice-dock input:focus-visible {
+  outline: 3px solid rgba(0, 125, 125, .24);
+  outline-offset: 2px;
+}
+
+.voice-mic {
+  border-color: #007d7d !important;
+  color: #fff !important;
+  background: #007d7d !important;
+}
+
+.voice-mic[data-listening='true'] {
+  background: #075e60 !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .36), 0 0 0 3px rgba(0, 125, 125, .14);
+}
+
+.voice-mic:disabled {
+  border-color: #cfd7d4 !important;
+  color: #71807d !important;
+  background: #eef1ef !important;
+  cursor: not-allowed;
+}
+
+.voice-settings-toggle {
+  min-width: 48px;
+  color: #075e60 !important;
+}
+
+.voice-status {
+  grid-column: 1 / -1;
+  display: block;
+  min-height: 14px;
+  overflow: hidden;
+  color: #617177;
+  font: 500 9px 'IBM Plex Mono', monospace;
+  letter-spacing: .06em;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-status[data-tone='active'] { color: #075e60; }
+.voice-status[data-tone='success'] { color: #16875f; }
+.voice-status[data-tone='error'] { color: #8d3338; }
+
+.voice-settings {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  gap: 10px;
+  width: min(256px, calc(100vw - 36px));
+  border: 1px solid #b9c4bf;
+  border-radius: 10px;
+  background: #fffefa;
+  box-shadow: 0 12px 28px rgba(23, 38, 43, .14);
+  padding: 12px;
+}
+
+.voice-continuous {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #17262b;
+  font: 600 10px 'IBM Plex Sans', Arial, sans-serif;
+  letter-spacing: .07em;
+}
+
+.voice-continuous input {
+  width: 17px;
+  height: 17px;
+  accent-color: #007d7d;
+}
+
+.voice-prepare {
+  width: 100%;
+  color: #075e60 !important;
+}
+
+.voice-settings small {
+  color: #617177;
+  font: 500 9px 'IBM Plex Mono', monospace;
+  letter-spacing: .08em;
+}
+
+@media (max-width: 760px) {
+  .app,
+  .tactical-app,
+  .entry-app {
+    padding-bottom: max(108px, calc(env(safe-area-inset-bottom, 0px) + 92px));
+  }
+
+  .voice-dock {
+    top: auto;
+    right: max(12px, env(safe-area-inset-right, 0px));
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    width: min(216px, calc(100vw - 24px));
+  }
+
+  .voice-settings {
+    top: auto;
+    right: 0;
+    bottom: calc(100% + 8px);
+  }
+}
+
+@media (max-width: 420px) {
+  .voice-dock {
+    grid-template-columns: minmax(108px, 1fr) auto;
+    width: min(198px, calc(100vw - 24px));
+  }
+
+  .voice-dock button { font-size: 9px; }
+}

@@ -4,7 +4,7 @@ const { fileURLToPath, pathToFileURL } = require('url');
 
 const appRoot = path.resolve(__dirname, 'app');
 const allowedPagePaths = new Set(
-  ['index.html', 'single.html', 'tactical.html'].map(page => path.resolve(appRoot, page))
+  ['index.html', 'user-guide.html', 'single.html', 'tactical.html'].map(page => path.resolve(appRoot, page))
 );
 
 function isAllowedLocalAppUrl(targetUrl) {
@@ -15,6 +15,28 @@ function isAllowedLocalAppUrl(targetUrl) {
   } catch {
     return false;
   }
+}
+
+function isTrustedLocalMainFrame(webContents, details) {
+  return Boolean(webContents)
+    && details?.isMainFrame === true
+    && typeof details.requestingUrl === 'string'
+    && isAllowedLocalAppUrl(webContents.getURL())
+    && isAllowedLocalAppUrl(details.requestingUrl);
+}
+
+function isTrustedAudioPermissionRequest(webContents, permission, details) {
+  return permission === 'media'
+    && isTrustedLocalMainFrame(webContents, details)
+    && Array.isArray(details.mediaTypes)
+    && details.mediaTypes.length === 1
+    && details.mediaTypes[0] === 'audio';
+}
+
+function isTrustedAudioPermissionCheck(webContents, permission, details) {
+  return permission === 'media'
+    && isTrustedLocalMainFrame(webContents, details)
+    && details.mediaType === 'audio';
 }
 
 function createWindow() {
@@ -44,8 +66,12 @@ function createWindow() {
   window.webContents.on('will-redirect', (event, targetUrl) => {
     if (!isAllowedLocalAppUrl(targetUrl)) event.preventDefault();
   });
-  window.webContents.session.setPermissionRequestHandler((_, __, callback) => callback(false));
-  window.webContents.session.setPermissionCheckHandler(() => false);
+  window.webContents.session.setPermissionRequestHandler((webContents, permission, callback, details) => {
+    callback(isTrustedAudioPermissionRequest(webContents, permission, details));
+  });
+  window.webContents.session.setPermissionCheckHandler((webContents, permission, _, details) => {
+    return isTrustedAudioPermissionCheck(webContents, permission, details);
+  });
   window.loadURL(startUrl);
 }
 

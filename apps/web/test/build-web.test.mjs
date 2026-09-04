@@ -22,9 +22,13 @@ test('web build creates an allowlisted PWA package', () => {
   const expectedFiles = [
     'index.html',
     'entry.css',
+    'user-guide.html',
     'single.html',
     'simulator-core.js',
     'simulator.js',
+    'voice-control.js',
+    'voice-workspace.js',
+    'voice.css',
     'workspace.css',
     'workspace.js',
     'tactical.html',
@@ -73,6 +77,7 @@ test('web build creates an allowlisted PWA package', () => {
   assert.equal(existsSync(resolve(outputRoot, 'state')), false, 'local state is excluded');
 
   const entry = readFileSync(resolve(outputRoot, 'index.html'), 'utf8');
+  const guide = readFileSync(resolve(outputRoot, 'user-guide.html'), 'utf8');
   const single = readFileSync(resolve(outputRoot, 'single.html'), 'utf8');
   const tactical = readFileSync(resolve(outputRoot, 'tactical.html'), 'utf8');
   const serviceWorker = readFileSync(resolve(outputRoot, 'service-worker.js'), 'utf8');
@@ -82,6 +87,8 @@ test('web build creates an allowlisted PWA package', () => {
   const headers = readFileSync(resolve(outputRoot, '_headers'), 'utf8');
   assert.match(entry, /manifest\.webmanifest/);
   assert.match(entry, /QGH_WEB_DISTRIBUTION/);
+  assert.match(guide, /manifest\.webmanifest/);
+  assert.match(guide, /pwa-register\.js/);
   assert.match(single, /worker-src 'self'/);
   assert.match(single, /pwa-register\.js/);
   assert.match(tactical, /manifest\.webmanifest/);

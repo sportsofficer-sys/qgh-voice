@@ -1,6 +1,6 @@
 # QGH Simulator web app
 
-This folder creates the hosted Progressive Web App (PWA) edition of QGH Simulator v4.0.2. It packages the canonical files in `packages/qgh-engine` into `apps/web/dist` without modifying the Windows or Android native bundles.
+This folder creates the hosted Progressive Web App (PWA) edition of QGH Voice v4.0.3. It packages the canonical files in `packages/qgh-engine` into `apps/web/dist` without modifying the Windows or Android native bundles.
 
 ## Build locally
 
@@ -19,6 +19,7 @@ Open `http://127.0.0.1:57172/index.html`. A service worker is enabled for HTTPS 
 - A service worker that caches only the QGH application shell for offline use after the first successful load.
 - User-controlled updates: an update never reloads an active exercise.
 - A hosted-web-only install area on the entry page. It is absent from the native application bundles.
+- Optional local-only voice control. It stays unavailable when a compatible local speech service is not installed.
 - A clean allowlist build that excludes local state, stale duplicate screens, tests, installers, and signing material.
 
 The simulator itself remains browser-only and keeps exercise state in memory. Reloading the page starts a new exercise; no flight data is stored by the PWA.

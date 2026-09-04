@@ -8,9 +8,13 @@ const APP_SHELL = [
   './',
   './index.html',
   './entry.css',
+  './user-guide.html',
   './single.html',
   './simulator-core.js',
   './simulator.js',
+  './voice-control.js',
+  './voice-workspace.js',
+  './voice.css',
   './workspace.css',
   './workspace.js',
   './tactical.html',
@@ -37,7 +41,7 @@ const APP_SHELL_PATHS = new Set(
   APP_SHELL.map(asset => new URL(asset, self.registration.scope).pathname)
 );
 const PAGE_SHELL_PATHS = new Set(
-  ['./', './index.html', './single.html', './tactical.html']
+  ['./', './index.html', './user-guide.html', './single.html', './tactical.html']
     .map(page => new URL(page, self.registration.scope).pathname)
 );
 let cachePromise;

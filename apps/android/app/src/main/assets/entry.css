@@ -69,10 +69,33 @@ body {
 .entry-brand h1,
 .entry-intro h2 { margin: 0; }
 
+.entry-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
 .entry-brand h1 {
   font-size: 21px;
   font-weight: 600;
   letter-spacing: .06em;
+}
+
+.entry-guide-link {
+  border-left: 1px solid var(--entry-line);
+  color: var(--entry-accent-dark);
+  padding-left: 14px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-decoration: none;
+}
+
+.entry-guide-link:hover { color: var(--entry-accent); }
+
+.entry-guide-link:focus-visible {
+  outline: 3px solid rgba(0, 125, 125, .28);
+  outline-offset: 3px;
 }
 
 .entry-credit {
@@ -194,6 +217,102 @@ body {
   line-height: 1.55;
 }
 
+.guide-app { padding-bottom: 52px; }
+
+.guide-card {
+  width: min(100%, 1040px);
+  margin: 42px auto 0;
+  border: 1px solid var(--entry-line);
+  border-radius: 18px;
+  background: var(--entry-card);
+  box-shadow: var(--entry-shadow);
+  padding: clamp(24px, 5vw, 52px);
+}
+
+.guide-intro > span,
+.guide-section h3,
+.guide-section h4,
+.guide-section-head > span,
+.guide-note {
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: .08em;
+}
+
+.guide-intro > span,
+.guide-section-head > span,
+.guide-note { color: var(--entry-muted); font-size: 10px; }
+
+.guide-intro h2 {
+  margin: 8px 0 10px;
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 400;
+  letter-spacing: -.04em;
+}
+
+.guide-intro p,
+.guide-section > p,
+.guide-section li,
+.guide-command-grid p {
+  color: #35454a;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.guide-intro p { max-width: 720px; margin: 0; }
+
+.guide-section {
+  border-top: 1px solid var(--entry-line);
+  margin-top: 30px;
+  padding-top: 26px;
+}
+
+.guide-section h3 {
+  margin: 0;
+  color: var(--entry-accent-dark);
+  font-size: 12px;
+}
+
+.guide-section h4 {
+  margin: 0 0 10px;
+  color: var(--entry-ink);
+  font-size: 10px;
+}
+
+.guide-section > p { margin: 12px 0 0; }
+.guide-section ol,
+.guide-section ul { margin: 12px 0 0; padding-left: 22px; }
+.guide-section li + li { margin-top: 6px; }
+
+.guide-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.guide-command-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.guide-command-grid > section {
+  border: 1px solid #c9d1cd;
+  border-radius: 10px;
+  background: #fff;
+  padding: 17px;
+}
+
+.guide-command-grid p {
+  margin: 7px 0 0;
+  font-size: 13px;
+}
+
+.guide-command-grid-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.guide-note { margin-top: 18px !important; line-height: 1.6 !important; }
+.guide-section-last { padding-bottom: 2px; }
+
 @media (max-width: 680px) {
   .entry-app {
     padding:
@@ -203,14 +322,20 @@ body {
       max(14px, env(safe-area-inset-left, 0px));
   }
   .entry-header { padding-top: 2px; }
+  .entry-brand { gap: 10px; }
+  .entry-guide-link { padding-left: 10px; }
   .entry-brand h1 { font-size: 18px; }
   .entry-credit { max-width: 150px; }
   .entry-credit span { font-size: 12px; }
   .entry-credit small { font-size: 8px; }
   .entry-stage { min-height: calc(100svh - 100px); padding: 32px 0; }
   .entry-card { border-radius: 16px; padding: 24px 18px; }
+  .guide-card { margin-top: 28px; border-radius: 14px; padding: 24px 18px; }
   .entry-options { grid-template-columns: 1fr; }
   .entry-option { min-height: 144px; }
+  .guide-command-grid,
+  .guide-command-grid-two { grid-template-columns: 1fr; }
+  .guide-section-head { align-items: flex-start; flex-direction: column; gap: 7px; }
 }
 
 @media (max-width: 390px) {

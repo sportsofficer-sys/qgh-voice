@@ -15,9 +15,13 @@ $targets = @{
 $engineFiles = @(
     'index.html',
     'entry.css',
+    'user-guide.html',
     'single.html',
     'simulator-core.js',
     'simulator.js',
+    'voice-control.js',
+    'voice-workspace.js',
+    'voice.css',
     'workspace.css',
     'workspace.js',
     'tactical.html',

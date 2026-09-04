@@ -1,8 +1,10 @@
-# reds_atc_38703_AF
+# QGH Voice
 
 Offline-first QGH training simulator for Windows, Android, iPhone, iPad, and modern web browsers.
 
-The simulator provides Normal QGH and U/S Compass exercises, live D/F homing and QTE/QDM displays, timed turns, aircraft-specific training defaults, and a recorded flight-path review. It is designed to work entirely offline after installation.
+See [USER_GUIDE.md](USER_GUIDE.md) for installation, exercise, replay, tactical, and voice-control guidance.
+
+The simulator provides Normal QGH and U/S Compass exercises, live D/F homing and QTE/QDM displays, timed turns, aircraft-specific training defaults, optional local voice control, and a recorded flight-path review. It is designed to work entirely offline after installation.
 
 ## Projects
 
@@ -33,14 +35,14 @@ $tests = Get-ChildItem .\packages\qgh-engine\test\*.test.js | ForEach-Object Ful
 node --test $tests .\apps\web\test\*.test.mjs
 ~~~
 
-The generated `apps/web/dist` directory supports a browser-installed PWA on desktop, Android, iPhone, and iPad. It works offline after the first successful load, but exercise data remains in memory and is intentionally cleared by a page reload. See [docs/WEB_PWA_DEPLOYMENT.md](docs/WEB_PWA_DEPLOYMENT.md) for Cloudflare Pages, GitHub, access-control, QR, iPhone installation, and release-download instructions.
+The generated `apps/web/dist` directory supports a browser-installed PWA on desktop, Android, iPhone, and iPad. It works offline after the first successful load, but exercise data remains in memory and is intentionally cleared by a page reload. The public PWA is published independently at `https://sportsofficer-sys.github.io/qgh-voice/` after its Pages workflow completes. See [docs/WEB_PWA_DEPLOYMENT.md](docs/WEB_PWA_DEPLOYMENT.md) for Cloudflare Pages, GitHub, access-control, QR, iPhone installation, and release-download instructions.
 
 ### Versioned releases
 
 The PWA release record at 'apps/web/static/app-version.json' is shared by every platform. Set every platform's version together, then verify it before building:
 
 ~~~powershell
-.\scripts\Set-QghReleaseVersion.ps1 -Version 4.0.2 -AndroidVersionCode 12
+.\scripts\Set-QghReleaseVersion.ps1 -Version 4.0.3 -AndroidVersionCode 13
 node .\scripts\verify-release-version.mjs
 ~~~
 
