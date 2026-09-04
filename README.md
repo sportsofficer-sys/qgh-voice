@@ -4,7 +4,7 @@ Offline-first QGH training simulator for Windows, Android, iPhone, iPad, and mod
 
 See [USER_GUIDE.md](USER_GUIDE.md) for installation, exercise, replay, tactical, and voice-control guidance.
 
-The simulator provides Normal QGH and U/S Compass exercises, live D/F homing and QTE/QDM displays, timed turns, aircraft-specific training defaults, optional local voice control, and a recorded flight-path review. It is designed to work entirely offline after installation.
+The simulator provides Normal QGH and U/S Compass exercises, live D/F homing and QTE/QDM displays, timed turns, aircraft-specific training defaults, an optional guided familiarisation, local offline voice control, and a recorded flight-path review. It is designed to work entirely offline after installation.
 
 ## Projects
 
@@ -35,14 +35,14 @@ $tests = Get-ChildItem .\packages\qgh-engine\test\*.test.js | ForEach-Object Ful
 node --test $tests .\apps\web\test\*.test.mjs
 ~~~
 
-The generated `apps/web/dist` directory supports a browser-installed PWA on desktop, Android, iPhone, and iPad. It works offline after the first successful load, but exercise data remains in memory and is intentionally cleared by a page reload. The public PWA is published independently at `https://sportsofficer-sys.github.io/qgh-voice/` after its Pages workflow completes. See [docs/WEB_PWA_DEPLOYMENT.md](docs/WEB_PWA_DEPLOYMENT.md) for Cloudflare Pages, GitHub, access-control, QR, iPhone installation, and release-download instructions.
+The generated `apps/web/dist` directory supports a browser-installed PWA on desktop, Android, iPhone, and iPad. It works offline after the first successful load, but exercise data remains in memory and is intentionally cleared by a page reload. Browser voice use has one additional, user-selected first-time step: open **VOICE** and select **SET UP OFFLINE VOICE** while online to cache the self-hosted Vosk model (about 40 MB). Windows and Android package that model locally. The public PWA is published independently at `https://sportsofficer-sys.github.io/qgh-voice/` after its Pages workflow completes. See [docs/WEB_PWA_DEPLOYMENT.md](docs/WEB_PWA_DEPLOYMENT.md) for Cloudflare Pages, GitHub, access-control, QR, iPhone installation, and release-download instructions.
 
 ### Versioned releases
 
 The PWA release record at 'apps/web/static/app-version.json' is shared by every platform. Set every platform's version together, then verify it before building:
 
 ~~~powershell
-.\scripts\Set-QghReleaseVersion.ps1 -Version 4.0.3 -AndroidVersionCode 13
+.\scripts\Set-QghReleaseVersion.ps1 -Version 4.1.0 -AndroidVersionCode 14
 node .\scripts\verify-release-version.mjs
 ~~~
 
@@ -79,7 +79,7 @@ Use the hosted PWA in Safari. Its installation and offline-use instructions are 
 
 ## Privacy and security
 
-All shipped app variants are intended to be offline-first. The hosted PWA caches only its same-origin application shell; it does not retain exercise tracks or download installers into its cache. Do not add signing keys, provisioning profiles, credentials, installers, or generated builds to this repository.
+All shipped app variants are intended to be offline-first. The hosted PWA caches its same-origin application shell and, only after the user chooses voice setup, its same-origin Vosk model. It does not retain exercise tracks or cache installers. Do not add signing keys, provisioning profiles, credentials, installers, or generated builds to this repository.
 
 See SECURITY.md for reporting guidance.
 

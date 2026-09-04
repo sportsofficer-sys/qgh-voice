@@ -27,8 +27,11 @@ test('web build creates an allowlisted PWA package', () => {
     'simulator-core.js',
     'simulator.js',
     'voice-control.js',
+    'offline-voice-engine.js',
     'voice-workspace.js',
     'voice.css',
+    'guided-familiarisation.js',
+    'guided-familiarisation.css',
     'workspace.css',
     'workspace.js',
     'tactical.html',
@@ -40,6 +43,10 @@ test('web build creates an allowlisted PWA package', () => {
     'fonts/ibm-plex-sans-400.ttf',
     'fonts/ibm-plex-sans-600.ttf',
     'fonts/OFL-1.1.txt',
+    'vendor/vosk-browser-0.0.8.js',
+    'vendor/Apache-2.0.txt',
+    'voice-models/qgh-vosk-en-us-small-0.15.tar.gz',
+    'voice-models/NOTICE.txt',
     'manifest.webmanifest',
     'service-worker.js',
     'pwa-register.js',
@@ -90,6 +97,8 @@ test('web build creates an allowlisted PWA package', () => {
   assert.match(guide, /manifest\.webmanifest/);
   assert.match(guide, /pwa-register\.js/);
   assert.match(single, /worker-src 'self'/);
+  assert.match(single, /offline-voice-engine\.js/);
+  assert.match(single, /guided-familiarisation\.js/);
   assert.match(single, /pwa-register\.js/);
   assert.match(tactical, /manifest\.webmanifest/);
   assert.match(tactical, /worker-src 'self'/);
@@ -97,6 +106,8 @@ test('web build creates an allowlisted PWA package', () => {
   assert.match(tactical, /pwa-register\.js/);
   assert.match(serviceWorker, /const APP_SHELL_PATHS = new Set/);
   assert.match(serviceWorker, /function shellCacheKey\(request\)/);
+  assert.match(serviceWorker, /VOICE_MODEL_URL/);
+  assert.match(serviceWorker, /isVoiceModelRequest/);
   assert.match(serviceWorker, /if \(!cacheKey\) return;/);
   assert.match(serviceWorker, /return \(await openCache\(\)\)\.match\(cacheKey\);/);
   assert.doesNotMatch(serviceWorker, /cache\.put\(/);

@@ -4,7 +4,9 @@
 
 This repository contains an offline-first aviation-training simulator for Windows, Android, and hosted web browsers, including browser-installed PWA use on iPhone and iPad. It should not send simulator inputs, exercise results, or user information to a server.
 
-Android and Windows packages should retain their local-only content-security policy when the shared engine is updated. The hosted PWA may cache only its same-origin application shell; do not add exercise data, credentials, installer binaries, or arbitrary third-party responses to the service-worker cache.
+Android and Windows packages should retain their local-only content-security policy when the shared engine is updated. The hosted PWA may cache only its same-origin application shell and, after the user explicitly selects offline voice setup, its fixed self-hosted Vosk model. Do not add exercise data, credentials, installer binaries, or arbitrary third-party responses to the service-worker cache.
+
+The self-hosted Vosk browser adapter requires WebAssembly and its pinned worker bundle currently requires the narrowly scoped `wasm-unsafe-eval` and `unsafe-eval` script-policy allowances. Keep all scripts self-hosted, retain the remaining restrictive policy directives, and do not add external script or network origins.
 
 ## Reporting a concern
 

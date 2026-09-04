@@ -1,0 +1,9 @@
+QGH Simulator offline voice pack
+
+Contents: Vosk small US English model 0.15
+Source: https://alphacephei.com/vosk/models
+Licence: Apache License 2.0
+
+This archive is an unmodified repackaging of the public Vosk model directory
+into a gzip-compressed tar archive for the bundled browser worker. It contains
+no exercise data, recorded speech, controller data, or user data.

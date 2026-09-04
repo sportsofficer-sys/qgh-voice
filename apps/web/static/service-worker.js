@@ -3,6 +3,8 @@ const cacheScope = new URL(self.registration.scope).pathname
   .replace(/^-|-$/g, '') || 'root';
 const CACHE_PREFIX = `qgh-simulator-${cacheScope}-`;
 const CACHE_NAME = `${CACHE_PREFIX}v__QGH_VERSION__`;
+const VOICE_CACHE_NAME = 'qgh-offline-voice-pack-v1';
+const VOICE_MODEL_URL = new URL('./voice-models/qgh-vosk-en-us-small-0.15.tar.gz', self.registration.scope).href;
 const LEGACY_CACHE_NAMES = new Set(['qgh-simulator-v4.0.1']);
 const APP_SHELL = [
   './',
@@ -14,7 +16,10 @@ const APP_SHELL = [
   './simulator.js',
   './voice-control.js',
   './voice-workspace.js',
+  './offline-voice-engine.js',
   './voice.css',
+  './guided-familiarisation.js',
+  './guided-familiarisation.css',
   './workspace.css',
   './workspace.js',
   './tactical.html',
@@ -32,6 +37,9 @@ const APP_SHELL = [
   './pwa-register.js',
   './web-distribution.js',
   './release-links.js',
+  './vendor/vosk-browser-0.0.8.js',
+  './vendor/Apache-2.0.txt',
+  './voice-models/NOTICE.txt',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',
@@ -69,6 +77,16 @@ async function cachedShell(cacheKey) {
   return (await openCache()).match(cacheKey);
 }
 
+function isVoiceModelRequest(request) {
+  if (request.method !== 'GET') return false;
+  const url = new URL(request.url);
+  return url.href === VOICE_MODEL_URL;
+}
+
+async function cachedVoiceModel() {
+  return (await caches.open(VOICE_CACHE_NAME)).match(VOICE_MODEL_URL);
+}
+
 self.addEventListener('install', event => {
   event.waitUntil(openCache().then(cache => cache.addAll(APP_SHELL)));
 });
@@ -91,6 +109,18 @@ self.addEventListener('message', event => {
 
 self.addEventListener('fetch', event => {
   const { request } = event;
+  if (isVoiceModelRequest(request)) {
+    event.respondWith((async () => {
+      const cachedResponse = await cachedVoiceModel();
+      if (cachedResponse) return cachedResponse;
+      try {
+        return await fetch(request);
+      } catch {
+        return new Response('', { status: 504, statusText: 'Offline voice pack unavailable' });
+      }
+    })());
+    return;
+  }
   const cacheKey = shellCacheKey(request);
   if (!cacheKey) return;
 

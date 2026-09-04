@@ -4,7 +4,7 @@
 
 The web edition makes QGH Voice available from a browser on iPhone, iPad, Android, Windows, macOS, and Linux. It packages the canonical simulator engine and is designed to work offline after the first successful load.
 
-It is a Progressive Web App (PWA), not an App Store package. The current simulator does not use a backend, cloud account, analytics, location, or device files. Voice control requests microphone permission only when the user activates it and operates only with a compatible local speech-recognition service; it remains unavailable rather than using a cloud fallback. QGH itself makes no network request for audio, recognised speech, or exercise data. Its service worker stores only the application shell for offline use; no personal data or exercise state is retained after a reload.
+It is a Progressive Web App (PWA), not an App Store package. The current simulator does not use a backend, cloud account, analytics, location, or device files. Voice control requests microphone permission only when the user activates it and uses the self-hosted Vosk offline engine; it remains unavailable rather than using a cloud fallback. On first voice use, the user selects **SET UP OFFLINE VOICE** while online to cache the model (about 40 MB). Apart from that same-origin model request, QGH makes no network request for audio, recognised speech, or exercise data. Its service worker stores the application shell and the user-requested voice model for offline use; no personal data or exercise state is retained after a reload.
 
 The hosted PWA is the supported iPhone and iPad route for this release.
 
@@ -78,14 +78,15 @@ For a custom domain later, add it through the Pages project's **Custom domains**
 
 Test the deployed URL on at least one desktop browser and one Android or iPhone browser before distributing it:
 
-1. Open the entry page and run a Normal QGH exercise.
-2. Run a U/S Compass exercise.
-3. Run a Tactical QGH exercise.
-4. Confirm manual controls still operate, then test press-to-talk with a compatible local speech service.
-5. Terminate and review an exercise, including replay speed and zoom controls.
-6. Reload once after the initial successful load, then put the device into airplane mode and reopen the PWA. The application shell should still open.
-7. Confirm that starting a new exercise after a reload is expected; current exercise data is intentionally not persistent.
-8. Publish a harmless update to a test deployment and confirm the update notice does not reload an active console. Finish or terminate first, then choose **UPDATE**.
+1. Open the entry page. Verify the optional Guided Familiarisation can be started, skipped, and reopened through **Guided Tour**.
+2. Run a Normal QGH exercise.
+3. Run a U/S Compass exercise.
+4. Run a Tactical QGH exercise.
+5. Confirm manual controls still operate. While online, open **VOICE**, select **SET UP OFFLINE VOICE**, then test **PTT** and Continuous Listening, including the assistant's **Stop** action.
+6. Terminate and review an exercise, including replay speed and zoom controls.
+7. Reload once after the initial successful load and voice setup, then put the device into airplane mode and reopen the PWA. The application shell and prepared offline voice feature should still open.
+8. Confirm that starting a new exercise after a reload is expected; current exercise data is intentionally not persistent.
+9. Publish a harmless update to a test deployment and confirm the update notice does not reload an active console. Finish or terminate first, then choose **UPDATE**.
 
 Safari requires manual device testing because it does not offer Chromium's `beforeinstallprompt` event. Test the actual **Add to Home Screen** flow rather than assuming a desktop browser represents Safari.
 
@@ -133,7 +134,7 @@ The PWA release record is the shared version source. For every simulator release
 2. From the repository root, run:
 
    ~~~powershell
-   .\scripts\Set-QghReleaseVersion.ps1 -Version 4.0.3 -AndroidVersionCode 13
+   .\scripts\Set-QghReleaseVersion.ps1 -Version 4.1.0 -AndroidVersionCode 14
    node .\scripts\verify-release-version.mjs
    ~~~
 
@@ -145,9 +146,9 @@ The web build injects the shared release version into the cache name, entry-page
 
 ## Security boundaries
 
-- The PWA caches only its same-origin application shell. It does not cache installer links, user inputs, or exercise tracks.
+- The PWA caches its same-origin application shell and, only after explicit user setup, the same-origin offline voice model. It does not cache installer links, user inputs, or exercise tracks.
 - The service worker accepts only same-origin GET requests.
-- The browser content-security policy blocks network connections from the simulator (`connect-src 'none'`) and restricts scripts, styles, images, and workers to the site itself.
+- The browser content-security policy permits same-origin model retrieval through `connect-src 'self'` and restricts scripts, styles, images, and workers to self-hosted content. The bundled Vosk WebAssembly adapter requires the narrowly scoped `wasm-unsafe-eval` and `unsafe-eval` script permissions; no third-party script or cloud speech endpoint is allowed.
 - Release links use `rel="noopener noreferrer"` and accept only HTTPS URLs.
 - The native apps remain local-only and do not gain web links, service workers, or external navigation from this work.
 

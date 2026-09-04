@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#007d7d">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
   <title>QGH Simulator User Guide</title>
-  <link rel="stylesheet" href="entry.css?v=4.0.3">
+  <link rel="stylesheet" href="entry.css?v=4.1.0">
 </head>
 <body>
   <main class="entry-app guide-app">
@@ -17,7 +17,7 @@
 
     <article class="guide-card" aria-labelledby="guideTitle">
       <header class="guide-intro">
-        <span>USER GUIDE · VERSION 4.0.3</span>
+        <span>USER GUIDE · VERSION 4.1.0</span>
         <h2 id="guideTitle">QGH Simulator</h2>
         <p>Training use only. Verify all operational procedures against current authorised publications and local instructions.</p>
       </header>
@@ -25,7 +25,7 @@
       <section class="guide-section" aria-labelledby="guideStart">
         <h3 id="guideStart">STARTING AN EXERCISE</h3>
         <ol>
-          <li>Choose <b>Single Aircraft QGH</b> or <b>Tactical QGH</b>.</li>
+          <li>Choose <b>Single Aircraft QGH</b> or <b>Tactical QGH</b>. The optional first-run Guided Familiarisation can be skipped or reopened from <b>GUIDED TOUR</b>.</li>
           <li>Enter runway orientation, outbound track, inbound / final track, aircraft profile, range, speed and turn rate.</li>
           <li>Select <b>Normal QGH</b> or <b>U/S Compass</b>, then start the exercise.</li>
           <li>Use D/F transmit, turn, speed, clock and advance controls. Termination opens the recorded flight-path review.</li>
@@ -37,7 +37,7 @@
           <h3 id="guideVoice">LOCAL VOICE CONTROL</h3>
           <span>PRESS TO TALK BY DEFAULT</span>
         </div>
-        <p>Hold <b>HOLD TO TALK</b>, say one complete command, then release. Open <b>VOICE</b> to choose Continuous Listening. Recognition is local only; no cloud speech fallback is used. On Android, on-device voice is available on supported Android 12 or later devices with a local English pack. If the device reports that local voice is unavailable, continue with the normal controls or prepare the offered local voice pack.</p>
+        <p>Hold <b>PTT</b>, say one complete command, then release. Open <b>VOICE</b> and select <b>SET UP OFFLINE VOICE</b> before first use. Continuous Listening is optional and shows a compact voice-assistant panel with a clear stop action. Recognition uses the local Vosk engine only; no cloud speech fallback is used. The PWA saves its self-hosted voice model after the user-selected setup step, while Windows and Android include it with the app. If setup or microphone access is unavailable, continue with the normal controls.</p>
         <div class="guide-command-grid">
           <section>
             <h4>SETUP</h4>

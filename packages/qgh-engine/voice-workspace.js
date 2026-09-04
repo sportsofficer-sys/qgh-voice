@@ -5,18 +5,13 @@
   const Voice = root.QGHVoiceControl;
   if (!documentRef || !Voice) return;
 
-  const LOCAL_LANGUAGE = 'en-IN';
-  const LOCAL_PACK_CHECK = { langs: [LOCAL_LANGUAGE], processLocally: true };
+  const OfflineVoice = root.QGHOfflineVoiceEngine;
   const RECENT_TRANSCRIPT_WINDOW_MS = 900;
-  const PACK_RECHECK_DELAY_MS = 1000;
-  const MAX_PACK_RECHECKS = 15;
   const $ = id => documentRef.getElementById(id);
   const state = {
-    recognition: null,
-    recognitionConstructor: null,
+    engine: null,
     listening: false,
     starting: false,
-    stopping: false,
     pressHeld: false,
     continuous: false,
     manuallyStopped: false,
@@ -25,18 +20,18 @@
     lastTranscriptAt: 0,
     statusTimer: null,
     restartTimer: null,
-    packRecheckTimer: null,
-    packRecheckAttempts: 0,
+    readinessTimer: null,
     availabilityPromise: null,
-    installPromise: null,
+    preparePromise: null,
     startAttempt: 0,
-    dock: null,
     mic: null,
     status: null,
     settings: null,
     settingsToggle: null,
     continuousInput: null,
-    prepareButton: null
+    prepareButton: null,
+    assistantPanel: null,
+    engineNote: null
   };
 
   function pageKind() {
@@ -72,7 +67,7 @@
     if (tone === 'success') {
       state.statusTimer = root.setTimeout(() => {
         if (state.listening) setStatus('LISTENING', 'active');
-        else if (state.localAvailability === 'ready') setStatus('HOLD TO TALK', 'neutral');
+        else if (state.localAvailability === 'ready') setStatus('PTT READY', 'neutral');
       }, 2400);
     }
   }
@@ -90,47 +85,33 @@
     state.restartTimer = null;
   }
 
-  function clearPackRecheck() {
-    root.clearTimeout(state.packRecheckTimer);
-    state.packRecheckTimer = null;
-    state.packRecheckAttempts = 0;
-  }
-
   function updateMicState() {
     if (!state.mic) return;
     state.mic.setAttribute('aria-pressed', String(state.listening));
     state.mic.dataset.listening = String(state.listening);
     state.mic.disabled = ['unavailable', 'downloadable', 'downloading'].includes(state.localAvailability);
-    state.mic.textContent = state.continuous ? 'VOICE' : 'HOLD TO TALK';
+    state.mic.textContent = state.continuous ? 'VOICE' : 'PTT';
+    state.mic.setAttribute('aria-label', state.continuous
+      ? 'Stop or resume continuous local voice listening'
+      : 'Press and hold to talk using local voice recognition');
     if (state.continuousInput) {
       state.continuousInput.checked = state.continuous;
       state.continuousInput.disabled = state.localAvailability !== 'ready';
     }
     if (state.prepareButton) {
-      state.prepareButton.disabled = state.localAvailability === 'downloading' || Boolean(state.installPromise);
+      state.prepareButton.disabled = state.localAvailability === 'downloading' || Boolean(state.preparePromise);
     }
+    if (state.engineNote) {
+      state.engineNote.textContent = state.localAvailability === 'ready'
+        ? 'OFFLINE VOICE READY'
+        : 'ON-DEVICE SPEECH ONLY';
+    }
+    if (state.assistantPanel) state.assistantPanel.hidden = !(state.continuous && (state.listening || state.starting));
   }
 
   function updatePrepareVisibility(visible) {
     if (!state.prepareButton) return;
     state.prepareButton.hidden = !visible;
-  }
-
-  function schedulePackRecheck() {
-    if (nativeVoiceBridge() || state.localAvailability !== 'downloading' || state.packRecheckTimer) return;
-    if (state.packRecheckAttempts >= MAX_PACK_RECHECKS) {
-      state.localAvailability = 'unavailable';
-      updatePrepareVisibility(false);
-      updateMicState();
-      setStatus('LOCAL VOICE UNAVAILABLE', 'error');
-      return;
-    }
-    state.packRecheckAttempts += 1;
-    state.packRecheckTimer = root.setTimeout(async () => {
-      state.packRecheckTimer = null;
-      await checkLocalAvailability({ force: true, fromPackRecheck: true });
-      if (state.localAvailability === 'downloading') schedulePackRecheck();
-    }, PACK_RECHECK_DELAY_MS);
   }
 
   function setSettingsOpen(open) {
@@ -590,13 +571,6 @@
     return outcome;
   }
 
-  function canContinueListening() {
-    return state.continuous
-      && !state.manuallyStopped
-      && state.localAvailability === 'ready'
-      && documentRef.visibilityState === 'visible';
-  }
-
   function scheduleContinuousRestart() {
     if (!canContinueListening() || state.listening || state.starting || state.restartTimer) return;
     clearRestartTimer();
@@ -606,29 +580,81 @@
     }, 180);
   }
 
+  // The browser path below is deliberately independent of browser-provider speech services. Windows and
+  // the PWA use the bundled Vosk WebAssembly worker; Android presents the same contract
+  // through its bundled Vosk bridge.
+  function grammarContext() {
+    return { callsigns: tacticalCallsignOptions() };
+  }
+
+  function currentGrammar() {
+    return typeof OfflineVoice?.buildQghGrammar === 'function'
+      ? OfflineVoice.buildQghGrammar(grammarContext())
+      : [];
+  }
+
+  function clearReadinessTimer() {
+    root.clearTimeout(state.readinessTimer);
+    state.readinessTimer = null;
+  }
+
+  function rememberTranscript(transcript) {
+    const normalized = Voice.normalizeTranscript(transcript);
+    const now = Date.now();
+    if (!normalized || (normalized === state.lastTranscript && now - state.lastTranscriptAt < RECENT_TRANSCRIPT_WINDOW_MS)) return;
+    state.lastTranscript = normalized;
+    state.lastTranscriptAt = now;
+    dispatchTranscript(transcript);
+  }
+
+  function ensureOfflineEngine() {
+    if (state.engine) return state.engine;
+    if (!OfflineVoice || typeof OfflineVoice.create !== 'function') return null;
+    state.engine = OfflineVoice.create({
+      onEnded: () => handleRecognitionEnd()
+    });
+    return state.engine;
+  }
+
+  function nativeCapability() {
+    const bridge = nativeVoiceBridge();
+    if (!bridge) return null;
+    try { return String(bridge.getCapability() || 'unavailable'); } catch { return 'unavailable'; }
+  }
+
+  function scheduleNativeReadinessCheck() {
+    if (!nativeVoiceBridge() || state.localAvailability !== 'downloading' || state.readinessTimer) return;
+    state.readinessTimer = root.setTimeout(async () => {
+      state.readinessTimer = null;
+      await checkLocalAvailability({ force: true });
+      if (state.localAvailability === 'downloading') scheduleNativeReadinessCheck();
+    }, 650);
+  }
+
+  function canContinueListening() {
+    return state.continuous
+      && !state.manuallyStopped
+      && state.localAvailability === 'ready'
+      && documentRef.visibilityState === 'visible';
+  }
+
   function handleTerminalRecognitionError(error) {
     clearRestartTimer();
-    clearPackRecheck();
+    clearReadinessTimer();
     state.startAttempt += 1;
     state.starting = false;
-    state.stopping = false;
     state.listening = false;
     state.manuallyStopped = true;
     state.pressHeld = false;
     state.continuous = false;
-    if (error === 'language-not-supported') {
-      state.localAvailability = 'downloadable';
-      updatePrepareVisibility(true);
-      setStatus('PREPARE LOCAL VOICE', 'neutral');
-    } else if (error === 'not-allowed' || error === 'service-not-allowed') {
+    if (error === 'not-allowed' || error === 'service-not-allowed') {
       state.localAvailability = 'permission-denied';
-      updatePrepareVisibility(false);
       setStatus('MICROPHONE ACCESS DENIED', 'error');
     } else {
       state.localAvailability = 'unavailable';
-      updatePrepareVisibility(false);
-      setStatus('LOCAL VOICE UNAVAILABLE', 'error');
+      setStatus('OFFLINE VOICE UNAVAILABLE', 'error');
     }
+    updatePrepareVisibility(state.localAvailability === 'unavailable' && !nativeVoiceBridge());
     updateMicState();
   }
 
@@ -639,12 +665,11 @@
 
   function handleRecognitionEnd() {
     state.starting = false;
-    state.stopping = false;
     state.listening = false;
     updateMicState();
     if (canContinueListening()) scheduleContinuousRestart();
     else if (state.pressHeld && !state.continuous && !state.manuallyStopped && state.localAvailability === 'ready') beginListening(false);
-    else if (state.localAvailability === 'ready') setStatus('HOLD TO TALK', 'neutral');
+    else if (state.localAvailability === 'ready') setStatus('PTT READY', 'neutral');
   }
 
   function receiveNativeVoiceEvent(event) {
@@ -656,14 +681,13 @@
         return;
       }
       state.starting = false;
-      state.stopping = false;
       state.listening = true;
       updateMicState();
-      setStatus('LISTENING', 'active');
+      setStatus(state.continuous ? 'VOICE ASSISTANT LISTENING' : 'LISTENING', 'active');
       return;
     }
     if (event.type === 'result') {
-      if (typeof event.transcript === 'string' && event.transcript.trim()) dispatchTranscript(event.transcript);
+      if (typeof event.transcript === 'string') rememberTranscript(event.transcript);
       return;
     }
     if (event.type === 'error') {
@@ -673,169 +697,104 @@
     if (event.type === 'ended') handleRecognitionEnd();
   }
 
-  function initializeRecognition() {
-    if (nativeVoiceBridge()) return null;
-    if (state.recognition) return state.recognition;
-    const Recognition = root.SpeechRecognition || root.webkitSpeechRecognition;
-    if (typeof Recognition !== 'function') {
-      state.localAvailability = 'unavailable';
-      updateMicState();
-      setStatus('LOCAL VOICE UNAVAILABLE', 'error');
-      return null;
-    }
-    try {
-      const recognition = new Recognition();
-      if (!('processLocally' in recognition)) {
-        state.localAvailability = 'unavailable';
-        updateMicState();
-        setStatus('LOCAL VOICE UNAVAILABLE', 'error');
-        return null;
-      }
-      recognition.lang = LOCAL_LANGUAGE;
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-      recognition.processLocally = true;
-      recognition.onstart = () => {
-        if (state.manuallyStopped || (!state.continuous && !state.pressHeld)) {
-          state.starting = false;
-          try {
-            if (typeof recognition.abort === 'function') recognition.abort();
-            else recognition.stop();
-          } catch { /* The cancelled recognizer has already stopped. */ }
-          return;
-        }
-        state.starting = false;
-        state.stopping = false;
-        state.listening = true;
-        updateMicState();
-        setStatus('LISTENING', 'active');
-      };
-      recognition.onresult = event => {
-        for (let index = event.resultIndex; index < event.results.length; index += 1) {
-          const item = event.results[index];
-          if (!item?.isFinal) continue;
-          const transcript = item[0]?.transcript || '';
-          const normalized = Voice.normalizeTranscript(transcript);
-          const now = Date.now();
-          if (!normalized || (normalized === state.lastTranscript && now - state.lastTranscriptAt < RECENT_TRANSCRIPT_WINDOW_MS)) continue;
-          state.lastTranscript = normalized;
-          state.lastTranscriptAt = now;
-          dispatchTranscript(transcript);
-        }
-      };
-      recognition.onerror = event => {
-        handleRecognitionError(event.error);
-      };
-      recognition.onend = handleRecognitionEnd;
-      state.recognition = recognition;
-      state.recognitionConstructor = Recognition;
-      return recognition;
-    } catch {
-      state.localAvailability = 'unavailable';
-      updateMicState();
-      setStatus('LOCAL VOICE UNAVAILABLE', 'error');
-      return null;
+  function updatePreparationProgress(progress) {
+    if (!progress || state.localAvailability !== 'downloading') return;
+    if (progress.phase === 'downloading' && Number.isFinite(progress.loaded) && Number.isFinite(progress.total) && progress.total > 0) {
+      const percent = Math.max(0, Math.min(100, Math.round((progress.loaded / progress.total) * 100)));
+      setStatus(`DOWNLOADING OFFLINE VOICE ${percent}%`, 'active');
+    } else if (progress.phase === 'cached') {
+      setStatus('PREPARING OFFLINE VOICE', 'active');
     }
   }
 
   async function checkLocalAvailability(options) {
     const force = Boolean(options?.force);
-    const nativeBridge = nativeVoiceBridge();
-    if (nativeBridge) {
-      let capability = 'unavailable';
-      try { capability = String(nativeBridge.getCapability() || 'unavailable'); } catch { /* Native bridge is unavailable. */ }
-      state.localAvailability = capability === 'available' ? 'ready' : 'unavailable';
-      updatePrepareVisibility(false);
-      updateMicState();
-      if (state.localAvailability !== 'ready') setStatus('LOCAL VOICE UNAVAILABLE', 'error');
-      return state.localAvailability === 'ready';
-    }
-    if (!force && state.localAvailability === 'ready') return true;
-    if (state.availabilityPromise) return state.availabilityPromise;
-
-    const check = (async () => {
-      const recognition = initializeRecognition();
-      if (!recognition) return false;
-      const Recognition = state.recognitionConstructor;
-      if (typeof Recognition.available !== 'function') {
+    const bridge = nativeVoiceBridge();
+    if (bridge) {
+      const capability = nativeCapability();
+      if (capability === 'available') {
+        clearReadinessTimer();
         state.localAvailability = 'ready';
+        updatePrepareVisibility(false);
         updateMicState();
         return true;
       }
-      try {
-        const availability = await Recognition.available(LOCAL_PACK_CHECK);
-        state.localAvailability = availability;
-        updatePrepareVisibility(availability === 'downloadable');
+      if (capability === 'preparing') {
+        state.localAvailability = 'downloading';
+        updatePrepareVisibility(false);
         updateMicState();
-        if (availability === 'available') {
-          state.localAvailability = 'ready';
-          clearPackRecheck();
-          updatePrepareVisibility(false);
-          updateMicState();
-          return true;
-        }
-        if (availability === 'downloadable') {
-          clearPackRecheck();
-          setSettingsOpen(true);
-          setStatus('PREPARE LOCAL VOICE', 'neutral');
-        } else if (availability === 'downloading') {
-          setStatus('LOCAL VOICE PREPARING', 'active');
-          if (!options?.fromPackRecheck) schedulePackRecheck();
-        } else {
-          clearPackRecheck();
-          setStatus('LOCAL VOICE UNAVAILABLE', 'error');
-        }
-      } catch {
-        clearPackRecheck();
-        state.localAvailability = 'unavailable';
-        updateMicState();
-        setStatus('LOCAL VOICE UNAVAILABLE', 'error');
+        setStatus('PREPARING OFFLINE VOICE', 'active');
+        scheduleNativeReadinessCheck();
+        return false;
       }
+      state.localAvailability = 'unavailable';
+      updatePrepareVisibility(false);
+      updateMicState();
+      setStatus('OFFLINE VOICE UNAVAILABLE', 'error');
+      return false;
+    }
+
+    if (!force && state.localAvailability === 'ready') return true;
+    if (state.availabilityPromise) return state.availabilityPromise;
+    const task = (async () => {
+      const engine = ensureOfflineEngine();
+      if (!engine || !OfflineVoice?.supportsOfflineVoice?.()) {
+        state.localAvailability = 'unavailable';
+        updatePrepareVisibility(false);
+        updateMicState();
+        setStatus('OFFLINE VOICE UNAVAILABLE', 'error');
+        return false;
+      }
+      if (engine.isReady()) {
+        state.localAvailability = 'ready';
+        updatePrepareVisibility(false);
+        updateMicState();
+        return true;
+      }
+      state.localAvailability = 'downloadable';
+      updatePrepareVisibility(true);
+      updateMicState();
+      setSettingsOpen(true);
+      setStatus('SET UP OFFLINE VOICE', 'neutral');
       return false;
     })();
-    state.availabilityPromise = check;
-    try {
-      return await check;
-    } finally {
-      if (state.availabilityPromise === check) state.availabilityPromise = null;
-    }
+    state.availabilityPromise = task;
+    try { return await task; } finally { if (state.availabilityPromise === task) state.availabilityPromise = null; }
   }
 
   async function prepareLocalVoice() {
-    if (state.installPromise) return state.installPromise;
+    if (state.preparePromise) return state.preparePromise;
     if (nativeVoiceBridge()) {
-      setStatus('LOCAL VOICE UNAVAILABLE', 'error');
+      await checkLocalAvailability({ force: true });
+      return state.localAvailability === 'ready';
+    }
+    const engine = ensureOfflineEngine();
+    if (!engine) {
+      handleTerminalRecognitionError('unavailable');
       return false;
     }
-    const recognition = initializeRecognition();
-    const Recognition = state.recognitionConstructor;
-    if (!recognition || typeof Recognition?.install !== 'function') {
-      setStatus('LOCAL VOICE UNAVAILABLE', 'error');
-      return false;
-    }
-    const install = (async () => {
+    const task = (async () => {
       try {
         state.localAvailability = 'downloading';
         updateMicState();
-        setStatus('LOCAL VOICE PREPARING', 'active');
-        const installed = await Recognition.install({ langs: [LOCAL_LANGUAGE] });
-        if (!installed) throw new Error('installation failed');
-        return checkLocalAvailability({ force: true });
+        setStatus('PREPARING OFFLINE VOICE', 'active');
+        await engine.prepare(updatePreparationProgress);
+        state.localAvailability = 'ready';
+        updatePrepareVisibility(false);
+        updateMicState();
+        setStatus('PTT READY', 'success');
+        return true;
       } catch {
         state.localAvailability = 'unavailable';
+        updatePrepareVisibility(true);
         updateMicState();
-        setStatus('LOCAL VOICE UNAVAILABLE', 'error');
+        setStatus('OFFLINE VOICE SETUP FAILED', 'error');
         return false;
       }
     })();
-    state.installPromise = install;
+    state.preparePromise = task;
     updateMicState();
-    try {
-      return await install;
-    } finally {
-      if (state.installPromise === install) state.installPromise = null;
-      updateMicState();
-    }
+    try { return await task; } finally { if (state.preparePromise === task) state.preparePromise = null; updateMicState(); }
   }
 
   async function startListening(continuous) {
@@ -846,31 +805,50 @@
       ? state.continuous && !state.manuallyStopped
       : state.pressHeld && !state.continuous;
     if (attempt !== state.startAttempt || !available || !shouldStart) return false;
-    const nativeBridge = nativeVoiceBridge();
+    const bridge = nativeVoiceBridge();
     state.starting = true;
-    state.stopping = false;
-    if (nativeBridge) {
+    updateMicState();
+    if (bridge) {
       try {
-        nativeBridge.start(Boolean(continuous));
+        if (typeof bridge.setGrammar === 'function') bridge.setGrammar(JSON.stringify(currentGrammar()));
+        bridge.start(Boolean(continuous));
         return true;
       } catch {
-        state.starting = false;
-        setStatus('LOCAL VOICE UNAVAILABLE', 'error');
+        handleTerminalRecognitionError('unavailable');
         return false;
       }
     }
-    const recognition = state.recognition;
-    if (!recognition) {
-      state.starting = false;
+
+    const engine = ensureOfflineEngine();
+    if (!engine) {
+      handleTerminalRecognitionError('unavailable');
       return false;
     }
-    recognition.continuous = Boolean(continuous);
     try {
-      recognition.start();
+      await engine.start({
+        grammar: currentGrammar(),
+        onStarted: () => {
+          const stillRequested = continuous
+            ? state.continuous && !state.manuallyStopped
+            : state.pressHeld && !state.continuous;
+          if (attempt !== state.startAttempt || !stillRequested) {
+            engine.cancel();
+            return;
+          }
+          state.starting = false;
+          state.listening = true;
+          updateMicState();
+          setStatus(state.continuous ? 'VOICE ASSISTANT LISTENING' : 'LISTENING', 'active');
+        },
+        onResult: rememberTranscript,
+        onPartial: () => {
+          if (state.listening) setStatus(state.continuous ? 'VOICE ASSISTANT LISTENING' : 'LISTENING', 'active');
+        },
+        onError: handleRecognitionError
+      });
       return true;
     } catch {
-      state.starting = false;
-      setStatus('LOCAL VOICE UNAVAILABLE', 'error');
+      if (attempt === state.startAttempt) handleTerminalRecognitionError('unavailable');
       return false;
     }
   }
@@ -885,57 +863,57 @@
     state.manuallyStopped = true;
     state.startAttempt += 1;
     clearRestartTimer();
-    const nativeBridge = nativeVoiceBridge();
+    const bridge = nativeVoiceBridge();
     if (state.starting && !state.listening) {
       state.starting = false;
-      state.stopping = false;
       state.listening = false;
       try {
-        if (nativeBridge) nativeBridge.cancel();
-        else if (typeof state.recognition?.abort === 'function') state.recognition.abort();
-        else state.recognition?.stop();
-      } catch { /* The cancelled recognizer has already stopped. */ }
+        if (bridge) bridge.cancel();
+        else state.engine?.cancel();
+      } catch { /* A stopped session cannot be cancelled again. */ }
       updateMicState();
       return;
     }
-    if (state.recognition && state.listening) {
-      state.stopping = true;
+    if (state.listening) {
       try {
-        if (cancel && typeof state.recognition.abort === 'function') state.recognition.abort();
-        else state.recognition.stop();
-      } catch { /* Recognition is already stopped. */ }
-    } else if (nativeBridge && state.listening) {
-      state.stopping = true;
-      try {
-        if (cancel) nativeBridge.cancel();
-        else nativeBridge.stop();
-      } catch { /* Native recognition is already stopped. */ }
+        if (bridge) {
+          if (cancel) bridge.cancel();
+          else bridge.stop();
+        } else if (cancel) state.engine?.cancel();
+        else state.engine?.stop({ cancel: false });
+      } catch { handleRecognitionEnd(); }
     }
   }
 
   function setListeningMode(mode) {
     const continuous = mode === 'continuous';
+    if (continuous && state.localAvailability !== 'ready') {
+      state.continuous = false;
+      updateMicState();
+      setStatus('SET UP OFFLINE VOICE FIRST', 'error');
+      return result(false, 'SET UP OFFLINE VOICE FIRST');
+    }
     state.continuous = continuous;
     updateMicState();
     if (!continuous) {
       stopListening({ cancel: true });
-      return result(true, 'PRESS TO TALK MODE');
+      return result(true, 'PTT MODE');
     }
     beginListening(true);
-    return result(true, 'CONTINUOUS LISTENING ON');
+    return result(true, 'VOICE ASSISTANT ON');
   }
 
-  function createDock() {
+  function createOfflineVoiceDock() {
     const dock = documentRef.createElement('aside');
     dock.className = 'voice-dock';
-    dock.setAttribute('aria-label', 'Local voice controls');
+    dock.setAttribute('aria-label', 'Offline voice controls');
 
     const mic = documentRef.createElement('button');
     mic.type = 'button';
     mic.className = 'voice-mic';
-    mic.textContent = 'HOLD TO TALK';
+    mic.textContent = 'PTT';
     mic.setAttribute('aria-pressed', 'false');
-    mic.setAttribute('aria-label', 'Hold to speak a local voice command');
+    mic.setAttribute('aria-label', 'Press and hold to talk using local voice recognition');
 
     const settingsToggle = documentRef.createElement('button');
     settingsToggle.type = 'button';
@@ -947,12 +925,11 @@
     const status = documentRef.createElement('output');
     status.className = 'voice-status';
     status.setAttribute('aria-live', 'polite');
-    status.textContent = 'HOLD TO TALK';
+    status.textContent = 'SET UP OFFLINE VOICE';
 
     const settings = documentRef.createElement('section');
     settings.className = 'voice-settings';
     settings.hidden = true;
-
     const continuousLabel = documentRef.createElement('label');
     continuousLabel.className = 'voice-continuous';
     const continuousInput = documentRef.createElement('input');
@@ -961,27 +938,36 @@
     const continuousCopy = documentRef.createElement('span');
     continuousCopy.textContent = 'CONTINUOUS LISTENING';
     continuousLabel.append(continuousInput, continuousCopy);
-
     const prepare = documentRef.createElement('button');
     prepare.type = 'button';
     prepare.className = 'voice-prepare';
-    prepare.textContent = 'PREPARE LOCAL VOICE';
-    prepare.hidden = true;
+    prepare.textContent = 'SET UP OFFLINE VOICE · 40 MB';
+    const engineNote = documentRef.createElement('small');
+    engineNote.textContent = 'ON-DEVICE SPEECH ONLY';
+    settings.append(continuousLabel, prepare, engineNote);
 
-    const localOnly = documentRef.createElement('small');
-    localOnly.textContent = 'LOCAL SPEECH ONLY';
-    settings.append(continuousLabel, prepare, localOnly);
-    dock.append(mic, settingsToggle, status, settings);
+    const assistant = documentRef.createElement('section');
+    assistant.className = 'voice-assistant';
+    assistant.hidden = true;
+    assistant.setAttribute('aria-live', 'polite');
+    const pulse = documentRef.createElement('span');
+    pulse.className = 'voice-assistant-pulse';
+    pulse.setAttribute('aria-hidden', 'true');
+    const assistantCopy = documentRef.createElement('div');
+    const assistantTitle = documentRef.createElement('strong');
+    assistantTitle.textContent = 'VOICE ASSISTANT';
+    const assistantDetail = documentRef.createElement('small');
+    assistantDetail.textContent = 'LISTENING FOR QGH COMMANDS';
+    assistantCopy.append(assistantTitle, assistantDetail);
+    const assistantStop = documentRef.createElement('button');
+    assistantStop.type = 'button';
+    assistantStop.className = 'voice-assistant-stop';
+    assistantStop.textContent = 'STOP';
+    assistant.append(pulse, assistantCopy, assistantStop);
+    dock.append(mic, settingsToggle, status, settings, assistant);
     documentRef.body.appendChild(dock);
 
-    state.dock = dock;
-    state.mic = mic;
-    state.status = status;
-    state.settings = settings;
-    state.settingsToggle = settingsToggle;
-    state.continuousInput = continuousInput;
-    state.prepareButton = prepare;
-
+    Object.assign(state, { mic, status, settings, settingsToggle, continuousInput, prepareButton: prepare, assistantPanel: assistant, engineNote });
     settingsToggle.addEventListener('click', () => {
       const opening = settings.hidden;
       setSettingsOpen(opening);
@@ -989,6 +975,7 @@
     });
     prepare.addEventListener('click', prepareLocalVoice);
     continuousInput.addEventListener('change', () => setListeningMode(continuousInput.checked ? 'continuous' : 'push-to-talk'));
+    assistantStop.addEventListener('click', () => setListeningMode('push-to-talk'));
 
     const beginPressToTalk = event => {
       if (state.continuous) return;
@@ -999,7 +986,7 @@
     };
     const endPressToTalk = event => {
       if (state.continuous) return;
-      if (event) event.preventDefault();
+      event?.preventDefault();
       state.pressHeld = false;
       stopListening();
     };
@@ -1020,21 +1007,15 @@
       if (state.listening || state.starting) stopListening({ cancel: true });
       else beginListening(true);
     });
-
-    root.addEventListener('blur', () => {
-      state.pressHeld = false;
-      stopListening({ cancel: true });
-    });
+    root.addEventListener('blur', () => { state.pressHeld = false; stopListening({ cancel: true }); });
     documentRef.addEventListener('visibilitychange', () => {
-      if (documentRef.visibilityState !== 'visible') {
-        state.pressHeld = false;
-        stopListening({ cancel: true });
-      }
+      if (documentRef.visibilityState !== 'visible') { state.pressHeld = false; stopListening({ cancel: true }); }
     });
     updateMicState();
+    checkLocalAvailability({ force: true });
   }
 
-  createDock();
+  createOfflineVoiceDock();
   root.QGHVoiceWorkspace = Object.freeze({
     dispatchTranscript,
     runCommand,

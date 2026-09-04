@@ -1,0 +1,132 @@
+.qgh-guide-overlay,
+.qgh-guide-overlay * { box-sizing: border-box; }
+
+.qgh-guide-overlay {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(19, 36, 41, .46);
+  padding: max(18px, env(safe-area-inset-top, 0px)) max(18px, env(safe-area-inset-right, 0px)) max(18px, env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-left, 0px));
+}
+
+.qgh-guide-card {
+  width: min(470px, 100%);
+  border: 1px solid #b7c6c1;
+  border-radius: 16px;
+  background: #fffefa;
+  box-shadow: 0 28px 68px rgba(7, 28, 33, .28);
+  overflow: hidden;
+}
+
+.qgh-guide-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid #dde3df;
+  padding: 17px 19px 14px;
+}
+
+.qgh-guide-head span,
+.qgh-guide-step,
+.qgh-guide-card small {
+  color: #557178;
+  font: 500 9px 'IBM Plex Mono', monospace;
+  letter-spacing: .1em;
+}
+
+.qgh-guide-close {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  color: #466067;
+  background: transparent;
+  font: 400 23px/1 Arial, sans-serif;
+  cursor: pointer;
+}
+
+.qgh-guide-close:hover { color: #007d7d; background: #edf4f1; }
+
+.qgh-guide-body { padding: 21px 20px 18px; }
+.qgh-guide-step { color: #007d7d; }
+.qgh-guide-card h2 { margin: 8px 0 9px; color: #17262b; font: 400 clamp(24px, 7vw, 31px)/1.08 'IBM Plex Sans', Arial, sans-serif; letter-spacing: -.035em; }
+.qgh-guide-card p { margin: 0; color: #405157; font: 400 14px/1.6 'IBM Plex Sans', Arial, sans-serif; }
+
+.qgh-guide-examples {
+  display: grid;
+  gap: 7px;
+  margin: 16px 0 0;
+  border-left: 2px solid #007d7d;
+  background: #f3f7f5;
+  padding: 10px 12px;
+}
+
+.qgh-guide-examples code {
+  color: #075e60;
+  font: 500 10px/1.5 'IBM Plex Mono', monospace;
+}
+
+.qgh-guide-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid #dde3df;
+  padding: 13px 16px;
+}
+
+.qgh-guide-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+
+.qgh-guide-button {
+  min-height: 35px;
+  border: 1px solid #aebdba;
+  border-radius: 7px;
+  color: #075e60;
+  background: #fff;
+  padding: 0 12px;
+  font: 600 10px 'IBM Plex Sans', Arial, sans-serif;
+  letter-spacing: .075em;
+  cursor: pointer;
+}
+
+.qgh-guide-button:hover { border-color: #007d7d; }
+.qgh-guide-button--primary { border-color: #007d7d; color: #fff; background: #007d7d; }
+.qgh-guide-button--quiet { border-color: transparent; color: #627176; background: transparent; }
+.qgh-guide-button:focus-visible,
+.qgh-guide-close:focus-visible,
+.qgh-guide-launch:focus-visible { outline: 3px solid rgba(0, 125, 125, .28); outline-offset: 2px; }
+
+.qgh-guide-progress { display: flex; gap: 4px; }
+.qgh-guide-progress i { width: 17px; height: 2px; border-radius: 2px; background: #d2dbd7; }
+.qgh-guide-progress i[data-active='true'] { background: #007d7d; }
+
+.qgh-guide-target {
+  position: relative;
+  z-index: 41 !important;
+  border-radius: 10px;
+  outline: 3px solid #007d7d !important;
+  outline-offset: 5px;
+  box-shadow: 0 0 0 9999px rgba(19, 36, 41, .08);
+}
+
+.qgh-guide-launch {
+  border: 0;
+  color: #075e60;
+  background: transparent;
+  padding: 0;
+  font: 500 9px 'IBM Plex Mono', monospace;
+  letter-spacing: .1em;
+  cursor: pointer;
+}
+
+@media (max-width: 520px) {
+  .qgh-guide-overlay { align-items: end; padding: 12px; }
+  .qgh-guide-card { border-radius: 14px; }
+  .qgh-guide-foot { align-items: stretch; flex-direction: column; }
+  .qgh-guide-progress { order: 2; }
+  .qgh-guide-actions { width: 100%; }
+  .qgh-guide-actions .qgh-guide-button { flex: 1; }
+}

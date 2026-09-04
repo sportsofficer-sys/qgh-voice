@@ -38,8 +38,8 @@ android {
         applicationId = "in.qgh.simulator"
         minSdk = 26
         targetSdk = 36
-        versionCode = 13
-        versionName = "4.0.3"
+        versionCode = 14
+        versionName = "4.1.0"
     }
 
     buildTypes {
@@ -72,6 +72,7 @@ android {
 dependencies {
     implementation("androidx.activity:activity:1.13.0")
     implementation("androidx.webkit:webkit:1.17.0")
+    implementation("com.alphacephei:vosk-android:0.3.75")
 }
 
 val releaseSigningRequiredTasks = setOf(

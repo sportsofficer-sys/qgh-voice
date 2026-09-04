@@ -254,7 +254,7 @@ test('accepts complete callsign, targeted-turn, voice-mode, and review-focus com
   });
 });
 
-test('parses every documented v4.0.3 voice-command example', () => {
+test('parses every documented v4.1.0 voice-command example', () => {
   const options = {
     callsigns: [
       { id: 'A', callsign: 'FALCON 11' },

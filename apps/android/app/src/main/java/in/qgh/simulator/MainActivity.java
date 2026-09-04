@@ -3,16 +3,10 @@ package in.qgh.simulator;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
-import android.speech.RecognitionListener;
-import android.speech.RecognizerIntent;
-import android.speech.SpeechRecognizer;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
 import android.webkit.PermissionRequest;
@@ -31,25 +25,21 @@ import androidx.webkit.WebViewClientCompat;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+
 public final class MainActivity extends ComponentActivity {
     private static final String ASSET_PREFIX =
             "https://appassets.androidplatform.net/assets/";
-    private static final String ASSET_HOST = "appassets.androidplatform.net";
     private static final String START_URL =
             ASSET_PREFIX + "index.html";
-    private static final int RECORD_AUDIO_PERMISSION_REQUEST = 4103;
     private static final int NATIVE_VOICE_RECORD_AUDIO_PERMISSION_REQUEST = 4104;
     private static final String NATIVE_VOICE_INTERFACE = "QghNativeVoice";
-    private static final String NATIVE_VOICE_LANGUAGE = "en-IN";
 
     private WebView simulator;
-    private PermissionRequest pendingAudioPermissionRequest;
-    private SpeechRecognizer nativeVoiceRecognizer;
+    private QghOfflineVoice offlineVoice;
     private int nextNativeVoiceSessionId = 1;
     private int activeNativeVoiceSessionId;
     private int activeNativeVoiceNavigationGeneration;
@@ -67,26 +57,6 @@ public final class MainActivity extends ComponentActivity {
                 || (ASSET_PREFIX + "user-guide.html").equals(url)
                 || (ASSET_PREFIX + "single.html").equals(url)
                 || (ASSET_PREFIX + "tactical.html").equals(url);
-    }
-
-    private static boolean isTrustedAppAssetOrigin(Uri origin) {
-        return origin != null
-                && "https".equals(origin.getScheme())
-                && ASSET_HOST.equals(origin.getHost())
-                && origin.getPort() == -1;
-    }
-
-    private static boolean isAudioOnlyPermissionRequest(PermissionRequest request) {
-        String[] resources = request.getResources();
-        return resources != null
-                && resources.length == 1
-                && PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resources[0]);
-    }
-
-    private static boolean isTrustedAudioPermissionRequest(PermissionRequest request) {
-        return request != null
-                && isTrustedAppAssetOrigin(request.getOrigin())
-                && isAudioOnlyPermissionRequest(request);
     }
 
     private boolean hasRecordAudioPermission() {
@@ -112,7 +82,7 @@ public final class MainActivity extends ComponentActivity {
 
     private void invalidateNativeVoiceForNavigation() {
         clearPendingNativeVoiceStart();
-        destroyNativeVoiceRecognizer();
+        clearActiveOfflineVoiceSession();
     }
 
     private void noteTopLevelPageNavigation(String url) {
@@ -132,33 +102,17 @@ public final class MainActivity extends ComponentActivity {
         }
     }
 
-    private boolean isOnDeviceVoiceAvailableOnUiThread() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-            return false;
-        }
-        try {
-            return SpeechRecognizer.isOnDeviceRecognitionAvailable(this);
-        } catch (RuntimeException ignored) {
-            return false;
-        }
-    }
-
     private String nativeVoiceCapabilityForTrustedPage() {
         if (Looper.myLooper() == Looper.getMainLooper()) {
-            return nativeVoiceActivityActive
-                    && isTrustedCurrentAppAssetPage()
-                    && isOnDeviceVoiceAvailableOnUiThread()
-                    ? "available"
+            return nativeVoiceActivityActive && isTrustedCurrentAppAssetPage() && offlineVoice != null
+                    ? offlineVoice.capability()
                     : "unavailable";
         }
-
         AtomicReference<String> capability = new AtomicReference<>("unavailable");
         CountDownLatch completed = new CountDownLatch(1);
         runOnUiThread(() -> {
-            if (nativeVoiceActivityActive
-                    && isTrustedCurrentAppAssetPage()
-                    && isOnDeviceVoiceAvailableOnUiThread()) {
-                capability.set("available");
+            if (nativeVoiceActivityActive && isTrustedCurrentAppAssetPage() && offlineVoice != null) {
+                capability.set(offlineVoice.capability());
             }
             completed.countDown();
         });
@@ -183,7 +137,7 @@ public final class MainActivity extends ComponentActivity {
                 && sessionId == activeNativeVoiceSessionId
                 && isCurrentNativeVoicePage(
                         activeNativeVoiceNavigationGeneration, activeNativeVoicePageUrl)
-                && nativeVoiceRecognizer != null;
+                && offlineVoice != null;
     }
 
     private void emitNativeVoiceEvent(
@@ -224,24 +178,12 @@ public final class MainActivity extends ComponentActivity {
         pendingNativeVoicePageUrl = null;
     }
 
-    private void destroyNativeVoiceRecognizer() {
-        SpeechRecognizer recognizer = nativeVoiceRecognizer;
-        nativeVoiceRecognizer = null;
+    private void clearActiveOfflineVoiceSession() {
         activeNativeVoiceSessionId = 0;
         activeNativeVoiceNavigationGeneration = 0;
         activeNativeVoicePageUrl = null;
-        if (recognizer == null) {
-            return;
-        }
-        try {
-            recognizer.cancel();
-        } catch (RuntimeException ignored) {
-            // The recognizer may have already stopped itself.
-        }
-        try {
-            recognizer.destroy();
-        } catch (RuntimeException ignored) {
-            // Destruction is best-effort during Android lifecycle changes.
+        if (offlineVoice != null) {
+            offlineVoice.cancel();
         }
     }
 
@@ -251,25 +193,11 @@ public final class MainActivity extends ComponentActivity {
         }
         int navigationGeneration = activeNativeVoiceNavigationGeneration;
         String pageUrl = activeNativeVoicePageUrl;
-        destroyNativeVoiceRecognizer();
+        clearActiveOfflineVoiceSession();
         emitNativeVoiceEvent(navigationGeneration, pageUrl, "ended", null, null);
     }
 
-    private String nativeVoiceErrorCode(int error) {
-        if (error == SpeechRecognizer.ERROR_NO_MATCH
-                || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
-            return "no-speech";
-        }
-        if (error == SpeechRecognizer.ERROR_CLIENT) {
-            return "aborted";
-        }
-        if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {
-            return "not-allowed";
-        }
-        return "unavailable";
-    }
-
-    private void handleNativeVoiceError(int sessionId, int error) {
+    private void handleNativeVoiceError(int sessionId, String code) {
         if (!isActiveNativeVoiceSession(sessionId)) {
             return;
         }
@@ -278,141 +206,69 @@ public final class MainActivity extends ComponentActivity {
                 activeNativeVoicePageUrl,
                 "error",
                 null,
-                nativeVoiceErrorCode(error));
-        finishNativeVoiceSession(sessionId);
+                code == null ? "unavailable" : code);
     }
 
-    private void handleNativeVoiceResults(int sessionId, ArrayList<String> transcripts) {
-        if (!isActiveNativeVoiceSession(sessionId)) {
+    private void handleNativeVoiceResult(int sessionId, String transcript) {
+        if (!isActiveNativeVoiceSession(sessionId)
+                || transcript == null
+                || transcript.trim().isEmpty()) {
             return;
         }
-        String transcript = null;
-        if (transcripts != null) {
-            for (String candidate : transcripts) {
-                if (candidate != null && !candidate.trim().isEmpty()) {
-                    transcript = candidate.trim();
-                    break;
-                }
-            }
-        }
-        if (transcript != null) {
-            emitNativeVoiceEvent(
-                    activeNativeVoiceNavigationGeneration,
-                    activeNativeVoicePageUrl,
-                    "result",
-                    transcript,
-                    null);
-        }
-        finishNativeVoiceSession(sessionId);
+        emitNativeVoiceEvent(
+                activeNativeVoiceNavigationGeneration,
+                activeNativeVoicePageUrl,
+                "result",
+                transcript.trim(),
+                null);
     }
 
-    private RecognitionListener createNativeVoiceRecognitionListener(final int sessionId) {
-        return new RecognitionListener() {
-            @Override
-            public void onReadyForSpeech(Bundle params) {
-                // The explicit started event is emitted after startListening succeeds.
-            }
-
-            @Override
-            public void onBeginningOfSpeech() {
-                // Final results are the only speech payload exposed to the WebView.
-            }
-
-            @Override
-            public void onRmsChanged(float rmsdB) {
-                // Audio level is intentionally not exposed to the web application.
-            }
-
-            @Override
-            public void onBufferReceived(byte[] buffer) {
-                // Raw microphone data is never exposed to JavaScript.
-            }
-
-            @Override
-            public void onEndOfSpeech() {
-                // Wait for onResults or onError so a press-to-talk release can return its final phrase.
-            }
-
-            @Override
-            public void onError(int error) {
-                runNativeVoiceOnUiThread(() -> handleNativeVoiceError(sessionId, error));
-            }
-
-            @Override
-            public void onResults(Bundle results) {
-                ArrayList<String> transcripts = results == null
-                        ? null
-                        : results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                ArrayList<String> finalTranscripts = transcripts == null
-                        ? null
-                        : new ArrayList<>(transcripts);
-                runNativeVoiceOnUiThread(
-                        () -> handleNativeVoiceResults(sessionId, finalTranscripts));
-            }
-
-            @Override
-            public void onPartialResults(Bundle partialResults) {
-                // Partial transcript callbacks are deliberately ignored.
-            }
-
-            @Override
-            public void onEvent(int eventType, Bundle params) {
-                // Platform-specific recognizer events are not part of the app bridge contract.
-            }
-        };
-    }
-
-    @SuppressLint("NewApi")
     private void beginNativeVoiceRecognition(
             int sessionId, int navigationGeneration, String pageUrl) {
         if (sessionId == 0
                 || !nativeVoiceActivityActive
                 || !isCurrentNativeVoicePage(navigationGeneration, pageUrl)
-                || !hasRecordAudioPermission()) {
+                || !hasRecordAudioPermission()
+                || offlineVoice == null) {
             return;
         }
-        if (!isOnDeviceVoiceAvailableOnUiThread()) {
+        if (!"available".equals(offlineVoice.capability())) {
             if (pendingNativeVoiceSessionId == sessionId) {
                 clearPendingNativeVoiceStart();
             }
             emitNativeVoiceFailure(navigationGeneration, pageUrl, "unavailable");
             return;
         }
-
         if (pendingNativeVoiceSessionId == sessionId) {
             clearPendingNativeVoiceStart();
         }
-        destroyNativeVoiceRecognizer();
+        clearActiveOfflineVoiceSession();
+        activeNativeVoiceSessionId = sessionId;
+        activeNativeVoiceNavigationGeneration = navigationGeneration;
+        activeNativeVoicePageUrl = pageUrl;
+        offlineVoice.start(new QghOfflineVoice.Listener() {
+            @Override
+            public void onStarted() {
+                if (isActiveNativeVoiceSession(sessionId)) {
+                    emitNativeVoiceEvent(navigationGeneration, pageUrl, "started", null, null);
+                }
+            }
 
-        try {
-            SpeechRecognizer recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(this);
-            nativeVoiceRecognizer = recognizer;
-            activeNativeVoiceSessionId = sessionId;
-            activeNativeVoiceNavigationGeneration = navigationGeneration;
-            activeNativeVoicePageUrl = pageUrl;
-            recognizer.setRecognitionListener(createNativeVoiceRecognitionListener(sessionId));
+            @Override
+            public void onFinalText(String transcript) {
+                handleNativeVoiceResult(sessionId, transcript);
+            }
 
-            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE, NATIVE_VOICE_LANGUAGE)
-                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, NATIVE_VOICE_LANGUAGE)
-                    .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-                    .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
-                    .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true);
-            recognizer.startListening(intent);
-            if (isActiveNativeVoiceSession(sessionId)) {
-                emitNativeVoiceEvent(navigationGeneration, pageUrl, "started", null, null);
+            @Override
+            public void onError(String code) {
+                handleNativeVoiceError(sessionId, code);
             }
-        } catch (SecurityException securityException) {
-            if (activeNativeVoiceSessionId == sessionId) {
-                destroyNativeVoiceRecognizer();
+
+            @Override
+            public void onEnded() {
+                finishNativeVoiceSession(sessionId);
             }
-            emitNativeVoiceFailure(navigationGeneration, pageUrl, "not-allowed");
-        } catch (RuntimeException unavailable) {
-            if (activeNativeVoiceSessionId == sessionId) {
-                destroyNativeVoiceRecognizer();
-            }
-            emitNativeVoiceFailure(navigationGeneration, pageUrl, "unavailable");
-        }
+        });
     }
 
     private void startNativeVoice(boolean continuous) {
@@ -425,7 +281,7 @@ public final class MainActivity extends ComponentActivity {
         // Continuous rearming is owned by the workspace after an ended event. One native session
         // always returns at most one final phrase, which prevents transcript duplication.
         clearPendingNativeVoiceStart();
-        destroyNativeVoiceRecognizer();
+        clearActiveOfflineVoiceSession();
         int sessionId = nextNativeVoiceSessionId();
         int navigationGeneration = topLevelNavigationGeneration;
         String pageUrl = currentTopLevelPageUrl;
@@ -433,7 +289,7 @@ public final class MainActivity extends ComponentActivity {
         pendingNativeVoiceNavigationGeneration = navigationGeneration;
         pendingNativeVoicePageUrl = pageUrl;
 
-        if (!isOnDeviceVoiceAvailableOnUiThread()) {
+        if (offlineVoice == null || !"available".equals(offlineVoice.capability())) {
             clearPendingNativeVoiceStart();
             emitNativeVoiceFailure(navigationGeneration, pageUrl, "unavailable");
             return;
@@ -444,9 +300,6 @@ public final class MainActivity extends ComponentActivity {
             return;
         }
 
-        // Native voice has priority over a generic WebView capture request; the latter is never
-        // used as a recognition fallback and is denied before requesting the Android permission.
-        denyPendingAudioPermissionRequest();
         if (!nativeVoicePermissionRequestInFlight) {
             nativeVoicePermissionRequestInFlight = true;
             requestPermissions(
@@ -457,15 +310,15 @@ public final class MainActivity extends ComponentActivity {
 
     private void stopNativeVoice() {
         clearPendingNativeVoiceStart();
-        if (nativeVoiceRecognizer == null || activeNativeVoiceSessionId == 0) {
+        if (offlineVoice == null || activeNativeVoiceSessionId == 0) {
             return;
         }
         try {
-            nativeVoiceRecognizer.stopListening();
+            offlineVoice.stop();
         } catch (RuntimeException ignored) {
             int navigationGeneration = activeNativeVoiceNavigationGeneration;
             String pageUrl = activeNativeVoicePageUrl;
-            destroyNativeVoiceRecognizer();
+            clearActiveOfflineVoiceSession();
             emitNativeVoiceEvent(navigationGeneration, pageUrl, "ended", null, null);
         }
     }
@@ -478,10 +331,10 @@ public final class MainActivity extends ComponentActivity {
 
     private void cancelNativeVoice() {
         clearPendingNativeVoiceStart();
-        boolean hadActiveSession = nativeVoiceRecognizer != null || activeNativeVoiceSessionId != 0;
+        boolean hadActiveSession = activeNativeVoiceSessionId != 0;
         int navigationGeneration = activeNativeVoiceNavigationGeneration;
         String pageUrl = activeNativeVoicePageUrl;
-        destroyNativeVoiceRecognizer();
+        clearActiveOfflineVoiceSession();
         if (hadActiveSession) {
             emitNativeVoiceEvent(navigationGeneration, pageUrl, "ended", null, null);
         }
@@ -500,6 +353,15 @@ public final class MainActivity extends ComponentActivity {
         }
 
         @JavascriptInterface
+        public void setGrammar(String grammar) {
+            runNativeVoiceOnUiThread(() -> {
+                if (isTrustedCurrentAppAssetPage() && offlineVoice != null) {
+                    offlineVoice.setGrammar(grammar);
+                }
+            });
+        }
+
+        @JavascriptInterface
         public void start(boolean continuous) {
             runNativeVoiceOnUiThread(() -> startNativeVoice(continuous));
         }
@@ -515,44 +377,16 @@ public final class MainActivity extends ComponentActivity {
         }
     }
 
-    private void denyPendingAudioPermissionRequest() {
-        PermissionRequest pendingRequest = pendingAudioPermissionRequest;
-        pendingAudioPermissionRequest = null;
-        if (pendingRequest != null) {
-            pendingRequest.deny();
-        }
-    }
-
-    private void handleAudioPermissionRequest(PermissionRequest request) {
-        if (!isTrustedAudioPermissionRequest(request)
-                || nativeVoicePermissionRequestInFlight
-                || isFinishing()
-                || isDestroyed()) {
-            request.deny();
-            return;
-        }
-
-        if (hasRecordAudioPermission()) {
-            request.grant(new String[] { PermissionRequest.RESOURCE_AUDIO_CAPTURE });
-            return;
-        }
-
-        if (pendingAudioPermissionRequest != null) {
-            request.deny();
-            return;
-        }
-
-        pendingAudioPermissionRequest = request;
-        requestPermissions(
-                new String[] { Manifest.permission.RECORD_AUDIO },
-                RECORD_AUDIO_PERMISSION_REQUEST);
-    }
-
     @Override
     @SuppressLint("SetJavaScriptEnabled") // The simulator is a bundled, CSP-restricted offline application.
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // The local model begins preparing while the first bundled page is loading. Mark the
+        // activity usable now so the page observes PREPARING rather than a false unavailable
+        // state if its scripts execute just before onResume.
+        nativeVoiceActivityActive = true;
+        offlineVoice = new QghOfflineVoice(this);
         WebView.setWebContentsDebuggingEnabled(false);
         simulator = new WebView(this);
         WebSettings settings = simulator.getSettings();
@@ -602,7 +436,6 @@ public final class MainActivity extends ComponentActivity {
 
             @Override
             public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
-                denyPendingAudioPermissionRequest();
                 cancelNativeVoice();
                 view.destroy();
                 MainActivity.this.runOnUiThread(MainActivity.this::recreate);
@@ -613,14 +446,9 @@ public final class MainActivity extends ComponentActivity {
         simulator.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onPermissionRequest(PermissionRequest request) {
-                handleAudioPermissionRequest(request);
-            }
-
-            @Override
-            public void onPermissionRequestCanceled(PermissionRequest request) {
-                if (request == pendingAudioPermissionRequest) {
-                    pendingAudioPermissionRequest = null;
-                }
+                // Voice is handled by the private Vosk bridge; WebView media capture is never a
+                // fallback path and is denied even for a bundled page.
+                request.deny();
             }
 
             @Override
@@ -679,24 +507,6 @@ public final class MainActivity extends ComponentActivity {
             }
             return;
         }
-        if (requestCode != RECORD_AUDIO_PERMISSION_REQUEST) {
-            return;
-        }
-
-        PermissionRequest pendingRequest = pendingAudioPermissionRequest;
-        pendingAudioPermissionRequest = null;
-        if (pendingRequest == null) {
-            return;
-        }
-
-        if (hasRecordAudioPermission()
-                && !isFinishing()
-                && !isDestroyed()
-                && isTrustedAudioPermissionRequest(pendingRequest)) {
-            pendingRequest.grant(new String[] { PermissionRequest.RESOURCE_AUDIO_CAPTURE });
-        } else {
-            pendingRequest.deny();
-        }
     }
 
     @Override
@@ -714,8 +524,11 @@ public final class MainActivity extends ComponentActivity {
 
     @Override
     protected void onDestroy() {
-        denyPendingAudioPermissionRequest();
         cancelNativeVoice();
+        if (offlineVoice != null) {
+            offlineVoice.close();
+            offlineVoice = null;
+        }
         if (simulator != null) {
             simulator.stopLoading();
             simulator.loadUrl("about:blank");

@@ -16,8 +16,11 @@ const engineFiles = [
   'simulator-core.js',
   'simulator.js',
   'voice-control.js',
+  'offline-voice-engine.js',
   'voice-workspace.js',
   'voice.css',
+  'guided-familiarisation.js',
+  'guided-familiarisation.css',
   'workspace.css',
   'workspace.js',
   'tactical.html',
@@ -29,6 +32,10 @@ const engineFiles = [
   'fonts/ibm-plex-sans-400.ttf',
   'fonts/ibm-plex-sans-600.ttf',
   'fonts/OFL-1.1.txt',
+  'vendor/vosk-browser-0.0.8.js',
+  'vendor/Apache-2.0.txt',
+  'voice-models/qgh-vosk-en-us-small-0.15.tar.gz',
+  'voice-models/NOTICE.txt',
 ];
 
 const pageFiles = ['index.html', 'user-guide.html', 'single.html', 'tactical.html'];
