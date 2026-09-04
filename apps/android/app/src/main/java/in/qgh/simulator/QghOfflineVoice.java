@@ -30,6 +30,7 @@ final class QghOfflineVoice {
     interface Listener {
         void onStarted();
         void onFinalText(String transcript);
+        void onNoResult();
         void onError(String code);
         void onEnded();
     }
@@ -255,10 +256,18 @@ final class QghOfflineVoice {
         if (listener == null) {
             return;
         }
-        if (error != null && !"no-speech".equals(error)) {
+        // A recognizer endpoint or timeout can complete successfully without a usable RT call.
+        // Surface that outcome separately from a recognizer failure so the UI can give clear,
+        // non-fatal feedback and Continuous Listening can re-arm normally. Deliberate cancellation
+        // is excluded: it has no expected Vosk callback pair and must remain silent.
+        boolean completedRecognition = expectedService != null && expectedRecognizer != null;
+        boolean hasTranscript = transcript != null && !transcript.trim().isEmpty();
+        if ("no-speech".equals(error) || (completedRecognition && error == null && !hasTranscript)) {
+            listener.onNoResult();
+        } else if (error != null) {
             listener.onError(error);
         }
-        if (transcript != null && !transcript.isEmpty()) {
+        if (hasTranscript) {
             listener.onFinalText(transcript);
         }
         listener.onEnded();

@@ -261,6 +261,7 @@ function createSingleHarness() {
     continueHeading: add(documentRef, consoleScreen, 'button', { id: 'continueHeading', textContent: 'CONTINUE HEADING' }),
     turnLeft: add(documentRef, consoleScreen, 'button', { id: 'turnLeft', textContent: 'TURN LEFT NOW', hidden: true }),
     turnRight: add(documentRef, consoleScreen, 'button', { id: 'turnRight', textContent: 'TURN RIGHT NOW', hidden: true }),
+    transmit: add(documentRef, consoleScreen, 'button', { id: 'transmit', textContent: 'TRANSMIT FOR D/F' }),
     restartExercise: add(documentRef, consoleScreen, 'button', { id: 'restartExercise', textContent: 'RESTART EXERCISE' }),
     replay: add(documentRef, analysis, 'button', {
       id: 'replay',
@@ -345,6 +346,10 @@ test('voice DOM router uses existing Normal and U/S Compass controls and refuses
   assert.equal(disabled.ok, false);
   assert.equal(disabled.message, 'TURN CONTROL IS NOT AVAILABLE');
   assert.equal(controls.turnLeft.clickCount, 1);
+
+  const transmitted = workspace.dispatchTranscript('transmit for df please');
+  assert.equal(transmitted.ok, true);
+  assert.equal(controls.transmit.clickCount, 1);
 });
 
 test('voice router requires an explicit confirmation before restart and accepts spoken confirmation', () => {

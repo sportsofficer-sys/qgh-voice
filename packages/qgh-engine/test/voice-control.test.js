@@ -225,6 +225,8 @@ test('maps D/F, reports, clock, advance, and exercise commands', () => {
     intent: 'transmit-df',
     mode: 'qte'
   });
+  assert.equal(Voice.parseCommand('transmit for D/F please').intent, 'transmit-df');
+  assert.equal(Voice.parseCommand('transmit for direction finding now').intent, 'transmit-df');
   assert.equal(Voice.parseCommand('report heading').intent, 'report-heading');
   assert.equal(Voice.parseCommand('request distance').intent, 'request-distance');
   assert.deepEqual(Voice.parseCommand('start clock'), {

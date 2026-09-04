@@ -100,6 +100,8 @@
       .replace(/(\d)\s*[.,]\s*(\d)/g, '$1 point $2')
       .replace(/\bq\s*[\/-]?\s*d\s*[\/-]?\s*m\b/g, 'qdm')
       .replace(/\bq\s*[\/-]?\s*t\s*[\/-]?\s*e\b/g, 'qte')
+      .replace(/\b(?:direction|direct)\s+finding\b/g, 'df')
+      .replace(/\bd\s+and\s+f\b/g, 'df')
       .replace(/\bd\s*[\/-]?\s*f\b/g, 'df')
       .replace(/\bu\s*[\/-]?\s*s\b/g, 'us')
       .replace(/[–—−-]/g, ' ')
@@ -278,7 +280,10 @@
 
   function callsignFor(value) {
     const normalized = normalizeTranscript(value);
-    if (!normalized || normalized.length > 20) return null;
+    // Spoken cardinal suffixes can be longer than the final callsign they represent
+    // (for example, "Raven one hundred one" -> "RAVEN 101"). Bound the canonical
+    // result below, rather than rejecting an otherwise valid local RT callsign early.
+    if (!normalized || normalized.length > 80) return null;
     const tokens = normalized.split(' ');
     if (tokens.length < 2 || tokens.some(token => !/^[a-z0-9]+$/.test(token))) return null;
 
@@ -522,11 +527,12 @@
     const bearingMode = transcript.match(/^(?:select|set|show) (qdm|qte)(?: mode)?$/);
     if (bearingMode) return accept(transcript, 'set-bearing-mode', { mode: bearingMode[1] });
 
-    const transmission = transcript.match(/^transmit(?: for)? (df|qdm|qte)(?: aircraft)?(?: (.+))?$/);
+    const transmission = transcript.match(/^(?:transmit|send)(?: for)? (df|qdm|qte)(?: aircraft)?(?: (.+))?$/);
     if (transmission) {
       const detail = transmission[1] === 'df' ? {} : { mode: transmission[1] };
-      if (!transmission[2]) return accept(transcript, 'transmit-df', detail);
-      const target = resolveAircraft(transmission[2], options);
+      const trailing = String(transmission[2] || '').trim();
+      if (!trailing || /^(?:please|now)(?: (?:please|now))?$/.test(trailing)) return accept(transcript, 'transmit-df', detail);
+      const target = resolveAircraft(trailing, options);
       return target.aircraft
         ? accept(transcript, 'transmit-df', { ...detail, aircraft: target.aircraft })
         : reject(transcript, target.reason);

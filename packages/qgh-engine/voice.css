@@ -29,95 +29,151 @@
   100% { box-shadow: 0 0 0 0 rgba(0, 125, 125, 0); }
 }
 
+/* The voice controls deliberately occupy only the page edge. The exercise console
+   stays visually and functionally untouched beneath this movable, compact rail. */
 .voice-dock {
   position: fixed;
   z-index: 40;
-  top: max(88px, calc(env(safe-area-inset-top, 0px) + 72px));
-  right: max(18px, env(safe-area-inset-right, 0px));
+  top: max(116px, 30vh);
+  right: max(8px, calc((100vw - 1580px) / 2 - 66px), env(safe-area-inset-right, 0px));
   display: grid;
-  grid-template-columns: minmax(122px, 1fr) auto;
+  grid-template-columns: 1fr;
+  justify-items: stretch;
   gap: 6px;
-  width: min(230px, calc(100vw - 36px));
-  border: 1px solid #b9c4bf;
-  border-radius: 12px;
-  background: #fffefa;
-  box-shadow: 0 10px 24px rgba(23, 38, 43, .12);
-  padding: 7px;
+  width: 68px;
+  min-height: 196px;
+  border: 1px solid rgba(1, 86, 88, .82);
+  border-radius: 20px;
+  background: #007d7d;
+  box-shadow: 0 12px 28px rgba(23, 38, 43, .18);
+  padding: 7px 7px 9px;
 }
 
+.voice-dock[data-dragging='true'] { cursor: grabbing; }
+
 .voice-dock button {
-  min-height: 34px;
-  border: 1px solid #aebdba;
-  border-radius: 7px;
-  color: #17262b;
-  background: #fff;
-  font: 600 10px 'IBM Plex Sans', Arial, sans-serif;
-  letter-spacing: .08em;
+  min-height: 30px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: #fffefa;
+  background: transparent;
+  font: 700 9px 'IBM Plex Sans', Arial, sans-serif;
+  letter-spacing: .1em;
   cursor: pointer;
 }
 
-.voice-dock button:hover:not(:disabled) { border-color: #007d7d; }
+.voice-dock button:hover:not(:disabled) { background: rgba(255, 254, 250, .14); }
 .voice-dock button:active:not(:disabled) { transform: translateY(1px); }
 
 .voice-dock button:focus-visible,
 .voice-dock input:focus-visible {
-  outline: 3px solid rgba(0, 125, 125, .24);
+  outline: 3px solid rgba(255, 254, 250, .82);
   outline-offset: 2px;
 }
 
-.voice-mic {
-  min-width: 96px;
-  border-color: #007d7d !important;
-  color: #fff !important;
-  background: #007d7d !important;
+.voice-drag-handle {
+  min-height: 25px !important;
+  color: rgba(255, 254, 250, .8) !important;
+  cursor: grab !important;
+  touch-action: none;
 }
 
+.voice-drag-handle:active { cursor: grabbing !important; }
+
+.voice-mic {
+  min-height: 57px !important;
+  border-color: #fffefa !important;
+  color: #007d7d !important;
+  background: #fffefa !important;
+  box-shadow: 0 1px 0 rgba(23, 38, 43, .11);
+  font-size: 11px !important;
+}
+
+.voice-mic:hover:not(:disabled) { background: #f0f5f2 !important; }
+
 .voice-mic[data-listening='true'] {
+  color: #fffefa !important;
   background: #075e60 !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .36), 0 0 0 3px rgba(0, 125, 125, .14);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .42), 0 0 0 3px rgba(255, 254, 250, .16);
 }
 
 .voice-mic:disabled {
-  border-color: #cfd7d4 !important;
-  color: #71807d !important;
-  background: #eef1ef !important;
+  border-color: rgba(255, 254, 250, .34) !important;
+  color: rgba(255, 254, 250, .56) !important;
+  background: rgba(255, 254, 250, .12) !important;
   cursor: not-allowed;
 }
 
 .voice-settings-toggle {
-  min-width: 48px;
-  color: #075e60 !important;
+  color: #fffefa !important;
+  background: rgba(255, 254, 250, .08) !important;
+}
+
+.voice-settings-toggle[aria-expanded='true'] {
+  color: #007d7d !important;
+  background: #fffefa !important;
+}
+
+.voice-status,
+.voice-feedback,
+.voice-listening-indicator {
+  display: -webkit-box;
+  overflow: hidden;
+  color: rgba(255, 254, 250, .82);
+  font: 600 8px 'IBM Plex Mono', monospace;
+  letter-spacing: .04em;
+  line-height: 1.35;
+  text-align: center;
+  text-overflow: ellipsis;
+  word-break: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .voice-status {
-  grid-column: 1 / -1;
-  display: block;
-  min-height: 14px;
-  overflow: hidden;
-  color: #617177;
-  font: 500 9px 'IBM Plex Mono', monospace;
-  letter-spacing: .06em;
-  line-height: 1.45;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-height: 22px;
+  padding: 1px 2px;
 }
 
-.voice-status[data-tone='active'] { color: #075e60; }
-.voice-status[data-tone='success'] { color: #16875f; }
-.voice-status[data-tone='error'] { color: #8d3338; }
+.voice-status[data-tone='success'] { color: #d8f5e7; }
+.voice-status[data-tone='error'] { color: #ffe0df; }
+
+.voice-feedback {
+  min-height: 25px;
+  border-top: 1px solid rgba(255, 254, 250, .24);
+  padding: 5px 2px 0;
+  color: #fffefa;
+  white-space: pre-line;
+}
+
+.voice-feedback[data-tone='success'] { color: #d8f5e7; }
+.voice-feedback[data-tone='error'] { color: #ffe0df; }
+
+.voice-listening-indicator {
+  min-height: 18px;
+  color: #d8f5e7;
+  font-size: 7px;
+  letter-spacing: .09em;
+}
 
 .voice-settings {
   position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  top: 0;
+  right: calc(100% + 10px);
   display: grid;
   gap: 10px;
-  width: min(256px, calc(100vw - 36px));
+  width: min(248px, calc(100vw - 112px));
   border: 1px solid #b9c4bf;
-  border-radius: 10px;
+  border-radius: 12px;
   background: #fffefa;
-  box-shadow: 0 12px 28px rgba(23, 38, 43, .14);
+  box-shadow: 0 12px 28px rgba(23, 38, 43, .16);
   padding: 12px;
+}
+
+.voice-dock[data-popover-side='right'] .voice-settings,
+.voice-dock[data-popover-side='right'] .voice-confirmation {
+  right: auto;
+  left: calc(100% + 10px);
 }
 
 .voice-continuous {
@@ -125,7 +181,7 @@
   align-items: center;
   gap: 9px;
   color: #17262b;
-  font: 600 10px 'IBM Plex Sans', Arial, sans-serif;
+  font: 700 10px 'IBM Plex Sans', Arial, sans-serif;
   letter-spacing: .07em;
 }
 
@@ -137,8 +193,13 @@
 
 .voice-prepare {
   width: 100%;
+  min-height: 34px !important;
+  border-color: #007d7d !important;
   color: #075e60 !important;
+  background: #fff !important;
 }
+
+.voice-prepare:hover:not(:disabled) { background: #f0f5f2 !important; }
 
 .voice-settings small {
   color: #617177;
@@ -146,44 +207,14 @@
   letter-spacing: .08em;
 }
 
-.voice-assistant {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 10px);
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  width: min(286px, calc(100vw - 36px));
-  border: 1px solid #96bcb5;
-  border-radius: 12px;
-  background: #fffefa;
-  box-shadow: 0 15px 34px rgba(23, 38, 43, .16);
-  padding: 11px 12px;
-}
-
-.voice-assistant-pulse {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #007d7d;
-  box-shadow: 0 0 0 0 rgba(0, 125, 125, .38);
-  animation: qgh-voice-pulse 1.6s ease-out infinite;
-}
-
-.voice-assistant div { display: grid; gap: 2px; min-width: 0; }
-.voice-assistant strong,
-.voice-assistant small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.voice-assistant strong { color: #17262b; font: 600 10px 'IBM Plex Sans', Arial, sans-serif; letter-spacing: .08em; }
-.voice-assistant small { color: #617177; font: 500 8px 'IBM Plex Mono', monospace; letter-spacing: .07em; }
-
 .voice-confirmation {
   position: absolute;
-  right: 0;
-  bottom: calc(100% + 10px);
+  top: 50%;
+  right: calc(100% + 10px);
   display: grid;
   gap: 7px;
-  width: min(286px, calc(100vw - 36px));
+  width: min(250px, calc(100vw - 112px));
+  transform: translateY(-50%);
   border: 1px solid #8caea8;
   border-radius: 12px;
   background: #fffefa;
@@ -207,61 +238,47 @@
 }
 
 .voice-confirmation div { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
-.voice-dock .voice-confirm { border-color: #007d7d; color: #fff; background: #007d7d; }
-.voice-dock .voice-cancel { color: #5f6b69; }
-
-.voice-dock .voice-assistant-stop {
-  min-height: 29px;
-  border-color: #aebdba;
-  color: #075e60;
-  padding: 0 9px;
-  font-size: 9px;
+.voice-dock .voice-confirm {
+  min-height: 30px;
+  border-color: #007d7d;
+  color: #fff;
+  background: #007d7d;
 }
-
-@keyframes qgh-voice-pulse {
-  0% { box-shadow: 0 0 0 0 rgba(0, 125, 125, .38); }
-  70% { box-shadow: 0 0 0 8px rgba(0, 125, 125, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(0, 125, 125, 0); }
+.voice-dock .voice-cancel {
+  min-height: 30px;
+  border-color: #aebdba;
+  color: #5f6b69;
+  background: #fff;
 }
 
 @media (max-width: 760px) {
-  .app,
-  .tactical-app,
-  .entry-app {
-    padding-bottom: max(108px, calc(env(safe-area-inset-bottom, 0px) + 92px));
-  }
-
   .voice-dock {
     top: auto;
-    right: max(12px, env(safe-area-inset-right, 0px));
-    bottom: max(12px, env(safe-area-inset-bottom, 0px));
-    width: min(216px, calc(100vw - 24px));
+    right: max(8px, env(safe-area-inset-right, 0px));
+    bottom: max(10px, env(safe-area-inset-bottom, 0px));
+    width: 66px;
+    min-height: 184px;
   }
 
-  .voice-settings {
-    top: auto;
-    right: 0;
-    bottom: calc(100% + 8px);
-  }
-
-  .voice-assistant {
-    right: 0;
-    bottom: calc(100% + 8px);
-    width: min(274px, calc(100vw - 24px));
-  }
-
+  .voice-settings,
   .voice-confirmation {
-    right: 0;
-    bottom: calc(100% + 8px);
-    width: min(274px, calc(100vw - 24px));
+    right: calc(100% + 8px);
+    width: min(238px, calc(100vw - 100px));
+  }
+
+  .voice-dock[data-popover-side='right'] .voice-settings,
+  .voice-dock[data-popover-side='right'] .voice-confirmation {
+    right: auto;
+    left: calc(100% + 8px);
   }
 }
 
 @media (max-width: 420px) {
   .voice-dock {
-    grid-template-columns: minmax(108px, 1fr) auto;
-    width: min(198px, calc(100vw - 24px));
+    width: 62px;
+    padding: 6px;
   }
 
-  .voice-dock button { font-size: 9px; }
+  .voice-dock button { font-size: 8px; }
+  .voice-mic { font-size: 10px !important; }
 }

@@ -223,6 +223,18 @@ public final class MainActivity extends ComponentActivity {
                 null);
     }
 
+    private void handleNativeVoiceNoResult(int sessionId) {
+        if (!isActiveNativeVoiceSession(sessionId)) {
+            return;
+        }
+        emitNativeVoiceEvent(
+                activeNativeVoiceNavigationGeneration,
+                activeNativeVoicePageUrl,
+                "no-result",
+                null,
+                null);
+    }
+
     private void beginNativeVoiceRecognition(
             int sessionId, int navigationGeneration, String pageUrl) {
         if (sessionId == 0
@@ -257,6 +269,11 @@ public final class MainActivity extends ComponentActivity {
             @Override
             public void onFinalText(String transcript) {
                 handleNativeVoiceResult(sessionId, transcript);
+            }
+
+            @Override
+            public void onNoResult() {
+                handleNativeVoiceNoResult(sessionId);
             }
 
             @Override

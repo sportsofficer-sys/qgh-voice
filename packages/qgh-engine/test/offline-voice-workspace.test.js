@@ -34,6 +34,7 @@ class FakeElement {
     this.type = '';
     this.value = '';
     this.textContent = '';
+    this.style = {};
     this.hidden = false;
     this.disabled = false;
     this.dataset = {};
@@ -104,11 +105,16 @@ function makeOfflineEngine(options) {
   let resolvePrepare = null;
   const engine = {
     prepareCalls: 0,
+    primeCalls: 0,
     startCalls: [],
     stopCalls: [],
     cancelCalls: 0,
     lastStart: null,
     isReady() { return ready; },
+    primeAudio() {
+      this.primeCalls += 1;
+      return Promise.resolve(this);
+    },
     prepare(onProgress) {
       this.prepareCalls += 1;
       onProgress?.({ phase: 'downloading', loaded: 1, total: 2 });
@@ -122,6 +128,10 @@ function makeOfflineEngine(options) {
     start(settings) {
       this.startCalls.push(settings);
       this.lastStart = settings;
+      if (config.startError) {
+        settings.onError?.(config.startError);
+        return Promise.reject(new Error(config.startError));
+      }
       if (!config.deferStart) settings.onStarted?.();
       return Promise.resolve(true);
     },
@@ -135,12 +145,15 @@ function makeOfflineEngine(options) {
     },
     resolvePrepare() { resolvePrepare?.(); },
     triggerStarted() { this.lastStart?.onStarted?.(); },
+    triggerResult(transcript) { this.lastStart?.onResult?.(transcript); },
+    triggerNoResult() { this.lastStart?.onNoResult?.(); },
     triggerEnd() { hooks?.onEnded?.(); }
   };
   return {
     engine,
     api: {
       supportsOfflineVoice: () => true,
+      hasCachedArchive: () => Boolean(config.cachedArchive),
       buildRecognitionPlan: () => ({ grammar: null }),
       create(nextHooks) { hooks = nextHooks; return engine; }
     }
@@ -197,6 +210,22 @@ test('offline voice requires an explicit one-time setup, coalesces it, and expos
   assert.equal(prepare.hidden, true);
 });
 
+test('a cached offline pack is initialized automatically on an exercise page', async () => {
+  const runtime = makeOfflineEngine({ cachedArchive: true, deferPrepare: true });
+  const environment = createEnvironment({ offlineVoice: runtime.api });
+  await flush();
+
+  const mic = environment.document.querySelector('.voice-mic');
+  const prepare = environment.document.querySelector('.voice-prepare');
+  assert.equal(runtime.engine.prepareCalls, 1, 'a stored local pack is prepared without another setup click');
+  assert.equal(mic.disabled, true, 'PTT waits only while the cached model initializes');
+  assert.equal(prepare.hidden, true, 'the one-time setup action stays out of the way for a stored pack');
+
+  runtime.engine.resolvePrepare();
+  await flush();
+  assert.equal(mic.disabled, false);
+});
+
 test('PTT and continuous assistant route only through the offline engine and safely restart', async () => {
   const runtime = makeOfflineEngine();
   const environment = createEnvironment({ offlineVoice: runtime.api });
@@ -218,9 +247,9 @@ test('PTT and continuous assistant route only through the offline engine and saf
   continuous.checked = true;
   continuous.dispatchEvent(new FakeEvent('change'));
   await flush();
-  const assistant = environment.document.querySelector('.voice-assistant');
+  const listeningIndicator = environment.document.querySelector('.voice-listening-indicator');
   assert.equal(runtime.engine.startCalls.length, 2);
-  assert.equal(assistant.hidden, false);
+  assert.equal(listeningIndicator.hidden, false);
 
   runtime.engine.triggerEnd();
   assert.equal(environment.timers.size, 1, 'an unexpected end schedules one restart');
@@ -231,7 +260,58 @@ test('PTT and continuous assistant route only through the offline engine and saf
   assert.equal(runtime.engine.startCalls.length, 3);
   environment.listeners.get('blur')();
   assert.equal(environment.timers.size, 0, 'blur cancels any pending continuous retry');
-  assert.equal(assistant.hidden, true);
+  assert.equal(listeningIndicator.hidden, true);
+});
+
+test('PTT remains live when the pointer crosses the edge of its control', async () => {
+  const runtime = makeOfflineEngine();
+  const environment = createEnvironment({ offlineVoice: runtime.api });
+  await flush();
+  environment.document.querySelector('.voice-prepare').click();
+  await flush();
+
+  const mic = environment.document.querySelector('.voice-mic');
+  mic.dispatchEvent(new FakeEvent('pointerdown', { pointerId: 1 }));
+  await flush();
+  mic.dispatchEvent(new FakeEvent('pointerleave', { pointerId: 1 }));
+  assert.equal(runtime.engine.stopCalls.length, 0, 'moving the pointer must not cut off an in-progress RT call');
+
+  mic.dispatchEvent(new FakeEvent('pointerup', { pointerId: 1 }));
+  assert.equal(runtime.engine.stopCalls.length, 1);
+});
+
+test('user-triggered PTT and continuous listening prime audio before asynchronous startup', async () => {
+  const runtime = makeOfflineEngine();
+  const environment = createEnvironment({ offlineVoice: runtime.api });
+  await flush();
+  environment.document.querySelector('.voice-prepare').click();
+  await flush();
+
+  const mic = environment.document.querySelector('.voice-mic');
+  mic.dispatchEvent(new FakeEvent('pointerdown', { pointerId: 1 }));
+  assert.equal(runtime.engine.primeCalls, 1, 'pointerdown keeps audio unlock inside the user gesture');
+  mic.dispatchEvent(new FakeEvent('pointerup', { pointerId: 1 }));
+
+  const continuous = environment.document.querySelector('.voice-continuous').children[0];
+  continuous.checked = true;
+  continuous.dispatchEvent(new FakeEvent('change'));
+  assert.equal(runtime.engine.primeCalls, 2, 'continuous mode is primed from the user control too');
+});
+
+test('a recoverable suspended-audio error keeps offline voice ready for another PTT press', async () => {
+  const runtime = makeOfflineEngine({ startError: 'audio-suspended' });
+  const environment = createEnvironment({ offlineVoice: runtime.api });
+  await flush();
+  environment.document.querySelector('.voice-prepare').click();
+  await flush();
+
+  const mic = environment.document.querySelector('.voice-mic');
+  mic.dispatchEvent(new FakeEvent('pointerdown', { pointerId: 1 }));
+  await flush();
+
+  const status = environment.document.querySelector('.voice-status');
+  assert.equal(status.textContent, 'AUDIO IS BLOCKED · HOLD PTT AND TRY AGAIN');
+  assert.equal(mic.disabled, false);
 });
 
 test('a released PTT press cannot become active after a delayed local-engine start', async () => {
@@ -267,6 +347,47 @@ test('offline voice stops continuous retries after microphone permission is deni
   assert.equal(environment.document.querySelector('.voice-mic').textContent, 'PTT');
 });
 
+test('the dock preserves what local voice heard and its command result after the session ends', async () => {
+  const runtime = makeOfflineEngine();
+  const environment = createEnvironment({ offlineVoice: runtime.api });
+  await flush();
+  environment.document.querySelector('.voice-prepare').click();
+  await flush();
+
+  const mic = environment.document.querySelector('.voice-mic');
+  mic.dispatchEvent(new FakeEvent('pointerdown', { pointerId: 1 }));
+  await flush();
+  runtime.engine.triggerResult('transmit for df');
+  mic.dispatchEvent(new FakeEvent('pointerup', { pointerId: 1 }));
+
+  const feedback = environment.document.querySelector('.voice-feedback');
+  assert.equal(feedback.hidden, false);
+  assert.match(feedback.textContent, /HEARD/i);
+  assert.match(feedback.getAttribute('aria-label'), /TRANSMIT FOR DF/i);
+  assert.match(feedback.getAttribute('aria-label'), /AVAILABLE ON THIS SCREEN/i);
+  assert.equal(environment.document.querySelector('.voice-status').textContent, 'PTT READY');
+});
+
+test('the dock explains an empty final result and includes a movable control handle', async () => {
+  const runtime = makeOfflineEngine();
+  const environment = createEnvironment({ offlineVoice: runtime.api });
+  await flush();
+  environment.document.querySelector('.voice-prepare').click();
+  await flush();
+
+  const mic = environment.document.querySelector('.voice-mic');
+  mic.dispatchEvent(new FakeEvent('pointerdown', { pointerId: 1 }));
+  await flush();
+  runtime.engine.triggerNoResult();
+  runtime.engine.triggerEnd();
+
+  const feedback = environment.document.querySelector('.voice-feedback');
+  assert.equal(feedback.hidden, false);
+  assert.match(feedback.textContent, /NO SPEECH/i);
+  assert.match(feedback.getAttribute('aria-label'), /NO SPEECH DETECTED/i);
+  assert.ok(environment.document.querySelector('.voice-drag-handle'));
+});
+
 test('Android native bridge can report a preparing offline pack until it is ready', async () => {
   let capability = 'preparing';
   const bridge = {
@@ -286,14 +407,21 @@ test('Android native bridge can report a preparing offline pack until it is read
   assert.equal(mic.disabled, false);
 });
 
-test('the offline recognition plan uses open local transcription instead of a closed phrase list', () => {
-  const plan = OfflineVoice.buildRecognitionPlan();
-  assert.deepEqual(plan, { grammar: null });
+test('the offline recognition plan uses a constrained RT grammar with spoken callsign variants', () => {
+  const plan = OfflineVoice.buildRecognitionPlan({ callsigns: ['FALCON 11', 'RAVEN 21'] });
+  assert.ok(Array.isArray(plan.grammar));
 
-  // Retained solely as a compatibility fallback for old cached application shells.
-  const grammar = OfflineVoice.buildQghGrammar({ callsigns: ['FALCON 11'] });
+  const grammar = plan.grammar;
   assert.ok(grammar.includes('[unk]'));
-  assert.ok(grammar.includes('turn right heading two seven zero'));
-  assert.ok(grammar.includes('falcon 11 turn right heading two seven zero'));
+  assert.equal(grammar.includes('turn right heading two seven zero'), false, 'tactical RT grammar keeps turns callsign-specific');
+  assert.ok(grammar.includes('falcon turn right heading two seven zero'));
   assert.ok(grammar.includes('transmit for df falcon 11'));
+  assert.ok(grammar.includes('transmit for direction finding raven twenty one'));
+  assert.ok(grammar.includes('transmit for d f raven two one'));
+
+  const maximumTacticalPlan = OfflineVoice.buildRecognitionPlan({
+    callsigns: ['FALCON 11', 'RAVEN 21', 'VIPER 31', 'EAGLE 41']
+  }).grammar;
+  assert.ok(maximumTacticalPlan.length < 12_000, 'the Android offline recognizer accepts no more than 12,000 phrases');
+  assert.ok(Buffer.byteLength(JSON.stringify(maximumTacticalPlan)) < 500_000, 'the Android offline recognizer accepts no more than 500 KB of grammar JSON');
 });
