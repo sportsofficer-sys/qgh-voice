@@ -164,6 +164,7 @@ function createEnvironment(options) {
   const document = new FakeDocument();
   const timers = new Map();
   const listeners = new Map();
+  const storage = new Map();
   let nextTimer = 1;
   const sandbox = {
     QGHVoiceControl: Voice,
@@ -174,12 +175,18 @@ function createEnvironment(options) {
     setTimeout(callback) { const id = nextTimer; nextTimer += 1; timers.set(id, callback); return id; },
     clearTimeout(id) { timers.delete(id); },
     addEventListener(type, listener) { listeners.set(type, listener); },
+    innerWidth: options?.viewportWidth,
+    innerHeight: options?.viewportHeight,
+    localStorage: {
+      getItem(key) { return storage.get(key) || null; },
+      setItem(key, value) { storage.set(key, String(value)); }
+    },
     location: { href: 'https://example.test/qgh/single.html' }
   };
   sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
   vm.runInContext(workspaceSource, sandbox);
-  return { document, timers, listeners, workspace: sandbox.QGHVoiceWorkspace };
+  return { document, timers, listeners, storage, workspace: sandbox.QGHVoiceWorkspace };
 }
 
 async function flush() {
@@ -385,7 +392,72 @@ test('the dock explains an empty final result and includes a movable control han
   assert.equal(feedback.hidden, false);
   assert.match(feedback.textContent, /NO SPEECH/i);
   assert.match(feedback.getAttribute('aria-label'), /NO SPEECH DETECTED/i);
-  assert.ok(environment.document.querySelector('.voice-drag-handle'));
+  const dragHandle = environment.document.querySelector('.voice-drag-handle');
+  assert.ok(dragHandle);
+  assert.equal(dragHandle.textContent, 'DRAG');
+  assert.match(dragHandle.getAttribute('aria-label'), /hold and drag/i);
+});
+
+test('the DRAG grip clamps, persists, and keyboard-moves the complete voice dock', async () => {
+  const runtime = makeOfflineEngine();
+  const environment = createEnvironment({ offlineVoice: runtime.api, viewportWidth: 320, viewportHeight: 420 });
+  await flush();
+
+  const dock = environment.document.querySelector('.voice-dock');
+  const dragHandle = environment.document.querySelector('.voice-drag-handle');
+  dock.getBoundingClientRect = () => ({
+    left: Number.parseFloat(dock.style.left) || 100,
+    top: Number.parseFloat(dock.style.top) || 200,
+    width: 68,
+    height: 196
+  });
+
+  dragHandle.dispatchEvent(new FakeEvent('pointerdown', {
+    button: 0,
+    pointerId: 9,
+    clientX: 112,
+    clientY: 212
+  }));
+  environment.listeners.get('pointermove')(new FakeEvent('pointermove', {
+    pointerId: 9,
+    clientX: 999,
+    clientY: 999
+  }));
+  environment.listeners.get('pointerup')(new FakeEvent('pointerup', {
+    pointerId: 9,
+    clientX: 999,
+    clientY: 999
+  }));
+
+  assert.equal(dock.style.left, '244px', 'right edge clamps to an 8 px viewport margin');
+  assert.equal(dock.style.top, '216px', 'bottom edge clamps to an 8 px viewport margin');
+  assert.equal(dock.style.right, 'auto');
+  assert.equal(dock.style.bottom, 'auto');
+  assert.equal(dock.dataset.dragging, undefined);
+  assert.deepEqual(JSON.parse(environment.storage.get('qgh-voice-dock-position-v2')), { left: 244, top: 216 });
+
+  dragHandle.dispatchEvent(new FakeEvent('pointerdown', {
+    button: 0,
+    pointerId: 10,
+    clientX: 250,
+    clientY: 222
+  }));
+  environment.listeners.get('pointermove')(new FakeEvent('pointermove', {
+    pointerId: 10,
+    clientX: -99,
+    clientY: -99
+  }));
+  dragHandle.dispatchEvent(new FakeEvent('lostpointercapture', { pointerId: 10 }));
+  assert.equal(dock.style.left, '8px', 'left edge clamps to an 8 px viewport margin');
+  assert.equal(dock.style.top, '8px', 'top edge clamps to an 8 px viewport margin');
+  assert.equal(dock.dataset.dragging, undefined, 'lost pointer capture completes the drag safely');
+
+  const right = new FakeEvent('keydown', { key: 'ArrowRight' });
+  dragHandle.dispatchEvent(right);
+  assert.equal(right.defaultPrevented, true);
+  assert.equal(dock.style.left, '24px');
+  assert.equal(dock.style.top, '8px');
+  assert.deepEqual(JSON.parse(environment.storage.get('qgh-voice-dock-position-v2')), { left: 24, top: 8 });
 });
 
 test('Android native bridge can report a preparing offline pack until it is ready', async () => {

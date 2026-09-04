@@ -255,6 +255,7 @@ function createSingleHarness() {
   const controls = {
     aircraft,
     runway: add(documentRef, setup, 'input', { id: 'runway', type: 'number', min: '0', max: '359', value: '150' }),
+    voiceCommandAck: add(documentRef, consoleScreen, 'output', { id: 'voiceCommandAck', hidden: true }),
     headingInput: add(documentRef, consoleScreen, 'input', { id: 'headingInput', type: 'number', min: '0', max: '359', value: '150' }),
     turnHeadingLeft: add(documentRef, consoleScreen, 'button', { id: 'turnHeadingLeft', textContent: 'TURN LEFT' }),
     turnHeadingRight: add(documentRef, consoleScreen, 'button', { id: 'turnHeadingRight', textContent: 'TURN RIGHT' }),
@@ -303,7 +304,8 @@ function createTacticalHarness() {
   const controls = {
     falcon: createAircraft('A', 'FALCON 11'),
     raven: createAircraft('B', 'RAVEN 21'),
-    formationLeader: add(documentRef, setup, 'select', { id: 'tFormationLeader' })
+    formationLeader: add(documentRef, setup, 'select', { id: 'tFormationLeader' }),
+    voiceCommandAck: add(documentRef, consoleScreen, 'output', { id: 'tVoiceCommandAck', hidden: true })
   };
   const ravenLeader = add(documentRef, controls.formationLeader, 'option', { value: 'B', textContent: 'RAVEN 21' });
   controls.formationLeader.options = [ravenLeader];
@@ -350,6 +352,35 @@ test('voice DOM router uses existing Normal and U/S Compass controls and refuses
   const transmitted = workspace.dispatchTranscript('transmit for df please');
   assert.equal(transmitted.ok, true);
   assert.equal(controls.transmit.clickCount, 1);
+});
+
+test('accepted voice calls visibly acknowledge above the active homing display and highlight their control', () => {
+  const single = createSingleHarness();
+  const { workspace, screens, consoleScreen, controls } = single;
+  setActive(screens, consoleScreen);
+
+  const singleOutcome = workspace.dispatchTranscript('turn right two seven zero');
+  assert.equal(singleOutcome.ok, true);
+  assert.equal(controls.headingInput.classList.contains('voice-command-effect'), true);
+  assert.equal(controls.turnHeadingRight.classList.contains('voice-command-effect'), true);
+  assert.equal(controls.voiceCommandAck.hidden, false);
+  assert.match(controls.voiceCommandAck.textContent, /TURN RIGHT HEADING 270/);
+  assert.equal(controls.voiceCommandAck.getAttribute('aria-label'), controls.voiceCommandAck.textContent);
+  assert.equal(controls.voiceCommandAck.title, controls.voiceCommandAck.textContent);
+  assert.equal(controls.voiceCommandAck.classList.contains('voice-command-ack-active'), true);
+  [...single.timers.values()].forEach(callback => callback());
+  assert.equal(controls.voiceCommandAck.hidden, true, 'the acknowledgement clears after its short acquisition window');
+
+  const rejected = workspace.dispatchTranscript('random words without a control call');
+  assert.equal(rejected.ok, false);
+  assert.equal(controls.voiceCommandAck.hidden, true, 'a rejected call must not look accepted over the homing display');
+
+  const tactical = createTacticalHarness();
+  const tacticalOutcome = tactical.workspace.dispatchTranscript('raven transmit for df');
+  assert.equal(tacticalOutcome.ok, true);
+  assert.equal(tactical.controls.raven.transmit.classList.contains('voice-command-effect'), true);
+  assert.equal(tactical.controls.voiceCommandAck.hidden, false);
+  assert.match(tactical.controls.voiceCommandAck.textContent, /RAVEN 21.*TRANSMIT/);
 });
 
 test('voice router requires an explicit confirmation before restart and accepts spoken confirmation', () => {

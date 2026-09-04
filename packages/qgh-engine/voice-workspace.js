@@ -24,6 +24,7 @@
     lastTranscriptAt: 0,
     statusTimer: null,
     feedbackTimer: null,
+    commandAcknowledgementTimer: null,
     restartTimer: null,
     readinessTimer: null,
     availabilityPromise: null,
@@ -127,6 +128,43 @@
     state.feedback.title = detail;
     state.feedback.dataset.tone = tone || 'neutral';
     state.feedbackTimer = root.setTimeout(clearVoiceFeedback, VOICE_FEEDBACK_WINDOW_MS);
+  }
+
+  function commandAcknowledgementTarget() {
+    if (pageKind() === 'single' && activeScreen('console')) return $('voiceCommandAck');
+    if (pageKind() === 'tactical' && activeScreen('tConsole')) return $('tVoiceCommandAck');
+    return null;
+  }
+
+  function describeWorkspaceVoiceCommand(command, fallback) {
+    const targetLabel = pageKind() === 'tactical' && command?.aircraft
+      ? tacticalCallsign(command.aircraft)
+      : undefined;
+    return typeof Voice.describeCommand === 'function'
+      ? Voice.describeCommand(command, { targetLabel })
+      : String(fallback || command?.intent || 'COMMAND').replace(/-/g, ' ').toUpperCase();
+  }
+
+  function showVoiceCommandAcknowledgement(command, outcome) {
+    if (!outcome?.ok) return;
+    const acknowledgement = commandAcknowledgementTarget();
+    if (!acknowledgement) return;
+    const description = describeWorkspaceVoiceCommand(command, outcome.message || 'COMMAND ACCEPTED');
+    root.clearTimeout(state.commandAcknowledgementTimer);
+    const message = `VOICE · ${description}`;
+    acknowledgement.textContent = message;
+    acknowledgement.setAttribute?.('aria-label', message);
+    acknowledgement.title = message;
+    acknowledgement.hidden = false;
+    const wasActive = acknowledgement.classList?.contains?.('voice-command-ack-active');
+    acknowledgement.classList?.remove('voice-command-ack-active');
+    // Reflow only when a repeated RT call needs to restart an active animation.
+    if (wasActive) void acknowledgement.offsetWidth;
+    acknowledgement.classList?.add('voice-command-ack-active');
+    state.commandAcknowledgementTimer = root.setTimeout(() => {
+      acknowledgement.hidden = true;
+      acknowledgement.classList?.remove('voice-command-ack-active');
+    }, 3000);
   }
 
   function nativeVoiceBridge() {
@@ -266,12 +304,16 @@
     if (!element?.classList) return;
     const priorTimer = voiceEffectTimers.get(element);
     if (priorTimer !== undefined) root.clearTimeout(priorTimer);
+    const wasActive = element.classList?.contains?.('voice-command-effect');
     element.classList.remove('voice-command-effect');
+    // A repeated instruction can target the same control before its prior pulse ends.
+    // Force a fresh visual transition so the controller can see every accepted RT call.
+    if (wasActive) void element.offsetWidth;
     element.classList.add('voice-command-effect');
     const timer = root.setTimeout(() => {
       element.classList?.remove('voice-command-effect');
       voiceEffectTimers.delete(element);
-    }, 900);
+    }, 1800);
     voiceEffectTimers.set(element, timer);
   }
 
@@ -792,9 +834,7 @@
     if (!available.ok) return available;
     state.pendingCommand = command;
     state.pendingContext = currentVoiceContext();
-    const description = typeof Voice.describeCommand === 'function'
-      ? Voice.describeCommand(command)
-      : String(command.intent || 'COMMAND').replace(/-/g, ' ').toUpperCase();
+    const description = describeWorkspaceVoiceCommand(command);
     if (state.confirmationDetail) state.confirmationDetail.textContent = `HEARD · ${description}`;
     if (state.confirmationPanel) state.confirmationPanel.hidden = false;
     markVoiceAffected(state.confirmationButton);
@@ -827,6 +867,7 @@
     clearPendingVoiceCommand();
     const outcome = runCommand(command);
     setStatus(outcome.message, outcome.ok ? 'success' : 'error');
+    showVoiceCommandAcknowledgement(command, outcome);
     return outcome;
   }
 
@@ -865,6 +906,7 @@
     }
     const outcome = runCommand(command);
     setStatus(outcome.message, outcome.ok ? 'success' : 'error');
+    showVoiceCommandAcknowledgement(command, outcome);
     return outcome;
   }
 
@@ -1293,9 +1335,9 @@
     const dragHandle = documentRef.createElement('button');
     dragHandle.type = 'button';
     dragHandle.className = 'voice-drag-handle';
-    dragHandle.textContent = 'MOVE';
-    dragHandle.setAttribute('aria-label', 'Drag to move voice controls');
-    dragHandle.title = 'Drag to move voice controls';
+    dragHandle.textContent = 'DRAG';
+    dragHandle.setAttribute('aria-label', 'Hold and drag to move voice controls');
+    dragHandle.title = 'Hold and drag to move voice controls';
 
     const mic = documentRef.createElement('button');
     mic.type = 'button';

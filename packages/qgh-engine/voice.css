@@ -18,15 +18,59 @@
 /* A short, consistent acknowledgement makes an accepted voice instruction visible on
    the same button, tab, or numeric field that the controller would operate manually. */
 .voice-command-effect {
-  animation: qgh-voice-command-effect .82s ease-out;
-  outline: 3px solid rgba(0, 125, 125, .5) !important;
-  outline-offset: 2px;
+  animation: qgh-voice-command-effect 1.8s ease-out;
+  outline: 3px solid #b97416 !important;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(185, 116, 22, .18) !important;
 }
 
 @keyframes qgh-voice-command-effect {
-  0% { box-shadow: 0 0 0 0 rgba(0, 125, 125, .36); }
-  48% { box-shadow: 0 0 0 7px rgba(0, 125, 125, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(0, 125, 125, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(185, 116, 22, .44); }
+  40% { box-shadow: 0 0 0 9px rgba(185, 116, 22, .08); }
+  100% { box-shadow: 0 0 0 5px rgba(185, 116, 22, .18); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-command-effect { animation: none; }
+}
+
+/* The acknowledgement is shared by the single and tactical D/F readouts. It is
+   deliberately one line so a long tactical callsign cannot cover homing. */
+.display > .voice-command-ack,
+.tactical-display > .voice-command-ack {
+  position: absolute;
+  z-index: 2;
+  top: clamp(10px, 5%, 18px);
+  left: 50%;
+  max-width: calc(100% - 32px);
+  padding: 5px 9px;
+  border: 1px solid rgba(163, 44, 39, .52);
+  border-radius: 6px;
+  transform: translateX(-50%);
+  color: #a32c27;
+  background: rgba(255, 250, 248, .94);
+  font: 700 10px 'IBM Plex Mono', monospace;
+  letter-spacing: .07em;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.display > .voice-command-ack-active,
+.tactical-display > .voice-command-ack-active { animation: qgh-voice-command-acknowledgement 3s ease-out both; }
+
+@keyframes qgh-voice-command-acknowledgement {
+  0% { opacity: 0; transform: translate(-50%, -4px); }
+  10%, 82% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .display > .voice-command-ack-active,
+  .tactical-display > .voice-command-ack-active { animation: none; }
 }
 
 /* The voice controls deliberately occupy only the page edge. The exercise console
@@ -72,10 +116,13 @@
 }
 
 .voice-drag-handle {
-  min-height: 25px !important;
+  width: 100%;
+  min-height: 44px !important;
+  border-color: rgba(255, 254, 250, .42) !important;
   color: rgba(255, 254, 250, .8) !important;
   cursor: grab !important;
   touch-action: none;
+  user-select: none;
 }
 
 .voice-drag-handle:active { cursor: grabbing !important; }

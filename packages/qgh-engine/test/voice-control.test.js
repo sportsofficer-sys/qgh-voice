@@ -411,6 +411,22 @@ test('accepts complete callsign, targeted-turn, voice-mode, and review-focus com
   });
 });
 
+test('describes a tactical command with its configured callsign instead of an internal aircraft ID', () => {
+  const command = {
+    accepted: true,
+    intent: 'normal-turn-heading',
+    aircraft: 'B',
+    side: 'right',
+    heading: 270
+  };
+
+  assert.equal(
+    Voice.describeCommand(command, { targetLabel: 'Raven 21' }),
+    'RAVEN 21 · TURN RIGHT HEADING 270'
+  );
+  assert.equal(Voice.describeCommand(command), 'B · TURN RIGHT HEADING 270');
+});
+
 test('parses every documented v4.2.0 voice-command example', () => {
   const options = {
     callsigns: [

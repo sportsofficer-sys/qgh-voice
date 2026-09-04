@@ -1085,9 +1085,10 @@
     return Boolean(command?.requiresConfirmation || CONFIRMATION_INTENTS.has(command?.intent));
   }
 
-  function describeCommand(command) {
+  function describeCommand(command, options) {
     if (!command?.accepted) return 'COMMAND NOT RECOGNISED';
-    const target = command.aircraft ? `${String(command.aircraft).toUpperCase()} · ` : '';
+    const targetLabel = options?.targetLabel ?? command.aircraft;
+    const target = command.aircraft ? `${String(targetLabel).toUpperCase()} · ` : '';
     if (command.intent === 'normal-turn-heading') return `${target}TURN ${String(command.side || '').toUpperCase()} HEADING ${String(command.heading).padStart(3, '0')}`;
     if (command.intent === 'us-turn') return `${target}TURN ${String(command.side || '').toUpperCase()} NOW`;
     if (command.intent === 'set-field' || command.intent === 'set-aircraft-field') return `${target}${String(command.field || '').toUpperCase()} ${command.value}`;

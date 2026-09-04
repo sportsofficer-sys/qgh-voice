@@ -32,6 +32,21 @@ test('each simulator page offers a local return to the QGH entry page', () => {
   assert.match(tactical, /href="index\.html"/);
 });
 
+test('each live homing display includes an unobtrusive voice-command acknowledgement', () => {
+  const single = readEngineFile('single.html');
+  const tactical = readEngineFile('tactical.html');
+  const voiceCss = readEngineFile('voice.css');
+
+  assert.match(single, /id="voiceCommandAck" class="voice-command-ack"/);
+  assert.match(tactical, /id="tVoiceCommandAck" class="voice-command-ack"/);
+  assert.match(single, /role="status" aria-live="polite"/);
+  assert.match(tactical, /role="status" aria-live="polite"/);
+  assert.match(voiceCss, /\.display > \.voice-command-ack[\s\S]*#a32c27/);
+  assert.match(voiceCss, /\.tactical-display > \.voice-command-ack[\s\S]*#a32c27/);
+  assert.match(voiceCss, /text-overflow: ellipsis/);
+  assert.match(voiceCss, /prefers-reduced-motion: reduce/);
+});
+
 test('guided familiarisation teaches exercise-first RT calls for each QGH mode', () => {
   const guidedTour = readEngineFile('guided-familiarisation.js');
   const userGuide = readEngineFile('user-guide.html');
