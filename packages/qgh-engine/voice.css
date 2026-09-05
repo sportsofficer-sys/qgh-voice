@@ -453,3 +453,36 @@ body:has(.voice-dock) { padding-right: 90px; }
   .voice-dock button { border: 1px solid ButtonText !important; }
   .voice-mic[aria-pressed='true'], .voice-command-effect { outline: 3px solid Highlight !important; }
 }
+
+.headphone-dialog {
+  box-sizing: border-box;
+  width: min(510px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: clamp(20px, 4vw, 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #b8c2be;
+  border-radius: 18px;
+  background: #fffefa;
+  color: #17262b;
+  box-shadow: 0 16px 48px #17262b26;
+  font: 400 15px/1.55 'IBM Plex Sans', sans-serif;
+}
+.headphone-dialog::backdrop { background: #17262b80; }
+.headphone-dialog h2 { margin: 6px 0 16px; font-size: 25px; line-height: 1.2; }
+.headphone-dialog p { margin: 12px 0; }
+.headphone-dialog .headphone-eyebrow { color: #006568; font: 600 11px/1.5 'IBM Plex Mono', monospace; letter-spacing: .09em; }
+.headphone-warning { border-left: 3px solid #b32f36; padding-left: 14px; }
+.headphone-pace { color: #006568; font-weight: 600; }
+.headphone-help { color: #485b60; font-size: 13px; }
+.headphone-dialog button { width: 100%; min-height: 48px; padding: 12px; border: 1px solid #9cadaa; border-radius: 8px; background: #fffefa; color: #075e60; font: 600 12px/1.35 'IBM Plex Sans', sans-serif; cursor: pointer; }
+.headphone-dialog button:disabled { color: #647776; background: #eceeea; cursor: not-allowed; }
+.headphone-dialog :is(button,input):focus-visible { outline: 3px solid #b97416; outline-offset: 3px; }
+.headphone-test-status { min-height: 2.8em; color: #485b60; font-size: 13px; }
+.headphone-check { display: flex; align-items: flex-start; gap: 12px; margin: 18px 0; cursor: pointer; }
+.headphone-check input { flex: 0 0 24px; width: 24px; height: 24px; margin: 0; accent-color: #007d7d; }
+.headphone-actions { display: grid; grid-template-columns: 1fr 1.35fr; gap: 10px; }
+.headphone-dialog .headphone-enable:not(:disabled) { background: #007d7d; color: #fff; border-color: #007d7d; }
+.voice-mute-pilot { color: #a52831 !important; border-color: #b95b62 !important; }
+@media (max-width: 360px) { .headphone-actions { grid-template-columns: 1fr; } }

@@ -840,7 +840,7 @@ test('Android native voice bridge uses the same safe voice dock workflow', async
     stops: 0,
     cancels: 0,
     getCapability() { return 'available'; },
-    start(continuous) { this.starts.push(continuous); },
+    start(continuous, requestId) { this.starts.push(continuous); this.requestId = requestId; },
     stop() { this.stops += 1; },
     cancel() { this.cancels += 1; }
   };
@@ -854,10 +854,10 @@ test('Android native voice bridge uses the same safe voice dock workflow', async
   await tick();
   assert.deepEqual(nativeBridge.starts, [false]);
 
-  environment.workspace.receiveNativeVoiceEvent({ type: 'started' });
+  environment.workspace.receiveNativeVoiceEvent({ type: 'started', requestId: nativeBridge.requestId });
   assert.equal(mic.getAttribute('aria-pressed'), 'true');
   mic.dispatchEvent(new FakeEvent('pointerup', { pointerId: 1 }));
   assert.equal(nativeBridge.stops, 1);
-  environment.workspace.receiveNativeVoiceEvent({ type: 'ended' });
+  environment.workspace.receiveNativeVoiceEvent({ type: 'ended', requestId: nativeBridge.requestId });
   assert.equal(mic.getAttribute('aria-pressed'), 'false');
 });

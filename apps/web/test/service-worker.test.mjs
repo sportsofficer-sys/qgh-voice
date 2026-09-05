@@ -65,6 +65,10 @@ test('service worker ignores unapproved same-origin requests', () => {
     `${scope}single.html?exercise=1`,
     `${scope}simulator.js?token=example`,
     `${scope}simulator.js?v=4.0.2&token=example`,
+    `${scope}simulator.js?v=4.0.3`,
+    `${scope}simulator.js?v=4.0.3&release=4.0.3`,
+    `${scope}simulator.js?v=4.0.2&release=4.0.3`,
+    `${scope}simulator.js?v=4.0.2&release=4.0.2&token=example`,
   ]) {
     let responsePromise;
     harness.fetchHandler({
@@ -83,7 +87,7 @@ test('service worker serves a versioned approved shell asset from the named cach
   const harness = createWorkerHarness({ cachedResponse: new Response('cached shell') });
   let responsePromise;
   harness.fetchHandler({
-    request: new Request(`${scope}simulator.js?v=4.0.2+public.1`),
+    request: new Request(`${scope}simulator.js?v=4.0.2`),
     respondWith: value => { responsePromise = value; },
   });
 
@@ -92,6 +96,18 @@ test('service worker serves a versioned approved shell asset from the named cach
   assert.deepEqual(harness.cacheCalls.match, [`${scope}simulator.js`], 'query variants use the canonical approved shell key');
   assert.equal(harness.cacheCalls.put, 0, 'runtime responses are never written to Cache Storage');
   assert.equal(harness.networkCalls(), 0, 'an approved cached asset remains available offline');
+});
+
+test('service worker serves release-qualified current assets offline', async () => {
+  const harness = createWorkerHarness({ cachedResponse: new Response('current release') });
+  let responsePromise;
+  harness.fetchHandler({
+    request: new Request(`${scope}headphone-consent.js?v=4.0.2&release=4.0.2`),
+    respondWith: value => { responsePromise = value; },
+  });
+  assert.equal(await (await responsePromise).text(), 'current release');
+  assert.deepEqual(harness.cacheCalls.match, [`${scope}headphone-consent.js`]);
+  assert.equal(harness.networkCalls(), 0);
 });
 
 test('service worker clears only its scoped cache generation and the known legacy cache', async () => {

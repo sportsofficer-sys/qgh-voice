@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#007d7d">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
-  <title>QGH Simulator User Guide</title>
+  <title>Reds QGH Simulator · User Guide</title>
   <link rel="stylesheet" href="entry.css?v=4.2.0">
 </head>
 <body>
@@ -17,7 +17,7 @@
 
     <article class="guide-card" aria-labelledby="guideTitle">
       <header class="guide-intro">
-        <span>USER GUIDE · LOCAL RADIO PREVIEW</span>
+        <span>USER GUIDE · 4.4.1 HEADPHONE PILOTS</span>
         <h2 id="guideTitle">QGH Simulator</h2>
         <p>Training use only. Verify all operational procedures against current authorised publications and local instructions.</p>
       </header>
@@ -80,10 +80,13 @@
           <li><b>Interrupt a reply:</b> hold PTT to stop the pilot audio, give your new instruction, then release. Manual exercise controls remain usable during speech and recognition failure.</li>
           <li><b>Replace a turn:</b> “Turn right 060” followed by “Turn left heading 010” immediately changes the commanded turn direction and target. The new pilot reply is <q>Roger, turning left, zero one zero, [callsign].</q> The aircraft follows the configured turn rate; its heading does not jump to 010.</li>
           <li><b>Default — no headphones:</b> pilot replies are muted. Red feedback, aircraft D/F and continuous voice control still work. No manoeuvre depends on hearing the pilot.</li>
-          <li><b>Headphone readbacks:</b> connect headphones, open VOICE, then enable <b>HEADPHONES · PILOT READBACKS</b>. With Continuous Listening on, microphone recognition remains active during pilot speech. When it detects your speech, it discards the interrupted reply; an accepted new command executes immediately and receives a fresh reply after your call ends. The old reply does not resume. Detection and recognition take a short processing time.</li>
-          <li><b>Pilot speech pace:</b> headphone replies target approximately 100 words per minute. The exact pace depends on the installed offline voice. This setting does not change aircraft motion, controller recognition or muted transmission timing.</li>
-          <li><b>Mute at any time:</b> switch HEADPHONES · PILOT READBACKS off. This stops sound without cancelling a manoeuvre, red feedback or simulated aircraft D/F. Your choice is saved on this device; switch it off before removing headphones.</li>
-          <li><b>Prevent feedback:</b> headphone mode cannot detect whether headphones are physically connected. Do not enable it with speakers: the microphone may hear the pilot and treat it as controller speech. PTT remains the most deliberate way to interrupt a reply. Give a new complete call; an interruption without a recognised command does not change flight.</li>
+          <li><b>Headphone readbacks:</b> connect and wear headphones, open VOICE, then select <b>HEADPHONES · PILOT READBACKS</b>. Read the warning, play the headphone test, confirm that you heard it through your headphones, and choose <b>ENABLE PILOT REPLIES</b>. The test temporarily disables recognition so its words cannot issue commands. Aircraft continue flying.</li>
+          <li><b>Four bundled male voices:</b> the web app includes an offline pilot-voice pack in its initial download. Single aircraft uses Michael; tactical aircraft A–D use Michael, Fenrir, Puck and George respectively. Voices remain assigned to their aircraft when you change selection. Unfamiliar callsigns may be spelled. No device voice or online speech service is substituted.</li>
+          <li><b>Pilot speech pace:</b> the same packaged voices and target of approximately 100 words per minute apply on laptops and phones. Short phrases and pauses can vary. Replies combine pre-generated audio clips locally; there is no per-command neural inference or cloud request. This affects headphone audio only, not aircraft motion, controller recognition or muted transmission timing. Commands execute first without waiting for audio.</li>
+          <li><b>Controller priority:</b> with Continuous Listening on, recognition remains active during headphone pilot speech. Detected controller speech cancels the old reply; an accepted new command executes immediately and receives a fresh reply. The old reply does not resume. PTT takes priority immediately. Give a complete new call; an interruption alone does not change flight.</li>
+          <li><b>Mute at any time:</b> open VOICE and choose <b>MUTE PILOT REPLIES</b> or switch the readback option off, before removing headphones. Muting stops sound without cancelling a manoeuvre, red feedback or simulated aircraft D/F. Pilot replies start muted on every page/session and when the page is hidden.</li>
+          <li><b>Device changes:</b> a reported audio-device change mutes pilot replies and requires a fresh headphone test. Browsers cannot reliably prove that headphones are connected or receiving the sound; some route changes are not reported. Your confirmation is not automatic detection. Speaker audio may enter the microphone and execute unintended commands, so never enable readbacks on speakers.</li>
+          <li><b>Offline preparation:</b> keep the app open online until the initial offline download completes. Speech recognition retains its separate <b>SET UP OFFLINE VOICE</b> step. If a download, memory or audio error occurs, pilot replies stay silent; manual controls, red acknowledgements and aircraft D/F remain available. Browser storage can be cleared by you or the device, requiring another download.</li>
         </ol>
         <p>Aircraft D/F updates during its simulated transmission. At release, the last indication is held for two seconds, then clears. A new transmission replaces the held indication. Ground indication is off. Muted replies still generate timed aircraft transmissions and red acknowledgements.</p>
         <p>Normal heading reports use the measured heading, not the assigned target. U/S Compass replies acknowledge turning or stopping without revealing a heading. Tactical replies retain the addressed callsign even if you select another aircraft before playback.</p>
@@ -97,7 +100,7 @@
         <p>The <a href="rt-reference.md" download>QGH / DF RT reference</a> preserves the supplied phraseology for study. It is not a list of fully implemented commands. Descent, landing, visual reports, aircraft system checks and speechless PTT-click procedures are not simulated by this radio update. Recognised unsupported requests display NOT SIMULATED rather than claiming compliance. Unclear messages and unknown callsigns do not produce a guessed manoeuvre.</p>
         <p>Give one clear call at a time. A recognised final segment executes immediately: a condition, correction or negation spoken later cannot retroactively prevent that earlier action. Make a subsequent explicit instruction to amend it; do not combine weather, conditional instructions and turns in one call.</p>
         <h4>OFFLINE AUDIO</h4>
-        <p>Recognition uses the downloaded local model. Spoken replies use an English voice installed on the device and explicitly identified by the browser as local. No remote voice is selected. If no local English voice is available, captions and timed aircraft D/F continue without sound. Prepare voice while online once and verify offline operation on the actual device before training.</p>
+        <p>Web v4.4.1 includes its four-voice pilot pack in the initial offline download. Controller recognition has a separate initial voice-setup step. Pilot replies are composed from packaged audio clips, with no device-voice or remote fallback. If audio is unavailable, captions and timed aircraft D/F continue without sound. Previously released Windows and Android packages have their earlier audio implementation; matching 4.4.1 native packages are not part of this web release. Verify recognition and replies in airplane mode on the actual device before training.</p>
       </section>
 
       <section class="guide-section" aria-labelledby="guideTactical">
@@ -125,7 +128,7 @@
         </div>
       </section>
 
-      <section class="guide-section guide-section-last" aria-labelledby="guideNotes">
+      <section class="guide-section" aria-labelledby="guideNotes">
         <h3 id="guideNotes">NOTES</h3>
         <ul>
           <li>Normal QGH uses assigned-heading turns. U/S Compass uses only left now, right now and stop turn now.</li>
@@ -133,6 +136,14 @@
           <li>Speed and rate of turn affect manoeuvrability and turn radius. Tactical formation wingmen retain leader speed until separated.</li>
           <li>The review records the continuous flight path, reference radials, commands and replay cursor. Use the replay-speed control to review efficiently.</li>
         </ul>
+      </section>
+      <section class="guide-section guide-section-last" aria-labelledby="guidePrivacy">
+        <h3 id="guidePrivacy">PRIVACY · NATIVE APPS</h3>
+        <p>Effective 5 September 2026. QGH Simulator is provided by Flt Lt Balaram Reddy for training, not operational air traffic control.</p>
+        <p>Microphone access is optional and used only for local controller-command recognition after you enable PTT or Continuous Listening. The app does not upload or save microphone recordings. Recognised commands and exercise tracks are held for the current exercise and review, not sent to a server. Manual controls work without microphone permission.</p>
+        <p>The native apps contain no advertising, analytics or account system. The Android app does not request Internet permission. Recognition models are stored locally. Optional pilot speech passes generated reply text to your device's installed speech service, selecting only a voice reported as not requiring a network connection. The device's speech service is provided separately by its vendor; QGH does not select a cloud voice.</p>
+        <p>Windows may retain local preferences and model caches; Android retains the extracted model but not exercise history. Restart an exercise to replace its in-memory data. Close the app to clear that session. Android's App info → Storage → Clear storage removes its local app data. Windows app data is under %APPDATA%\qgh-simulator; remove it only with the app closed if you want to erase its preferences and caches. Revoke microphone access in your device's privacy settings at any time.</p>
+        <p>For privacy questions, open the project support page in your browser: github.com/reds-aviation/qgh-voice/issues. Do not post personal information, audio recordings or sensitive training information publicly. Browser/PWA hosting is separate: its hosting provider receives ordinary web requests when you access or update the website.</p>
       </section>
     </article>
   </main>

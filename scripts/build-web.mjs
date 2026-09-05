@@ -1,6 +1,7 @@
 import { access, copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const engineRoot = resolve(repositoryRoot, 'packages', 'qgh-engine');
@@ -17,6 +18,10 @@ const engineFiles = [
   'simulator-core.js',
   'radio-session.js',
   'radio-workspace.js',
+  'headphone-consent.js',
+  'pilot-voice-engine.js',
+  'pilot-voice-worker.js',
+  'pilot-voices/manifest.json',
   'simulator.js',
   'voice-control.js',
   'offline-voice-engine.js',
@@ -65,7 +70,9 @@ const webHead = version => `
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="QGH Simulator">
+  <meta name="apple-mobile-web-app-title" content="Reds QGH">
+  <meta property="og:title" content="Reds QGH Simulator">
+  <meta property="og:description" content="Offline single-aircraft and tactical QGH training simulator.">
   <link rel="stylesheet" href="pwa.css?v=${version}">
 `;
 
@@ -133,7 +140,11 @@ function addPwaMarkup(pageName, source, version) {
     html = assertReplaced(html, '</body>', `${scripts}</body>`, pageName);
   }
 
-  return html;
+  // Older deployed workers normalize any lone ?v= query to their old cache.
+  // A second release key keeps new HTML and its scripts coherent even before
+  // the user activates the waiting update. The new worker caches this exact
+  // current-release shape, so the same URLs remain usable offline.
+  return html.replace(/\?v=[0-9][a-zA-Z0-9.+-]*(?=["'])/g, `?v=${version}&amp;release=${version}`);
 }
 
 async function copyEngineFile(relativePath) {
@@ -170,10 +181,27 @@ async function applyVersionToServiceWorker(version) {
 
 async function build() {
   const version = await readWebVersion();
+  const pilotPack = JSON.parse(await readFile(resolve(engineRoot, 'pilot-voices/manifest.json'), 'utf8'));
+  if (!Array.isArray(pilotPack.assets) || !pilotPack.assets.length) throw new Error('Pilot voice pack manifest is empty.');
+  const filesToCopy = [...engineFiles];
+  const seen = new Set(filesToCopy);
+  for (const asset of pilotPack.assets) {
+    if (typeof asset.path !== 'string' || !/^(?:pilot-voices|vendor\/pilot-tts)\/[a-zA-Z0-9_./-]+$/.test(asset.path)
+      || asset.path.split('/').some(part => !part || part === '.' || part === '..') || seen.has(asset.path)
+      || !/^[a-f0-9]{64}$/.test(asset.sha256) || !Number.isSafeInteger(asset.bytes) || asset.bytes < 1) {
+      throw new Error('Invalid or duplicate pilot voice asset in manifest.');
+    }
+    const data = await readFile(resolve(engineRoot, asset.path));
+    if (data.length !== asset.bytes || createHash('sha256').update(data).digest('hex') !== asset.sha256) {
+      throw new Error(`Pilot voice asset checksum mismatch: ${asset.path}`);
+    }
+    seen.add(asset.path);
+    filesToCopy.push(asset.path);
+  }
   await rm(outputRoot, { recursive: true, force: true });
   await mkdir(outputRoot, { recursive: true });
 
-  await Promise.all(engineFiles.map(copyEngineFile));
+  await Promise.all(filesToCopy.map(copyEngineFile));
 
   await Promise.all(pwaFiles.map(copyStaticFile));
   await applyVersionToServiceWorker(version);
@@ -184,7 +212,7 @@ async function build() {
     await writeFile(pagePath, addPwaMarkup(pageName, source, version), 'utf8');
   }));
 
-  await Promise.all([...new Set([...engineFiles, ...pwaFiles])].map(async relativePath => {
+  await Promise.all([...filesToCopy, ...pwaFiles].map(async relativePath => {
     try {
       await access(resolve(outputRoot, relativePath));
     } catch {

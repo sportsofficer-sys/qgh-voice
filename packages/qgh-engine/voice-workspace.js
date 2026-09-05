@@ -10,6 +10,7 @@
   const VOICE_CONFIRMATION_WINDOW_MS = 15_000;
   const VOICE_FEEDBACK_WINDOW_MS = 4_200;
   const VOICE_DOCK_POSITION_KEY = 'qgh-voice-dock-position-v2';
+  const nativeVoiceDocumentId = root.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const $ = id => documentRef.getElementById(id);
   const voiceEffectTimers = new WeakMap();
   const state = {
@@ -44,6 +45,8 @@
     preparePromise: null,
     startAttempt: 0,
     lastNativeGrammarJson: null,
+    nativeRequestId: null,
+    nativeResultReceived: false,
     mic: null,
     status: null,
     feedback: null,
@@ -1238,13 +1241,14 @@
   }
 
   function pilotBlocksMicrophone() {
-    return state.pilotSpeaking && !root.QGHRadioWorkspace?.allowsBargeIn?.();
+    return Boolean(root.QGHHeadphones?.blocksMicrophone?.()) || (state.pilotSpeaking && !root.QGHRadioWorkspace?.allowsBargeIn?.());
   }
 
   function setPilotSpeaking(speaking) {
     state.pilotSpeaking = Boolean(speaking);
     if (pilotBlocksMicrophone()) {
       state.startAttempt += 1;
+      state.nativeRequestId = null;
       clearRestartTimer();
       state.starting = false;
       try {
@@ -1259,6 +1263,7 @@
   }
 
   function handleTerminalRecognitionError(error) {
+    state.nativeRequestId = null;
     state.processing = false;
     clearRestartTimer();
     clearReadinessTimer();
@@ -1292,6 +1297,7 @@
   }
 
   function handleRecognitionEnd() {
+    state.nativeRequestId = null;
     state.processing = false;
     state.starting = false;
     state.listening = false;
@@ -1308,9 +1314,15 @@
 
   function receiveNativeVoiceEvent(event) {
     if (!event || typeof event !== 'object') return;
+    // Each start is tied to this document and attempt; queued callbacks cannot
+    // interrupt a newer call or execute after cancellation/navigation.
+    if (typeof event.requestId !== 'string' || !state.nativeRequestId
+        || event.requestId !== state.nativeRequestId) return;
     if (event.type === 'started') {
+      if (!state.starting) return;
       if (state.manuallyStopped || (!state.continuous && !state.pressHeld)) {
         state.starting = false;
+        state.nativeRequestId = null;
         nativeVoiceBridge()?.cancel();
         return;
       }
@@ -1320,8 +1332,19 @@
       setStatus(state.continuous ? 'VOICE ASSISTANT LISTENING' : 'LISTENING', 'active');
       return;
     }
+    if (event.type === 'speech-activity') {
+      if (!state.listening || state.processing || state.nativeResultReceived
+          || !canContinueListening()) return;
+      root.QGHRadioWorkspace?.controllerStart();
+      scheduleRadioQuietEnd();
+      return;
+    }
     if (event.type === 'result') {
-      if (typeof event.transcript === 'string') rememberTranscript(event.transcript);
+      if (!state.listening || state.nativeResultReceived) return;
+      if (typeof event.transcript === 'string' && event.transcript.trim()) {
+        state.nativeResultReceived = true;
+        rememberTranscript(event.transcript);
+      }
       return;
     }
     if (event.type === 'no-result') {
@@ -1481,13 +1504,15 @@
     updateMicState();
     if (bridge) {
       try {
+        state.nativeRequestId = `${nativeVoiceDocumentId}-${attempt}`;
+        state.nativeResultReceived = false;
         const plan = currentRecognitionPlan();
         const grammarJson = plan.grammarJson || '';
         if (typeof bridge.setGrammar === 'function' && state.lastNativeGrammarJson !== grammarJson) {
           bridge.setGrammar(grammarJson);
           state.lastNativeGrammarJson = grammarJson;
         }
-        bridge.start(Boolean(continuous));
+        bridge.start(Boolean(continuous), state.nativeRequestId);
         return true;
       } catch {
         handleTerminalRecognitionError('unavailable');
@@ -1560,6 +1585,14 @@
     if (cancel || state.starting) state.startAttempt += 1;
     clearRestartTimer();
     const bridge = nativeVoiceBridge();
+    if (bridge && cancel) {
+      state.nativeRequestId = null;
+      state.starting = false;
+      state.listening = false;
+      try { bridge.cancel(); } catch { /* The cancelled request is already invalidated. */ }
+      handleRecognitionEnd();
+      return;
+    }
     if (state.starting && !state.listening) {
       state.starting = false;
       state.listening = false;
@@ -1668,6 +1701,7 @@
     lastCallDetail.textContent = 'No voice call yet. Kept only until this page closes.';
     lastCall.append(lastCallTitle, lastCallDetail);
     settings.append(continuousLabel, prepare, engineNote, resetPosition, lastCall);
+    let updatePilotNote = () => {};
     if (root.QGHRadioWorkspace) {
       const pilotLabel = documentRef.createElement('label');
       pilotLabel.className = 'voice-continuous';
@@ -1678,13 +1712,42 @@
       pilotLabel.append(pilotAudio, 'HEADPHONES · PILOT READBACKS');
       const pilotNote = documentRef.createElement('small');
       pilotNote.className = 'voice-engine-note';
-      const updatePilotNote = () => { pilotNote.textContent = root.QGHRadioWorkspace.audioAvailable()
-        ? 'Off by default: muted. Enable only with headphones. In continuous mode, your speech interrupts pilot audio. PTT always takes priority.'
-        : 'No local English output voice available. Captions and timed pilot D/F still work offline.'; };
+      const mutePilot = documentRef.createElement('button');
+      mutePilot.type = 'button';
+      mutePilot.className = 'voice-mute-pilot';
+      mutePilot.textContent = 'MUTE PILOT REPLIES';
+      updatePilotNote = () => {
+        const enabled = root.QGHRadioWorkspace.status().audioEnabled;
+        pilotAudio.checked = enabled;
+        mutePilot.hidden = !enabled;
+        pilotNote.textContent = root.QGHPilotVoiceEngine
+          ? `${enabled ? 'Headphones confirmed by you.' : 'Muted. Connect headphones and complete the audio check to enable.'} Bundled male voices · target 100 words/minute. PTT and continuous controller speech take priority.`
+          : root.QGHRadioWorkspace.audioAvailable()
+            ? 'Off by default: muted. Enable only with headphones. In continuous mode, your speech interrupts pilot audio. PTT always takes priority.'
+            : 'No local English output voice available. Captions and timed pilot D/F still work offline.';
+        const message = root.QGHHeadphones?.status?.().message;
+        if (!enabled && message) pilotNote.textContent = `${message} ${pilotNote.textContent}`;
+      };
       updatePilotNote();
       root.speechSynthesis?.addEventListener?.('voiceschanged', updatePilotNote);
-      pilotAudio.addEventListener('change', () => root.QGHRadioWorkspace.setAudioEnabled(pilotAudio.checked));
-      settings.append(pilotLabel, pilotNote);
+      root.addEventListener?.('qgh-pilot-audio-change', updatePilotNote);
+      pilotAudio.addEventListener('change', () => {
+        if (pilotAudio.checked && root.QGHHeadphones) {
+          pilotAudio.checked = false;
+          setSettingsOpen(false);
+          root.QGHHeadphones.requestEnable();
+        } else {
+          if (root.QGHHeadphones) root.QGHHeadphones.mute();
+          else root.QGHRadioWorkspace.setAudioEnabled(pilotAudio.checked);
+        }
+        updatePilotNote();
+      });
+      mutePilot.addEventListener('click', () => {
+        if (root.QGHHeadphones) root.QGHHeadphones.mute();
+        else root.QGHRadioWorkspace.setAudioEnabled(false);
+        updatePilotNote();
+      });
+      settings.append(pilotLabel, mutePilot, pilotNote);
     }
 
     const listeningIndicator = documentRef.createElement('output');
@@ -1729,7 +1792,10 @@
     settingsToggle.addEventListener('click', () => {
       const opening = settings.hidden;
       setSettingsOpen(opening);
-      if (opening) checkLocalAvailability({ force: true });
+      if (opening) {
+        updatePilotNote();
+        checkLocalAvailability({ force: true });
+      }
     });
     prepare.addEventListener('click', prepareLocalVoice);
     resetPosition.addEventListener('click', resetVoiceDockPosition);

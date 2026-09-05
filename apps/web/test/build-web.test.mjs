@@ -26,6 +26,10 @@ test('web build creates an allowlisted PWA package', () => {
     'rt-reference.md',
     'radio-session.js',
     'radio-workspace.js',
+    'headphone-consent.js',
+    'pilot-voice-engine.js',
+    'pilot-voice-worker.js',
+    'pilot-voices/manifest.json',
     'single.html',
     'simulator-core.js',
     'simulator.js',
@@ -63,6 +67,7 @@ test('web build creates an allowlisted PWA package', () => {
     'icons/icon-512.png',
     'icons/apple-touch-icon.png',
     'icons/favicon-32.png',
+    ...JSON.parse(readFileSync(resolve(repositoryRoot, 'packages/qgh-engine/pilot-voices/manifest.json'), 'utf8')).assets.map(asset => asset.path),
   ].sort();
 
   if (existsSync(staticProbe)) rmSync(staticProbe, { force: true });
@@ -96,6 +101,13 @@ test('web build creates an allowlisted PWA package', () => {
   const distribution = readFileSync(resolve(outputRoot, 'web-distribution.js'), 'utf8');
   const headers = readFileSync(resolve(outputRoot, '_headers'), 'utf8');
   const { version } = JSON.parse(readFileSync(resolve(outputRoot, 'app-version.json'), 'utf8'));
+  for (const html of [entry, guide, single, tactical]) {
+    const versionedAssets = [...html.matchAll(/(?:src|href)="([^"]+\?v=[^"]+)"/g)];
+    assert.ok(versionedAssets.length > 0);
+    for (const [, asset] of versionedAssets) {
+      assert.ok(asset.endsWith(`?v=${version}&amp;release=${version}`), `release-qualified asset: ${asset}`);
+    }
+  }
   assert.match(entry, /manifest\.webmanifest/);
   assert.match(entry, /QGH_WEB_DISTRIBUTION/);
   assert.match(guide, /manifest\.webmanifest/);
@@ -117,8 +129,8 @@ test('web build creates an allowlisted PWA package', () => {
   assert.match(serviceWorker, /isVoiceModelRequest/);
   assert.match(serviceWorker, /if \(!cacheKey\) return;/);
   assert.match(serviceWorker, /return \(await openCache\(\)\)\.match\(cacheKey\);/);
-  assert.doesNotMatch(serviceWorker, /cache\.put\(/);
-  assert.doesNotMatch(serviceWorker, /cacheResponse/);
+  // Pack writes are integrity-checked and allowlisted; behavior is exercised in
+  // pilot-pack-cache.test.mjs rather than banning all Cache API writes.
   assert.doesNotMatch(serviceWorker, /caches\.match\(/);
   assert.match(serviceWorker, /event\.data\?\.type === 'SKIP_WAITING'/);
   assert.doesNotMatch(serviceWorker.split("self.addEventListener('activate'")[0], /skipWaiting/);

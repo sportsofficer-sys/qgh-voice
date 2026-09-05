@@ -1,6 +1,6 @@
 {
-  "name": "QGH Simulator",
-  "short_name": "QGH",
+  "name": "Reds QGH Simulator",
+  "short_name": "Reds QGH",
   "id": "./",
   "start_url": "./index.html",
   "scope": "./",
