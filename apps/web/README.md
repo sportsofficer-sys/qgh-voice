@@ -1,6 +1,6 @@
 # QGH Simulator web app
 
-This folder creates the hosted Progressive Web App (PWA) edition of QGH Voice v4.1.0. It packages the canonical files in `packages/qgh-engine` into `apps/web/dist` without modifying the Windows or Android native bundles.
+This folder creates the hosted Progressive Web App (PWA) edition of QGH Voice. The current release is v4.4.0 - Radio & Orbit. It packages the canonical files in `packages/qgh-engine` into `apps/web/dist` without modifying the Windows or Android native bundles.
 
 ## Build locally
 

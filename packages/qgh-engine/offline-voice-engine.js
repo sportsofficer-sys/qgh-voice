@@ -212,9 +212,9 @@
       .filter(Boolean);
     const screen = grammarScreen(context, callsigns);
     const scope = grammarScope(screen);
-    // Callsigns only alter a tactical exercise grammar. Keeping them out of every other
+    // Callsigns only alter an exercise grammar. Keeping them out of every other
     // cache key avoids rebuilding a large grammar while a user edits setup fields.
-    const activeCallsigns = scope === 'tactical' && isExerciseScreen(screen) ? callsigns : [];
+    const activeCallsigns = isExerciseScreen(screen) ? callsigns : [];
     return { screen, scope, callsigns: activeCallsigns, cacheKey: [screen, ...activeCallsigns].join('\u0000') };
   }
 
@@ -224,8 +224,10 @@
 
     const phrases = new Set(staticGrammarPhrases());
 
-    if (scope === 'tactical' && isExerciseScreen(screen)) callsigns.forEach(rawCallsign => {
-      callsignVariants(rawCallsign, { includeDigitWords: true }).forEach(callsign => {
+    if (isExerciseScreen(screen)) callsigns.forEach(rawCallsign => {
+      const variants = callsignVariants(rawCallsign, { includeDigitWords: true });
+      if (scope === 'single') variants.push(callsignDesignator(rawCallsign));
+      new Set(variants).forEach(callsign => {
         const transmitPhrases = [
           'transmit df', 'transmit for df', 'transmit d f', 'transmit for d f',
           'transmit direction finding', 'transmit for direction finding',
@@ -235,6 +237,8 @@
           `select aircraft ${callsign}`, `transmit aircraft ${callsign}`,
           `transmit qdm ${callsign}`, `transmit qte ${callsign}`,
           `report heading ${callsign}`, `report distance ${callsign}`,
+          ...(scope === 'single' ? [`${callsign} report heading`, `${callsign} report distance`,
+            `${callsign} turn left now`, `${callsign} turn right now`, `${callsign} stop turn now`] : []),
           `select formation leader ${callsign}`, `select formation member ${callsign}`,
           `stop following leader ${callsign}`, `focus aircraft ${callsign}`,
           ...transmitPhrases.flatMap(phrase => [`${phrase} ${callsign}`, `${callsign} ${phrase}`])
@@ -242,13 +246,62 @@
       });
     });
 
-    // [unk] makes an out-of-grammar phrase an explicit non-command, never a nearest match.
+    // Vosk uses these examples as a language-model bias, not an exact whitelist.
+    // Unknown output and whole-message intent must still be checked by the parser.
     phrases.add('[unk]');
+    if (isExerciseScreen(screen)) {
+      // Vosk's compositional language model already contains all heading digits.
+      // Reserve the new word-order/callsign transitions before optional aliases
+      // consume the budget; the parser validates every resulting 000–360 value.
+      const prefixes = scope === 'single' ? [''] : [];
+      callsigns.forEach(callsign => headingAliases(callsign, callsigns, 'digits').forEach(alias => prefixes.push(`${alias} `)));
+      addPhrases(phrases, ['orbit left', 'orbit right', 'left hand orbit', 'right hand orbit', 'continue orbit', 'resume normal']);
+      prefixes.forEach(prefix => addPhrases(phrases, [
+        `${prefix}report heading passing tree two fife`,
+        `${prefix}report passing heading zero niner zero`,
+        `${prefix}report passing two four zero`
+      ]));
+    }
     // Add headings after the other commands so the tactical alias budget accounts for
     // the entire grammar. They are relevant only during an exercise.
     if (isExerciseScreen(screen)) {
       if (scope === 'tactical') addTacticalExerciseHeadings(phrases, callsigns);
-      else addSingleExerciseHeadings(phrases);
+      else {
+        addSingleExerciseHeadings(phrases);
+        if (callsigns.length) {
+          addTacticalExerciseHeadings(phrases, callsigns);
+          // Add the full digit-spoken callsign as well as the concise designator,
+          // without letting longer custom callsigns exhaust the offline grammar budget.
+          for (const full of callsignVariants(callsigns[0], { includeDigitWords: true }).reverse()) {
+            const candidate = new Set(phrases);
+            for (let heading = 0; heading <= 360; heading += 1) {
+              const spoken = phraseForHeading(heading);
+              addPhrases(candidate, [`${full} turn left ${spoken}`, `${full} turn right ${spoken}`,
+                `${full} turn left heading ${spoken}`, `${full} turn right heading ${spoken}`, `${full} continue ${spoken}`]);
+            }
+            if (withinAndroidGrammarLimits([...candidate])) addPhrases(phrases, [...candidate]);
+          }
+        }
+      }
+    }
+    if (isExerciseScreen(screen)) {
+      const radio = root.QGHRadioSession || (typeof module === 'object' && module.exports ? require('./radio-session.js') : null);
+      const examples = radio?.GRAMMAR_EXAMPLES || [];
+      const additional = [...examples];
+      callsigns.forEach(callsign => headingAliases(callsign, callsigns, 'digits').forEach(alias =>
+        additional.unshift(...['orbit left', 'orbit right', 'left hand orbit', 'right hand orbit', 'continue orbit', 'continue', 'resume normal'].map(phrase => `${alias} ${phrase}`))));
+      callsigns.forEach(callsign => headingAliases(callsign, callsigns).forEach(alias =>
+        additional.push(...examples.map(phrase => `${alias} ${phrase}`))));
+      // Flight-control phrases retain priority if unusually long callsigns fill
+      // the native bridge budget. Never replace working heading commands with RT.
+      let grammarLength = JSON.stringify([...phrases]).length;
+      for (const phrase of additional) {
+        const nextLength = grammarLength + JSON.stringify(phrase).length + (phrases.size ? 1 : 0);
+        if (!phrases.has(phrase) && phrases.size < MAX_ANDROID_GRAMMAR_PHRASES && nextLength < MAX_ANDROID_GRAMMAR_BYTES) {
+          phrases.add(phrase);
+          grammarLength = nextLength;
+        }
+      }
     }
     const grammar = [...phrases];
     // Android rejects oversize JSON grammars by replacing them with [unk]. A conservative
@@ -524,8 +577,8 @@
           if (shouldFinish) this.finish();
         }
       });
-      recognizer.on('partialresult', () => {
-        if (!this.ending) settings.onPartial?.();
+      recognizer.on('partialresult', message => {
+        if (!this.ending) settings.onPartial?.(String(message?.result?.partial || '').trim());
       });
 
       const source = audioContext.createMediaStreamSource(stream);

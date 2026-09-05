@@ -22,6 +22,55 @@
     return speed / 3600 / rateRadians;
   }
 
+  function createOrbit(side, heading) {
+    if (side !== 'left' && side !== 'right') throw new Error('Orbit direction must be left or right.');
+    if (!Number.isFinite(heading)) throw new Error('Orbit entry heading must be finite.');
+    return { side, entryHeading: normalize(heading), degrees: 0, laps: 0 };
+  }
+
+  function advanceOrbit(orbit, signedDelta) {
+    if (!orbit || !['left', 'right'].includes(orbit.side) || !Number.isFinite(signedDelta)) {
+      throw new Error('Orbit state and heading change must be valid.');
+    }
+    const progress = signedDelta * (orbit.side === 'left' ? -1 : 1);
+    if (progress <= 0) return 0;
+    orbit.degrees += progress;
+    const laps = Math.floor((orbit.degrees + EPSILON) / 360);
+    const completed = laps - orbit.laps;
+    orbit.laps = laps;
+    return completed;
+  }
+
+  function orbitAtEntry(orbit) {
+    return Math.abs(orbit.degrees - Math.round(orbit.degrees / 360) * 360) <= EPSILON;
+  }
+
+  function resumeOrbit(orbit) {
+    if (!orbit || !['left', 'right'].includes(orbit.side)) throw new Error('Orbit is not active.');
+    orbit.exitRequested = true;
+    return orbitAtEntry(orbit);
+  }
+
+  function advanceOrbitMotion(plane, speed, rate, duration, orbit) {
+    if (!orbit || !['left', 'right'].includes(orbit.side)
+      || ![speed, rate, duration].every(Number.isFinite) || speed < 0 || rate <= 0 || duration < 0) {
+      throw new Error('Orbit motion needs a valid orbit, speed, positive turn rate and duration.');
+    }
+    const direction = orbit.side === 'left' ? -1 : 1;
+    const remaining = orbit.exitRequested
+      ? orbitAtEntry(orbit) ? 0 : 360 - normalize(orbit.degrees)
+      : Infinity;
+    const turnSeconds = Math.min(duration, remaining / rate);
+    const turning = advanceArc(plane, plane.heading, speed, direction * rate, turnSeconds);
+    const completedLaps = advanceOrbit(orbit, direction * rate * turnSeconds);
+    const exited = Boolean(orbit.exitRequested && remaining <= rate * duration + EPSILON);
+    if (!exited) return { ...turning, completedLaps, exited: false };
+    // Complete the circle at the selected rate, then fly the remainder straight.
+    // Spreading a smaller heading delta over the full step would change the radius.
+    const straight = advanceArc(turning, orbit.entryHeading, speed, 0, Math.max(0, duration - turnSeconds));
+    return { ...straight, distanceNm: turning.distanceNm + straight.distanceNm, completedLaps, exited: true };
+  }
+
   function advanceArc(point, headingDeg, speedKt, signedRateDegPerSecond, durationSeconds) {
     const x = Number(point && point.x);
     const y = Number(point && point.y);
@@ -68,5 +117,6 @@
     return { x, y, t, rangeNm: Math.hypot(x, y) };
   }
 
-  return { normalize, radians, turnRadiusNm, advanceArc, closestApproachToOverhead };
+  return { normalize, radians, turnRadiusNm, advanceArc, closestApproachToOverhead,
+    createOrbit, advanceOrbit, resumeOrbit, advanceOrbitMotion };
 });
