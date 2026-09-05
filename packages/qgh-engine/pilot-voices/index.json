@@ -1,0 +1,3528 @@
+{
+  "version": "qgh-pilot-kokoro-clips-en-2",
+  "sampleRate": 24000,
+  "targetWPM": 100,
+  "voices": {
+    "am_michael": {
+      "file": "am_michael.wav",
+      "sampleRate": 24000,
+      "speed": 0.8167,
+      "segments": {
+        "radio check pilot replies are set to one hundred words per minute": {
+          "offset": 0,
+          "length": 172800,
+          "words": 12,
+          "tempo": {
+            "sourceSamples": 132975,
+            "nominalFactor": 0.76953125,
+            "appliedFactor": 0.76953125,
+            "silenceAdjustmentSamples": 352,
+            "passes": 1
+          }
+        },
+        "roger": {
+          "offset": 172800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 21720,
+            "nominalFactor": 1.5083333333333333,
+            "appliedFactor": 1.5083333333333333,
+            "silenceAdjustmentSamples": -237,
+            "passes": 1
+          }
+        },
+        "instruction received this action is not simulated": {
+          "offset": 187200,
+          "length": 100800,
+          "words": 7,
+          "tempo": {
+            "sourceSamples": 104882,
+            "nominalFactor": 1.0404960317460317,
+            "appliedFactor": 1.0404960317460317,
+            "silenceAdjustmentSamples": -95,
+            "passes": 1
+          }
+        },
+        "will resume normal after this orbit": {
+          "offset": 288000,
+          "length": 86400,
+          "words": 6,
+          "tempo": {
+            "sourceSamples": 61585,
+            "nominalFactor": 0.7127893518518519,
+            "appliedFactor": 0.7127893518518519,
+            "silenceAdjustmentSamples": 473,
+            "passes": 1
+          }
+        },
+        "resuming normal": {
+          "offset": 374400,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 31097,
+            "nominalFactor": 1.0797569444444444,
+            "appliedFactor": 1.0797569444444444,
+            "silenceAdjustmentSamples": -365,
+            "passes": 1
+          }
+        },
+        "orbit complete continuing left orbit": {
+          "offset": 403200,
+          "length": 72000,
+          "words": 5,
+          "tempo": {
+            "sourceSamples": 72682,
+            "nominalFactor": 1.0094722222222223,
+            "appliedFactor": 1.0094722222222223,
+            "silenceAdjustmentSamples": 39,
+            "passes": 1
+          }
+        },
+        "orbit complete continuing right orbit": {
+          "offset": 475200,
+          "length": 72000,
+          "words": 5,
+          "tempo": {
+            "sourceSamples": 72707,
+            "nominalFactor": 1.0098194444444444,
+            "appliedFactor": 1.0098194444444444,
+            "silenceAdjustmentSamples": -180,
+            "passes": 1
+          }
+        },
+        "continuing left orbit": {
+          "offset": 547200,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 39334,
+            "nominalFactor": 0.9105092592592593,
+            "appliedFactor": 0.9105092592592593,
+            "silenceAdjustmentSamples": 157,
+            "passes": 1
+          }
+        },
+        "continuing right orbit": {
+          "offset": 590400,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 44293,
+            "nominalFactor": 1.025300925925926,
+            "appliedFactor": 1.025300925925926,
+            "silenceAdjustmentSamples": -269,
+            "passes": 1
+          }
+        },
+        "orbiting left": {
+          "offset": 633600,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 27981,
+            "nominalFactor": 0.9715625,
+            "appliedFactor": 0.9715625,
+            "silenceAdjustmentSamples": 428,
+            "passes": 1
+          }
+        },
+        "orbiting right": {
+          "offset": 662400,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 30480,
+            "nominalFactor": 1.0583333333333333,
+            "appliedFactor": 1.0583333333333333,
+            "silenceAdjustmentSamples": -149,
+            "passes": 1
+          }
+        },
+        "turning left": {
+          "offset": 691200,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 24497,
+            "nominalFactor": 0.8505902777777777,
+            "appliedFactor": 0.8505902777777777,
+            "silenceAdjustmentSamples": 253,
+            "passes": 1
+          }
+        },
+        "turning right": {
+          "offset": 720000,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 24885,
+            "nominalFactor": 0.8640625,
+            "appliedFactor": 0.8640625,
+            "silenceAdjustmentSamples": 447,
+            "passes": 1
+          }
+        },
+        "stop turn": {
+          "offset": 748800,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 24387,
+            "nominalFactor": 0.8467708333333334,
+            "appliedFactor": 0.8467708333333334,
+            "silenceAdjustmentSamples": 384,
+            "passes": 1
+          }
+        },
+        "roger turning left": {
+          "offset": 777600,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 36227,
+            "nominalFactor": 0.838587962962963,
+            "appliedFactor": 0.838587962962963,
+            "silenceAdjustmentSamples": 332,
+            "passes": 1
+          }
+        },
+        "roger turning right": {
+          "offset": 820800,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 37067,
+            "nominalFactor": 0.8580324074074074,
+            "appliedFactor": 0.8580324074074074,
+            "silenceAdjustmentSamples": 406,
+            "passes": 1
+          }
+        },
+        "will report passing": {
+          "offset": 864000,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 38660,
+            "nominalFactor": 0.8949074074074074,
+            "appliedFactor": 0.8949074074074074,
+            "silenceAdjustmentSamples": 298,
+            "passes": 1
+          }
+        },
+        "passed": {
+          "offset": 907200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17924,
+            "nominalFactor": 1.2447222222222223,
+            "appliedFactor": 1.2447222222222223,
+            "silenceAdjustmentSamples": -213,
+            "passes": 1
+          }
+        },
+        "passing": {
+          "offset": 921600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 20381,
+            "nominalFactor": 1.4153472222222223,
+            "appliedFactor": 1.4153472222222223,
+            "silenceAdjustmentSamples": -61,
+            "passes": 1
+          }
+        },
+        "heading": {
+          "offset": 936000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19275,
+            "nominalFactor": 1.3385416666666667,
+            "appliedFactor": 1.3385416666666667,
+            "silenceAdjustmentSamples": -147,
+            "passes": 1
+          }
+        },
+        "range": {
+          "offset": 950400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 20295,
+            "nominalFactor": 1.409375,
+            "appliedFactor": 1.409375,
+            "silenceAdjustmentSamples": -268,
+            "passes": 1
+          }
+        },
+        "decimal": {
+          "offset": 964800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 22190,
+            "nominalFactor": 1.5409722222222222,
+            "appliedFactor": 1.5409722222222222,
+            "silenceAdjustmentSamples": -84,
+            "passes": 1
+          }
+        },
+        "nautical miles": {
+          "offset": 979200,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 31987,
+            "nominalFactor": 1.1106597222222223,
+            "appliedFactor": 1.1106597222222223,
+            "silenceAdjustmentSamples": -284,
+            "passes": 1
+          }
+        },
+        "transmitting for direction finding": {
+          "offset": 1008000,
+          "length": 57600,
+          "words": 4,
+          "tempo": {
+            "sourceSamples": 56329,
+            "nominalFactor": 0.9779340277777778,
+            "appliedFactor": 0.9779340277777778,
+            "silenceAdjustmentSamples": 180,
+            "passes": 1
+          }
+        },
+        "speed": {
+          "offset": 1065600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 20184,
+            "nominalFactor": 1.4016666666666666,
+            "appliedFactor": 1.4016666666666666,
+            "silenceAdjustmentSamples": -298,
+            "passes": 1
+          }
+        },
+        "knots": {
+          "offset": 1080000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 18369,
+            "nominalFactor": 1.275625,
+            "appliedFactor": 1.275625,
+            "silenceAdjustmentSamples": -351,
+            "passes": 1
+          }
+        },
+        "flying independently": {
+          "offset": 1094400,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 41084,
+            "nominalFactor": 1.4265277777777778,
+            "appliedFactor": 1.4265277777777778,
+            "silenceAdjustmentSamples": -115,
+            "passes": 1
+          }
+        },
+        "falcon": {
+          "offset": 1123200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 21881,
+            "nominalFactor": 1.5195138888888888,
+            "appliedFactor": 1.5195138888888888,
+            "silenceAdjustmentSamples": -202,
+            "passes": 1
+          }
+        },
+        "raven": {
+          "offset": 1137600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 20279,
+            "nominalFactor": 1.408263888888889,
+            "appliedFactor": 1.408263888888889,
+            "silenceAdjustmentSamples": -196,
+            "passes": 1
+          }
+        },
+        "viper": {
+          "offset": 1152000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 21884,
+            "nominalFactor": 1.5197222222222222,
+            "appliedFactor": 1.5197222222222222,
+            "silenceAdjustmentSamples": -90,
+            "passes": 1
+          }
+        },
+        "hawk": {
+          "offset": 1166400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15378,
+            "nominalFactor": 1.0679166666666666,
+            "appliedFactor": 1.0679166666666666,
+            "silenceAdjustmentSamples": -63,
+            "passes": 1
+          }
+        },
+        "eagle": {
+          "offset": 1180800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 18507,
+            "nominalFactor": 1.2852083333333333,
+            "appliedFactor": 1.2852083333333333,
+            "silenceAdjustmentSamples": -323,
+            "passes": 1
+          }
+        },
+        "zero": {
+          "offset": 1195200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17896,
+            "nominalFactor": 1.2427777777777778,
+            "appliedFactor": 1.2427777777777778,
+            "silenceAdjustmentSamples": -292,
+            "passes": 1
+          }
+        },
+        "one": {
+          "offset": 1209600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15846,
+            "nominalFactor": 1.1004166666666666,
+            "appliedFactor": 1.1004166666666666,
+            "silenceAdjustmentSamples": -298,
+            "passes": 1
+          }
+        },
+        "two": {
+          "offset": 1224000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15497,
+            "nominalFactor": 1.0761805555555555,
+            "appliedFactor": 1.0761805555555555,
+            "silenceAdjustmentSamples": -271,
+            "passes": 1
+          }
+        },
+        "three": {
+          "offset": 1238400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17584,
+            "nominalFactor": 1.221111111111111,
+            "appliedFactor": 1.221111111111111,
+            "silenceAdjustmentSamples": -117,
+            "passes": 1
+          }
+        },
+        "four": {
+          "offset": 1252800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16707,
+            "nominalFactor": 1.1602083333333333,
+            "appliedFactor": 1.1602083333333333,
+            "silenceAdjustmentSamples": -402,
+            "passes": 1
+          }
+        },
+        "five": {
+          "offset": 1267200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17590,
+            "nominalFactor": 1.2215277777777778,
+            "appliedFactor": 1.2215277777777778,
+            "silenceAdjustmentSamples": -345,
+            "passes": 1
+          }
+        },
+        "six": {
+          "offset": 1281600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15727,
+            "nominalFactor": 1.0921527777777778,
+            "appliedFactor": 1.0921527777777778,
+            "silenceAdjustmentSamples": -406,
+            "passes": 1
+          }
+        },
+        "seven": {
+          "offset": 1296000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 18367,
+            "nominalFactor": 1.275486111111111,
+            "appliedFactor": 1.275486111111111,
+            "silenceAdjustmentSamples": -120,
+            "passes": 1
+          }
+        },
+        "eight": {
+          "offset": 1310400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15856,
+            "nominalFactor": 1.1011111111111112,
+            "appliedFactor": 1.1011111111111112,
+            "silenceAdjustmentSamples": -376,
+            "passes": 1
+          }
+        },
+        "nine": {
+          "offset": 1324800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17524,
+            "nominalFactor": 1.2169444444444444,
+            "appliedFactor": 1.2169444444444444,
+            "silenceAdjustmentSamples": -234,
+            "passes": 1
+          }
+        },
+        "tree": {
+          "offset": 1339200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16476,
+            "nominalFactor": 1.1441666666666668,
+            "appliedFactor": 1.1441666666666668,
+            "silenceAdjustmentSamples": -196,
+            "passes": 1
+          }
+        },
+        "fife": {
+          "offset": 1353600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16787,
+            "nominalFactor": 1.1657638888888888,
+            "appliedFactor": 1.1657638888888888,
+            "silenceAdjustmentSamples": -273,
+            "passes": 1
+          }
+        },
+        "niner": {
+          "offset": 1368000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19477,
+            "nominalFactor": 1.3525694444444445,
+            "appliedFactor": 1.3525694444444445,
+            "silenceAdjustmentSamples": -309,
+            "passes": 1
+          }
+        },
+        "letter:a": {
+          "offset": 1382400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14600,
+            "nominalFactor": 1.0138888888888888,
+            "appliedFactor": 1.0138888888888888,
+            "silenceAdjustmentSamples": -200,
+            "passes": 1
+          }
+        },
+        "letter:b": {
+          "offset": 1396800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15788,
+            "nominalFactor": 1.0963888888888889,
+            "appliedFactor": 1.0963888888888889,
+            "silenceAdjustmentSamples": -130,
+            "passes": 1
+          }
+        },
+        "letter:c": {
+          "offset": 1411200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15545,
+            "nominalFactor": 1.0795138888888889,
+            "appliedFactor": 1.0795138888888889,
+            "silenceAdjustmentSamples": -302,
+            "passes": 1
+          }
+        },
+        "letter:d": {
+          "offset": 1425600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15414,
+            "nominalFactor": 1.0704166666666666,
+            "appliedFactor": 1.0704166666666666,
+            "silenceAdjustmentSamples": -234,
+            "passes": 1
+          }
+        },
+        "letter:e": {
+          "offset": 1440000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14923,
+            "nominalFactor": 1.0363194444444443,
+            "appliedFactor": 1.0363194444444443,
+            "silenceAdjustmentSamples": -258,
+            "passes": 1
+          }
+        },
+        "letter:f": {
+          "offset": 1454400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 13966,
+            "nominalFactor": 0.9698611111111111,
+            "appliedFactor": 0.9698611111111111,
+            "silenceAdjustmentSamples": 431,
+            "passes": 1
+          }
+        },
+        "letter:g": {
+          "offset": 1468800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17172,
+            "nominalFactor": 1.1925,
+            "appliedFactor": 1.1925,
+            "silenceAdjustmentSamples": -78,
+            "passes": 1
+          }
+        },
+        "letter:h": {
+          "offset": 1483200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16007,
+            "nominalFactor": 1.1115972222222221,
+            "appliedFactor": 1.1115972222222221,
+            "silenceAdjustmentSamples": -399,
+            "passes": 1
+          }
+        },
+        "letter:i": {
+          "offset": 1497600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15026,
+            "nominalFactor": 1.0434722222222221,
+            "appliedFactor": 1.0434722222222221,
+            "silenceAdjustmentSamples": -232,
+            "passes": 1
+          }
+        },
+        "letter:j": {
+          "offset": 1512000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16399,
+            "nominalFactor": 1.1388194444444444,
+            "appliedFactor": 1.1388194444444444,
+            "silenceAdjustmentSamples": -53,
+            "passes": 1
+          }
+        },
+        "letter:k": {
+          "offset": 1526400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16984,
+            "nominalFactor": 1.1794444444444445,
+            "appliedFactor": 1.1794444444444445,
+            "silenceAdjustmentSamples": -256,
+            "passes": 1
+          }
+        },
+        "letter:l": {
+          "offset": 1540800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15666,
+            "nominalFactor": 1.0879166666666666,
+            "appliedFactor": 1.0879166666666666,
+            "silenceAdjustmentSamples": -124,
+            "passes": 1
+          }
+        },
+        "letter:m": {
+          "offset": 1555200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15661,
+            "nominalFactor": 1.0875694444444444,
+            "appliedFactor": 1.0875694444444444,
+            "silenceAdjustmentSamples": -299,
+            "passes": 1
+          }
+        },
+        "letter:n": {
+          "offset": 1569600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16873,
+            "nominalFactor": 1.171736111111111,
+            "appliedFactor": 1.171736111111111,
+            "silenceAdjustmentSamples": -374,
+            "passes": 1
+          }
+        },
+        "letter:o": {
+          "offset": 1584000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16087,
+            "nominalFactor": 1.1171527777777779,
+            "appliedFactor": 1.1171527777777779,
+            "silenceAdjustmentSamples": -363,
+            "passes": 1
+          }
+        },
+        "letter:p": {
+          "offset": 1598400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16014,
+            "nominalFactor": 1.1120833333333333,
+            "appliedFactor": 1.1120833333333333,
+            "silenceAdjustmentSamples": -342,
+            "passes": 1
+          }
+        },
+        "letter:q": {
+          "offset": 1612800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17782,
+            "nominalFactor": 1.2348611111111112,
+            "appliedFactor": 1.2348611111111112,
+            "silenceAdjustmentSamples": -234,
+            "passes": 1
+          }
+        },
+        "letter:r": {
+          "offset": 1627200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15910,
+            "nominalFactor": 1.104861111111111,
+            "appliedFactor": 1.104861111111111,
+            "silenceAdjustmentSamples": -212,
+            "passes": 1
+          }
+        },
+        "letter:s": {
+          "offset": 1641600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14222,
+            "nominalFactor": 0.9876388888888888,
+            "appliedFactor": 0.9876388888888888,
+            "silenceAdjustmentSamples": 189,
+            "passes": 1
+          }
+        },
+        "letter:t": {
+          "offset": 1656000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15890,
+            "nominalFactor": 1.1034722222222222,
+            "appliedFactor": 1.1034722222222222,
+            "silenceAdjustmentSamples": -336,
+            "passes": 1
+          }
+        },
+        "letter:u": {
+          "offset": 1670400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16076,
+            "nominalFactor": 1.1163888888888889,
+            "appliedFactor": 1.1163888888888889,
+            "silenceAdjustmentSamples": -393,
+            "passes": 1
+          }
+        },
+        "letter:v": {
+          "offset": 1684800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14672,
+            "nominalFactor": 1.018888888888889,
+            "appliedFactor": 1.018888888888889,
+            "silenceAdjustmentSamples": -68,
+            "passes": 1
+          }
+        },
+        "letter:w": {
+          "offset": 1699200,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 23935,
+            "nominalFactor": 0.8310763888888889,
+            "appliedFactor": 0.8310763888888889,
+            "silenceAdjustmentSamples": 239,
+            "passes": 1
+          }
+        },
+        "letter:x": {
+          "offset": 1728000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15032,
+            "nominalFactor": 1.0438888888888889,
+            "appliedFactor": 1.0438888888888889,
+            "silenceAdjustmentSamples": -262,
+            "passes": 1
+          }
+        },
+        "letter:y": {
+          "offset": 1742400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17245,
+            "nominalFactor": 1.1975694444444445,
+            "appliedFactor": 1.1975694444444445,
+            "silenceAdjustmentSamples": -118,
+            "passes": 1
+          }
+        },
+        "letter:z": {
+          "offset": 1756800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15345,
+            "nominalFactor": 1.065625,
+            "appliedFactor": 1.065625,
+            "silenceAdjustmentSamples": -364,
+            "passes": 1
+          }
+        }
+      }
+    },
+    "am_fenrir": {
+      "file": "am_fenrir.wav",
+      "sampleRate": 24000,
+      "speed": 0.7083,
+      "segments": {
+        "radio check pilot replies are set to one hundred words per minute": {
+          "offset": 0,
+          "length": 172800,
+          "words": 12,
+          "tempo": {
+            "sourceSamples": 150188,
+            "nominalFactor": 0.8691435185185186,
+            "appliedFactor": 0.8691435185185186,
+            "silenceAdjustmentSamples": 272,
+            "passes": 1
+          }
+        },
+        "roger": {
+          "offset": 172800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 22151,
+            "nominalFactor": 1.5382638888888889,
+            "appliedFactor": 1.5382638888888889,
+            "silenceAdjustmentSamples": -317,
+            "passes": 1
+          }
+        },
+        "instruction received this action is not simulated": {
+          "offset": 187200,
+          "length": 100800,
+          "words": 7,
+          "tempo": {
+            "sourceSamples": 109641,
+            "nominalFactor": 1.0877083333333333,
+            "appliedFactor": 1.0877083333333333,
+            "silenceAdjustmentSamples": -281,
+            "passes": 1
+          }
+        },
+        "will resume normal after this orbit": {
+          "offset": 288000,
+          "length": 86400,
+          "words": 6,
+          "tempo": {
+            "sourceSamples": 65415,
+            "nominalFactor": 0.7571180555555556,
+            "appliedFactor": 0.7571180555555556,
+            "silenceAdjustmentSamples": 149,
+            "passes": 1
+          }
+        },
+        "resuming normal": {
+          "offset": 374400,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 34567,
+            "nominalFactor": 1.2002430555555557,
+            "appliedFactor": 1.2002430555555557,
+            "silenceAdjustmentSamples": -316,
+            "passes": 1
+          }
+        },
+        "orbit complete continuing left orbit": {
+          "offset": 403200,
+          "length": 72000,
+          "words": 5,
+          "tempo": {
+            "sourceSamples": 75295,
+            "nominalFactor": 1.045763888888889,
+            "appliedFactor": 1.045763888888889,
+            "silenceAdjustmentSamples": -218,
+            "passes": 1
+          }
+        },
+        "orbit complete continuing right orbit": {
+          "offset": 475200,
+          "length": 72000,
+          "words": 5,
+          "tempo": {
+            "sourceSamples": 76002,
+            "nominalFactor": 1.0555833333333333,
+            "appliedFactor": 1.0555833333333333,
+            "silenceAdjustmentSamples": -232,
+            "passes": 1
+          }
+        },
+        "continuing left orbit": {
+          "offset": 547200,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 45712,
+            "nominalFactor": 1.058148148148148,
+            "appliedFactor": 1.058148148148148,
+            "silenceAdjustmentSamples": -32,
+            "passes": 1
+          }
+        },
+        "continuing right orbit": {
+          "offset": 590400,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 46649,
+            "nominalFactor": 1.0798379629629629,
+            "appliedFactor": 1.0798379629629629,
+            "silenceAdjustmentSamples": -299,
+            "passes": 1
+          }
+        },
+        "orbiting left": {
+          "offset": 633600,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 30144,
+            "nominalFactor": 1.0466666666666666,
+            "appliedFactor": 1.0466666666666666,
+            "silenceAdjustmentSamples": -142,
+            "passes": 1
+          }
+        },
+        "orbiting right": {
+          "offset": 662400,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 30447,
+            "nominalFactor": 1.0571875,
+            "appliedFactor": 1.0571875,
+            "silenceAdjustmentSamples": -246,
+            "passes": 1
+          }
+        },
+        "turning left": {
+          "offset": 691200,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 25723,
+            "nominalFactor": 0.8931597222222222,
+            "appliedFactor": 0.8931597222222222,
+            "silenceAdjustmentSamples": 284,
+            "passes": 1
+          }
+        },
+        "turning right": {
+          "offset": 720000,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 26305,
+            "nominalFactor": 0.9133680555555556,
+            "appliedFactor": 0.9133680555555556,
+            "silenceAdjustmentSamples": 379,
+            "passes": 1
+          }
+        },
+        "stop turn": {
+          "offset": 748800,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 26989,
+            "nominalFactor": 0.9371180555555556,
+            "appliedFactor": 0.9371180555555556,
+            "silenceAdjustmentSamples": 344,
+            "passes": 1
+          }
+        },
+        "roger turning left": {
+          "offset": 777600,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 40592,
+            "nominalFactor": 0.9396296296296296,
+            "appliedFactor": 0.9396296296296296,
+            "silenceAdjustmentSamples": 348,
+            "passes": 1
+          }
+        },
+        "roger turning right": {
+          "offset": 820800,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 40087,
+            "nominalFactor": 0.9279398148148148,
+            "appliedFactor": 0.9279398148148148,
+            "silenceAdjustmentSamples": 219,
+            "passes": 1
+          }
+        },
+        "will report passing": {
+          "offset": 864000,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 41224,
+            "nominalFactor": 0.9542592592592593,
+            "appliedFactor": 0.9542592592592593,
+            "silenceAdjustmentSamples": 218,
+            "passes": 1
+          }
+        },
+        "passed": {
+          "offset": 907200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 18736,
+            "nominalFactor": 1.301111111111111,
+            "appliedFactor": 1.301111111111111,
+            "silenceAdjustmentSamples": -391,
+            "passes": 1
+          }
+        },
+        "passing": {
+          "offset": 921600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 20428,
+            "nominalFactor": 1.418611111111111,
+            "appliedFactor": 1.418611111111111,
+            "silenceAdjustmentSamples": -297,
+            "passes": 1
+          }
+        },
+        "heading": {
+          "offset": 936000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 20153,
+            "nominalFactor": 1.399513888888889,
+            "appliedFactor": 1.399513888888889,
+            "silenceAdjustmentSamples": -264,
+            "passes": 1
+          }
+        },
+        "range": {
+          "offset": 950400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 18828,
+            "nominalFactor": 1.3075,
+            "appliedFactor": 1.3075,
+            "silenceAdjustmentSamples": -394,
+            "passes": 1
+          }
+        },
+        "decimal": {
+          "offset": 964800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 22247,
+            "nominalFactor": 1.5449305555555555,
+            "appliedFactor": 1.5449305555555555,
+            "silenceAdjustmentSamples": -133,
+            "passes": 1
+          }
+        },
+        "nautical miles": {
+          "offset": 979200,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 34012,
+            "nominalFactor": 1.1809722222222223,
+            "appliedFactor": 1.1809722222222223,
+            "silenceAdjustmentSamples": -305,
+            "passes": 1
+          }
+        },
+        "transmitting for direction finding": {
+          "offset": 1008000,
+          "length": 57600,
+          "words": 4,
+          "tempo": {
+            "sourceSamples": 62232,
+            "nominalFactor": 1.0804166666666666,
+            "appliedFactor": 1.0804166666666666,
+            "silenceAdjustmentSamples": -192,
+            "passes": 1
+          }
+        },
+        "speed": {
+          "offset": 1065600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19407,
+            "nominalFactor": 1.3477083333333333,
+            "appliedFactor": 1.3477083333333333,
+            "silenceAdjustmentSamples": -315,
+            "passes": 1
+          }
+        },
+        "knots": {
+          "offset": 1080000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19669,
+            "nominalFactor": 1.3659027777777777,
+            "appliedFactor": 1.3659027777777777,
+            "silenceAdjustmentSamples": -159,
+            "passes": 1
+          }
+        },
+        "flying independently": {
+          "offset": 1094400,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 42822,
+            "nominalFactor": 1.486875,
+            "appliedFactor": 1.486875,
+            "silenceAdjustmentSamples": -337,
+            "passes": 1
+          }
+        },
+        "falcon": {
+          "offset": 1123200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 21629,
+            "nominalFactor": 1.502013888888889,
+            "appliedFactor": 1.502013888888889,
+            "silenceAdjustmentSamples": -343,
+            "passes": 1
+          }
+        },
+        "raven": {
+          "offset": 1137600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 20032,
+            "nominalFactor": 1.3911111111111112,
+            "appliedFactor": 1.3911111111111112,
+            "silenceAdjustmentSamples": -245,
+            "passes": 1
+          }
+        },
+        "viper": {
+          "offset": 1152000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 22267,
+            "nominalFactor": 1.5463194444444444,
+            "appliedFactor": 1.5463194444444444,
+            "silenceAdjustmentSamples": -419,
+            "passes": 1
+          }
+        },
+        "hawk": {
+          "offset": 1166400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16235,
+            "nominalFactor": 1.1274305555555555,
+            "appliedFactor": 1.1274305555555555,
+            "silenceAdjustmentSamples": -303,
+            "passes": 1
+          }
+        },
+        "eagle": {
+          "offset": 1180800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 18773,
+            "nominalFactor": 1.3036805555555555,
+            "appliedFactor": 1.3036805555555555,
+            "silenceAdjustmentSamples": -352,
+            "passes": 1
+          }
+        },
+        "zero": {
+          "offset": 1195200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19882,
+            "nominalFactor": 1.3806944444444444,
+            "appliedFactor": 1.3806944444444444,
+            "silenceAdjustmentSamples": -202,
+            "passes": 1
+          }
+        },
+        "one": {
+          "offset": 1209600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16067,
+            "nominalFactor": 1.115763888888889,
+            "appliedFactor": 1.115763888888889,
+            "silenceAdjustmentSamples": -396,
+            "passes": 1
+          }
+        },
+        "two": {
+          "offset": 1224000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14324,
+            "nominalFactor": 0.9947222222222222,
+            "appliedFactor": 0.9947222222222222,
+            "silenceAdjustmentSamples": 131,
+            "passes": 1
+          }
+        },
+        "three": {
+          "offset": 1238400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17288,
+            "nominalFactor": 1.2005555555555556,
+            "appliedFactor": 1.2005555555555556,
+            "silenceAdjustmentSamples": -421,
+            "passes": 1
+          }
+        },
+        "four": {
+          "offset": 1252800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16724,
+            "nominalFactor": 1.1613888888888888,
+            "appliedFactor": 1.1613888888888888,
+            "silenceAdjustmentSamples": -220,
+            "passes": 1
+          }
+        },
+        "five": {
+          "offset": 1267200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17775,
+            "nominalFactor": 1.234375,
+            "appliedFactor": 1.234375,
+            "silenceAdjustmentSamples": -301,
+            "passes": 1
+          }
+        },
+        "six": {
+          "offset": 1281600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 18902,
+            "nominalFactor": 1.312638888888889,
+            "appliedFactor": 1.312638888888889,
+            "silenceAdjustmentSamples": -293,
+            "passes": 1
+          }
+        },
+        "seven": {
+          "offset": 1296000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19446,
+            "nominalFactor": 1.3504166666666666,
+            "appliedFactor": 1.3504166666666666,
+            "silenceAdjustmentSamples": -256,
+            "passes": 1
+          }
+        },
+        "eight": {
+          "offset": 1310400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15859,
+            "nominalFactor": 1.1013194444444445,
+            "appliedFactor": 1.1013194444444445,
+            "silenceAdjustmentSamples": -251,
+            "passes": 1
+          }
+        },
+        "nine": {
+          "offset": 1324800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 18181,
+            "nominalFactor": 1.2625694444444444,
+            "appliedFactor": 1.2625694444444444,
+            "silenceAdjustmentSamples": -53,
+            "passes": 1
+          }
+        },
+        "tree": {
+          "offset": 1339200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17053,
+            "nominalFactor": 1.184236111111111,
+            "appliedFactor": 1.184236111111111,
+            "silenceAdjustmentSamples": -294,
+            "passes": 1
+          }
+        },
+        "fife": {
+          "offset": 1353600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16969,
+            "nominalFactor": 1.1784027777777777,
+            "appliedFactor": 1.1784027777777777,
+            "silenceAdjustmentSamples": 54,
+            "passes": 1
+          }
+        },
+        "niner": {
+          "offset": 1368000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 21191,
+            "nominalFactor": 1.4715972222222222,
+            "appliedFactor": 1.4715972222222222,
+            "silenceAdjustmentSamples": -428,
+            "passes": 1
+          }
+        },
+        "letter:a": {
+          "offset": 1382400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14155,
+            "nominalFactor": 0.9829861111111111,
+            "appliedFactor": 0.9829861111111111,
+            "silenceAdjustmentSamples": 288,
+            "passes": 1
+          }
+        },
+        "letter:b": {
+          "offset": 1396800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14479,
+            "nominalFactor": 1.005486111111111,
+            "appliedFactor": 1.005486111111111,
+            "silenceAdjustmentSamples": 25,
+            "passes": 1
+          }
+        },
+        "letter:c": {
+          "offset": 1411200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14794,
+            "nominalFactor": 1.0273611111111112,
+            "appliedFactor": 1.0273611111111112,
+            "silenceAdjustmentSamples": -265,
+            "passes": 1
+          }
+        },
+        "letter:d": {
+          "offset": 1425600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14740,
+            "nominalFactor": 1.023611111111111,
+            "appliedFactor": 1.023611111111111,
+            "silenceAdjustmentSamples": -222,
+            "passes": 1
+          }
+        },
+        "letter:e": {
+          "offset": 1440000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 12496,
+            "nominalFactor": 0.8677777777777778,
+            "appliedFactor": 0.8677777777777778,
+            "silenceAdjustmentSamples": 277,
+            "passes": 1
+          }
+        },
+        "letter:f": {
+          "offset": 1454400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14260,
+            "nominalFactor": 0.9902777777777778,
+            "appliedFactor": 0.9902777777777778,
+            "silenceAdjustmentSamples": 244,
+            "passes": 1
+          }
+        },
+        "letter:g": {
+          "offset": 1468800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16488,
+            "nominalFactor": 1.145,
+            "appliedFactor": 1.145,
+            "silenceAdjustmentSamples": 72,
+            "passes": 1
+          }
+        },
+        "letter:h": {
+          "offset": 1483200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16571,
+            "nominalFactor": 1.150763888888889,
+            "appliedFactor": 1.150763888888889,
+            "silenceAdjustmentSamples": -248,
+            "passes": 1
+          }
+        },
+        "letter:i": {
+          "offset": 1497600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15244,
+            "nominalFactor": 1.0586111111111112,
+            "appliedFactor": 1.0586111111111112,
+            "silenceAdjustmentSamples": -223,
+            "passes": 1
+          }
+        },
+        "letter:j": {
+          "offset": 1512000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 18448,
+            "nominalFactor": 1.281111111111111,
+            "appliedFactor": 1.281111111111111,
+            "silenceAdjustmentSamples": -131,
+            "passes": 1
+          }
+        },
+        "letter:k": {
+          "offset": 1526400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15828,
+            "nominalFactor": 1.0991666666666666,
+            "appliedFactor": 1.0991666666666666,
+            "silenceAdjustmentSamples": -412,
+            "passes": 1
+          }
+        },
+        "letter:l": {
+          "offset": 1540800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14783,
+            "nominalFactor": 1.0265972222222222,
+            "appliedFactor": 1.0265972222222222,
+            "silenceAdjustmentSamples": -218,
+            "passes": 1
+          }
+        },
+        "letter:m": {
+          "offset": 1555200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15247,
+            "nominalFactor": 1.0588194444444445,
+            "appliedFactor": 1.0588194444444445,
+            "silenceAdjustmentSamples": -251,
+            "passes": 1
+          }
+        },
+        "letter:n": {
+          "offset": 1569600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15373,
+            "nominalFactor": 1.0675694444444443,
+            "appliedFactor": 1.0675694444444443,
+            "silenceAdjustmentSamples": -436,
+            "passes": 1
+          }
+        },
+        "letter:o": {
+          "offset": 1584000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15336,
+            "nominalFactor": 1.065,
+            "appliedFactor": 1.065,
+            "silenceAdjustmentSamples": -119,
+            "passes": 1
+          }
+        },
+        "letter:p": {
+          "offset": 1598400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14828,
+            "nominalFactor": 1.0297222222222222,
+            "appliedFactor": 1.0297222222222222,
+            "silenceAdjustmentSamples": -303,
+            "passes": 1
+          }
+        },
+        "letter:q": {
+          "offset": 1612800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16778,
+            "nominalFactor": 1.165138888888889,
+            "appliedFactor": 1.165138888888889,
+            "silenceAdjustmentSamples": -225,
+            "passes": 1
+          }
+        },
+        "letter:r": {
+          "offset": 1627200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14226,
+            "nominalFactor": 0.9879166666666667,
+            "appliedFactor": 0.9879166666666667,
+            "silenceAdjustmentSamples": 205,
+            "passes": 1
+          }
+        },
+        "letter:s": {
+          "offset": 1641600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15496,
+            "nominalFactor": 1.076111111111111,
+            "appliedFactor": 1.076111111111111,
+            "silenceAdjustmentSamples": -422,
+            "passes": 1
+          }
+        },
+        "letter:t": {
+          "offset": 1656000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15947,
+            "nominalFactor": 1.1074305555555555,
+            "appliedFactor": 1.1074305555555555,
+            "silenceAdjustmentSamples": -317,
+            "passes": 1
+          }
+        },
+        "letter:u": {
+          "offset": 1670400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15215,
+            "nominalFactor": 1.0565972222222222,
+            "appliedFactor": 1.0565972222222222,
+            "silenceAdjustmentSamples": -190,
+            "passes": 1
+          }
+        },
+        "letter:v": {
+          "offset": 1684800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15247,
+            "nominalFactor": 1.0588194444444445,
+            "appliedFactor": 1.0588194444444445,
+            "silenceAdjustmentSamples": -371,
+            "passes": 1
+          }
+        },
+        "letter:w": {
+          "offset": 1699200,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 26181,
+            "nominalFactor": 0.9090625,
+            "appliedFactor": 0.9090625,
+            "silenceAdjustmentSamples": 315,
+            "passes": 1
+          }
+        },
+        "letter:x": {
+          "offset": 1728000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17634,
+            "nominalFactor": 1.2245833333333334,
+            "appliedFactor": 1.2245833333333334,
+            "silenceAdjustmentSamples": -306,
+            "passes": 1
+          }
+        },
+        "letter:y": {
+          "offset": 1742400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17896,
+            "nominalFactor": 1.2427777777777778,
+            "appliedFactor": 1.2427777777777778,
+            "silenceAdjustmentSamples": -343,
+            "passes": 1
+          }
+        },
+        "letter:z": {
+          "offset": 1756800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14996,
+            "nominalFactor": 1.041388888888889,
+            "appliedFactor": 1.041388888888889,
+            "silenceAdjustmentSamples": -163,
+            "passes": 1
+          }
+        }
+      }
+    },
+    "am_puck": {
+      "file": "am_puck.wav",
+      "sampleRate": 24000,
+      "speed": 0.7056,
+      "segments": {
+        "radio check pilot replies are set to one hundred words per minute": {
+          "offset": 0,
+          "length": 172800,
+          "words": 12,
+          "tempo": {
+            "sourceSamples": 142916,
+            "nominalFactor": 0.8270601851851852,
+            "appliedFactor": 0.8270601851851852,
+            "silenceAdjustmentSamples": 128,
+            "passes": 1
+          }
+        },
+        "roger": {
+          "offset": 172800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 23856,
+            "nominalFactor": 1.6566666666666667,
+            "appliedFactor": 1.6566666666666667,
+            "silenceAdjustmentSamples": -94,
+            "passes": 1
+          }
+        },
+        "instruction received this action is not simulated": {
+          "offset": 187200,
+          "length": 100800,
+          "words": 7,
+          "tempo": {
+            "sourceSamples": 104153,
+            "nominalFactor": 1.033263888888889,
+            "appliedFactor": 1.033263888888889,
+            "silenceAdjustmentSamples": -36,
+            "passes": 1
+          }
+        },
+        "will resume normal after this orbit": {
+          "offset": 288000,
+          "length": 86400,
+          "words": 6,
+          "tempo": {
+            "sourceSamples": 64632,
+            "nominalFactor": 0.7480555555555556,
+            "appliedFactor": 0.7480555555555556,
+            "silenceAdjustmentSamples": 286,
+            "passes": 1
+          }
+        },
+        "resuming normal": {
+          "offset": 374400,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 34709,
+            "nominalFactor": 1.205173611111111,
+            "appliedFactor": 1.205173611111111,
+            "silenceAdjustmentSamples": -164,
+            "passes": 1
+          }
+        },
+        "orbit complete continuing left orbit": {
+          "offset": 403200,
+          "length": 72000,
+          "words": 5,
+          "tempo": {
+            "sourceSamples": 73474,
+            "nominalFactor": 1.0204722222222222,
+            "appliedFactor": 1.0204722222222222,
+            "silenceAdjustmentSamples": -245,
+            "passes": 1
+          }
+        },
+        "orbit complete continuing right orbit": {
+          "offset": 475200,
+          "length": 72000,
+          "words": 5,
+          "tempo": {
+            "sourceSamples": 73227,
+            "nominalFactor": 1.0170416666666666,
+            "appliedFactor": 1.0170416666666666,
+            "silenceAdjustmentSamples": -184,
+            "passes": 1
+          }
+        },
+        "continuing left orbit": {
+          "offset": 547200,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 45892,
+            "nominalFactor": 1.0623148148148147,
+            "appliedFactor": 1.0623148148148147,
+            "silenceAdjustmentSamples": 72,
+            "passes": 1
+          }
+        },
+        "continuing right orbit": {
+          "offset": 590400,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 44731,
+            "nominalFactor": 1.0354398148148147,
+            "appliedFactor": 1.0354398148148147,
+            "silenceAdjustmentSamples": -158,
+            "passes": 1
+          }
+        },
+        "orbiting left": {
+          "offset": 633600,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 29232,
+            "nominalFactor": 1.015,
+            "appliedFactor": 1.015,
+            "silenceAdjustmentSamples": -200,
+            "passes": 1
+          }
+        },
+        "orbiting right": {
+          "offset": 662400,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 29721,
+            "nominalFactor": 1.0319791666666667,
+            "appliedFactor": 1.0319791666666667,
+            "silenceAdjustmentSamples": -47,
+            "passes": 1
+          }
+        },
+        "turning left": {
+          "offset": 691200,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 27360,
+            "nominalFactor": 0.95,
+            "appliedFactor": 0.95,
+            "silenceAdjustmentSamples": 166,
+            "passes": 1
+          }
+        },
+        "turning right": {
+          "offset": 720000,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 26215,
+            "nominalFactor": 0.9102430555555555,
+            "appliedFactor": 0.9102430555555555,
+            "silenceAdjustmentSamples": 259,
+            "passes": 1
+          }
+        },
+        "stop turn": {
+          "offset": 748800,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 24763,
+            "nominalFactor": 0.8598263888888888,
+            "appliedFactor": 0.8598263888888888,
+            "silenceAdjustmentSamples": 278,
+            "passes": 1
+          }
+        },
+        "roger turning left": {
+          "offset": 777600,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 39952,
+            "nominalFactor": 0.9248148148148149,
+            "appliedFactor": 0.9248148148148149,
+            "silenceAdjustmentSamples": 237,
+            "passes": 1
+          }
+        },
+        "roger turning right": {
+          "offset": 820800,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 40184,
+            "nominalFactor": 0.9301851851851852,
+            "appliedFactor": 0.9301851851851852,
+            "silenceAdjustmentSamples": 281,
+            "passes": 1
+          }
+        },
+        "will report passing": {
+          "offset": 864000,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 38614,
+            "nominalFactor": 0.8938425925925926,
+            "appliedFactor": 0.8938425925925926,
+            "silenceAdjustmentSamples": 341,
+            "passes": 1
+          }
+        },
+        "passed": {
+          "offset": 907200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 18642,
+            "nominalFactor": 1.2945833333333334,
+            "appliedFactor": 1.2945833333333334,
+            "silenceAdjustmentSamples": -191,
+            "passes": 1
+          }
+        },
+        "passing": {
+          "offset": 921600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 21668,
+            "nominalFactor": 1.5047222222222223,
+            "appliedFactor": 1.5047222222222223,
+            "silenceAdjustmentSamples": -47,
+            "passes": 1
+          }
+        },
+        "heading": {
+          "offset": 936000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19417,
+            "nominalFactor": 1.3484027777777778,
+            "appliedFactor": 1.3484027777777778,
+            "silenceAdjustmentSamples": -333,
+            "passes": 1
+          }
+        },
+        "range": {
+          "offset": 950400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19286,
+            "nominalFactor": 1.3393055555555555,
+            "appliedFactor": 1.3393055555555555,
+            "silenceAdjustmentSamples": -225,
+            "passes": 1
+          }
+        },
+        "decimal": {
+          "offset": 964800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 23458,
+            "nominalFactor": 1.6290277777777777,
+            "appliedFactor": 1.6290277777777777,
+            "silenceAdjustmentSamples": 42,
+            "passes": 1
+          }
+        },
+        "nautical miles": {
+          "offset": 979200,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 33651,
+            "nominalFactor": 1.1684375,
+            "appliedFactor": 1.1684375,
+            "silenceAdjustmentSamples": -68,
+            "passes": 1
+          }
+        },
+        "transmitting for direction finding": {
+          "offset": 1008000,
+          "length": 57600,
+          "words": 4,
+          "tempo": {
+            "sourceSamples": 62058,
+            "nominalFactor": 1.0773958333333333,
+            "appliedFactor": 1.0773958333333333,
+            "silenceAdjustmentSamples": -156,
+            "passes": 1
+          }
+        },
+        "speed": {
+          "offset": 1065600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19937,
+            "nominalFactor": 1.3845138888888888,
+            "appliedFactor": 1.3845138888888888,
+            "silenceAdjustmentSamples": -95,
+            "passes": 1
+          }
+        },
+        "knots": {
+          "offset": 1080000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 18825,
+            "nominalFactor": 1.3072916666666667,
+            "appliedFactor": 1.3072916666666667,
+            "silenceAdjustmentSamples": -300,
+            "passes": 1
+          }
+        },
+        "flying independently": {
+          "offset": 1094400,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 40976,
+            "nominalFactor": 1.4227777777777777,
+            "appliedFactor": 1.4227777777777777,
+            "silenceAdjustmentSamples": -49,
+            "passes": 1
+          }
+        },
+        "falcon": {
+          "offset": 1123200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 21806,
+            "nominalFactor": 1.5143055555555556,
+            "appliedFactor": 1.5143055555555556,
+            "silenceAdjustmentSamples": 38,
+            "passes": 1
+          }
+        },
+        "raven": {
+          "offset": 1137600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 21954,
+            "nominalFactor": 1.5245833333333334,
+            "appliedFactor": 1.5245833333333334,
+            "silenceAdjustmentSamples": -194,
+            "passes": 1
+          }
+        },
+        "viper": {
+          "offset": 1152000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 23032,
+            "nominalFactor": 1.5994444444444444,
+            "appliedFactor": 1.5994444444444444,
+            "silenceAdjustmentSamples": -204,
+            "passes": 1
+          }
+        },
+        "hawk": {
+          "offset": 1166400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17009,
+            "nominalFactor": 1.1811805555555555,
+            "appliedFactor": 1.1811805555555555,
+            "silenceAdjustmentSamples": -258,
+            "passes": 1
+          }
+        },
+        "eagle": {
+          "offset": 1180800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19967,
+            "nominalFactor": 1.3865972222222223,
+            "appliedFactor": 1.3865972222222223,
+            "silenceAdjustmentSamples": -228,
+            "passes": 1
+          }
+        },
+        "zero": {
+          "offset": 1195200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 21214,
+            "nominalFactor": 1.4731944444444445,
+            "appliedFactor": 1.4731944444444445,
+            "silenceAdjustmentSamples": -361,
+            "passes": 1
+          }
+        },
+        "one": {
+          "offset": 1209600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17243,
+            "nominalFactor": 1.1974305555555556,
+            "appliedFactor": 1.1974305555555556,
+            "silenceAdjustmentSamples": -211,
+            "passes": 1
+          }
+        },
+        "two": {
+          "offset": 1224000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14923,
+            "nominalFactor": 1.0363194444444443,
+            "appliedFactor": 1.0363194444444443,
+            "silenceAdjustmentSamples": -115,
+            "passes": 1
+          }
+        },
+        "three": {
+          "offset": 1238400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 18423,
+            "nominalFactor": 1.279375,
+            "appliedFactor": 1.279375,
+            "silenceAdjustmentSamples": -204,
+            "passes": 1
+          }
+        },
+        "four": {
+          "offset": 1252800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19534,
+            "nominalFactor": 1.3565277777777778,
+            "appliedFactor": 1.3565277777777778,
+            "silenceAdjustmentSamples": -401,
+            "passes": 1
+          }
+        },
+        "five": {
+          "offset": 1267200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19841,
+            "nominalFactor": 1.3778472222222222,
+            "appliedFactor": 1.3778472222222222,
+            "silenceAdjustmentSamples": -303,
+            "passes": 1
+          }
+        },
+        "six": {
+          "offset": 1281600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17988,
+            "nominalFactor": 1.2491666666666668,
+            "appliedFactor": 1.2491666666666668,
+            "silenceAdjustmentSamples": -279,
+            "passes": 1
+          }
+        },
+        "seven": {
+          "offset": 1296000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 21060,
+            "nominalFactor": 1.4625,
+            "appliedFactor": 1.4625,
+            "silenceAdjustmentSamples": -274,
+            "passes": 1
+          }
+        },
+        "eight": {
+          "offset": 1310400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15523,
+            "nominalFactor": 1.077986111111111,
+            "appliedFactor": 1.077986111111111,
+            "silenceAdjustmentSamples": -378,
+            "passes": 1
+          }
+        },
+        "nine": {
+          "offset": 1324800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 18525,
+            "nominalFactor": 1.2864583333333333,
+            "appliedFactor": 1.2864583333333333,
+            "silenceAdjustmentSamples": -147,
+            "passes": 1
+          }
+        },
+        "tree": {
+          "offset": 1339200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19673,
+            "nominalFactor": 1.3661805555555555,
+            "appliedFactor": 1.3661805555555555,
+            "silenceAdjustmentSamples": -216,
+            "passes": 1
+          }
+        },
+        "fife": {
+          "offset": 1353600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17335,
+            "nominalFactor": 1.2038194444444446,
+            "appliedFactor": 1.2038194444444446,
+            "silenceAdjustmentSamples": -368,
+            "passes": 1
+          }
+        },
+        "niner": {
+          "offset": 1368000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 22905,
+            "nominalFactor": 1.590625,
+            "appliedFactor": 1.590625,
+            "silenceAdjustmentSamples": 64,
+            "passes": 1
+          }
+        },
+        "letter:a": {
+          "offset": 1382400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 13952,
+            "nominalFactor": 0.9688888888888889,
+            "appliedFactor": 0.9688888888888889,
+            "silenceAdjustmentSamples": 107,
+            "passes": 1
+          }
+        },
+        "letter:b": {
+          "offset": 1396800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15258,
+            "nominalFactor": 1.0595833333333333,
+            "appliedFactor": 1.0595833333333333,
+            "silenceAdjustmentSamples": -321,
+            "passes": 1
+          }
+        },
+        "letter:c": {
+          "offset": 1411200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14985,
+            "nominalFactor": 1.040625,
+            "appliedFactor": 1.040625,
+            "silenceAdjustmentSamples": -181,
+            "passes": 1
+          }
+        },
+        "letter:d": {
+          "offset": 1425600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15166,
+            "nominalFactor": 1.0531944444444445,
+            "appliedFactor": 1.0531944444444445,
+            "silenceAdjustmentSamples": -139,
+            "passes": 1
+          }
+        },
+        "letter:e": {
+          "offset": 1440000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 12196,
+            "nominalFactor": 0.8469444444444445,
+            "appliedFactor": 0.8469444444444445,
+            "silenceAdjustmentSamples": 315,
+            "passes": 1
+          }
+        },
+        "letter:f": {
+          "offset": 1454400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14679,
+            "nominalFactor": 1.019375,
+            "appliedFactor": 1.019375,
+            "silenceAdjustmentSamples": -35,
+            "passes": 1
+          }
+        },
+        "letter:g": {
+          "offset": 1468800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16881,
+            "nominalFactor": 1.1722916666666667,
+            "appliedFactor": 1.1722916666666667,
+            "silenceAdjustmentSamples": -326,
+            "passes": 1
+          }
+        },
+        "letter:h": {
+          "offset": 1483200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17655,
+            "nominalFactor": 1.2260416666666667,
+            "appliedFactor": 1.2260416666666667,
+            "silenceAdjustmentSamples": -290,
+            "passes": 1
+          }
+        },
+        "letter:i": {
+          "offset": 1497600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17021,
+            "nominalFactor": 1.182013888888889,
+            "appliedFactor": 1.182013888888889,
+            "silenceAdjustmentSamples": -309,
+            "passes": 1
+          }
+        },
+        "letter:j": {
+          "offset": 1512000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19640,
+            "nominalFactor": 1.363888888888889,
+            "appliedFactor": 1.363888888888889,
+            "silenceAdjustmentSamples": -328,
+            "passes": 1
+          }
+        },
+        "letter:k": {
+          "offset": 1526400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16609,
+            "nominalFactor": 1.1534027777777778,
+            "appliedFactor": 1.1534027777777778,
+            "silenceAdjustmentSamples": -328,
+            "passes": 1
+          }
+        },
+        "letter:l": {
+          "offset": 1540800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16448,
+            "nominalFactor": 1.1422222222222222,
+            "appliedFactor": 1.1422222222222222,
+            "silenceAdjustmentSamples": -240,
+            "passes": 1
+          }
+        },
+        "letter:m": {
+          "offset": 1555200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17321,
+            "nominalFactor": 1.2028472222222222,
+            "appliedFactor": 1.2028472222222222,
+            "silenceAdjustmentSamples": -331,
+            "passes": 1
+          }
+        },
+        "letter:n": {
+          "offset": 1569600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17682,
+            "nominalFactor": 1.2279166666666668,
+            "appliedFactor": 1.2279166666666668,
+            "silenceAdjustmentSamples": -346,
+            "passes": 1
+          }
+        },
+        "letter:o": {
+          "offset": 1584000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16426,
+            "nominalFactor": 1.1406944444444445,
+            "appliedFactor": 1.1406944444444445,
+            "silenceAdjustmentSamples": -292,
+            "passes": 1
+          }
+        },
+        "letter:p": {
+          "offset": 1598400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15458,
+            "nominalFactor": 1.0734722222222222,
+            "appliedFactor": 1.0734722222222222,
+            "silenceAdjustmentSamples": -303,
+            "passes": 1
+          }
+        },
+        "letter:q": {
+          "offset": 1612800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17829,
+            "nominalFactor": 1.238125,
+            "appliedFactor": 1.238125,
+            "silenceAdjustmentSamples": -338,
+            "passes": 1
+          }
+        },
+        "letter:r": {
+          "offset": 1627200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16251,
+            "nominalFactor": 1.1285416666666668,
+            "appliedFactor": 1.1285416666666668,
+            "silenceAdjustmentSamples": -298,
+            "passes": 1
+          }
+        },
+        "letter:s": {
+          "offset": 1641600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15303,
+            "nominalFactor": 1.0627083333333334,
+            "appliedFactor": 1.0627083333333334,
+            "silenceAdjustmentSamples": -341,
+            "passes": 1
+          }
+        },
+        "letter:t": {
+          "offset": 1656000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17841,
+            "nominalFactor": 1.2389583333333334,
+            "appliedFactor": 1.2389583333333334,
+            "silenceAdjustmentSamples": -327,
+            "passes": 1
+          }
+        },
+        "letter:u": {
+          "offset": 1670400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15075,
+            "nominalFactor": 1.046875,
+            "appliedFactor": 1.046875,
+            "silenceAdjustmentSamples": -256,
+            "passes": 1
+          }
+        },
+        "letter:v": {
+          "offset": 1684800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16526,
+            "nominalFactor": 1.1476388888888889,
+            "appliedFactor": 1.1476388888888889,
+            "silenceAdjustmentSamples": -231,
+            "passes": 1
+          }
+        },
+        "letter:w": {
+          "offset": 1699200,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 28538,
+            "nominalFactor": 0.9909027777777778,
+            "appliedFactor": 0.9909027777777778,
+            "silenceAdjustmentSamples": 93,
+            "passes": 1
+          }
+        },
+        "letter:x": {
+          "offset": 1728000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17128,
+            "nominalFactor": 1.1894444444444445,
+            "appliedFactor": 1.1894444444444445,
+            "silenceAdjustmentSamples": -244,
+            "passes": 1
+          }
+        },
+        "letter:y": {
+          "offset": 1742400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19171,
+            "nominalFactor": 1.3313194444444445,
+            "appliedFactor": 1.3313194444444445,
+            "silenceAdjustmentSamples": -69,
+            "passes": 1
+          }
+        },
+        "letter:z": {
+          "offset": 1756800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15799,
+            "nominalFactor": 1.0971527777777779,
+            "appliedFactor": 1.0971527777777779,
+            "silenceAdjustmentSamples": -55,
+            "passes": 1
+          }
+        }
+      }
+    },
+    "bm_george": {
+      "file": "bm_george.wav",
+      "sampleRate": 24000,
+      "speed": 0.8333,
+      "segments": {
+        "radio check pilot replies are set to one hundred words per minute": {
+          "offset": 0,
+          "length": 172800,
+          "words": 12,
+          "tempo": {
+            "sourceSamples": 131699,
+            "nominalFactor": 0.7621469907407408,
+            "appliedFactor": 0.7621469907407408,
+            "silenceAdjustmentSamples": 468,
+            "passes": 1
+          }
+        },
+        "roger": {
+          "offset": 172800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 23972,
+            "nominalFactor": 1.6647222222222222,
+            "appliedFactor": 1.6647222222222222,
+            "silenceAdjustmentSamples": -101,
+            "passes": 1
+          }
+        },
+        "instruction received this action is not simulated": {
+          "offset": 187200,
+          "length": 100800,
+          "words": 7,
+          "tempo": {
+            "sourceSamples": 104727,
+            "nominalFactor": 1.0389583333333334,
+            "appliedFactor": 1.0389583333333334,
+            "silenceAdjustmentSamples": -204,
+            "passes": 1
+          }
+        },
+        "will resume normal after this orbit": {
+          "offset": 288000,
+          "length": 86400,
+          "words": 6,
+          "tempo": {
+            "sourceSamples": 72050,
+            "nominalFactor": 0.8339120370370371,
+            "appliedFactor": 0.8339120370370371,
+            "silenceAdjustmentSamples": 492,
+            "passes": 1
+          }
+        },
+        "resuming normal": {
+          "offset": 374400,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 45242,
+            "nominalFactor": 1.5709027777777778,
+            "appliedFactor": 1.5709027777777778,
+            "silenceAdjustmentSamples": 128,
+            "passes": 1
+          }
+        },
+        "orbit complete continuing left orbit": {
+          "offset": 403200,
+          "length": 72000,
+          "words": 5,
+          "tempo": {
+            "sourceSamples": 79009,
+            "nominalFactor": 1.0973472222222223,
+            "appliedFactor": 1.0973472222222223,
+            "silenceAdjustmentSamples": -354,
+            "passes": 1
+          }
+        },
+        "orbit complete continuing right orbit": {
+          "offset": 475200,
+          "length": 72000,
+          "words": 5,
+          "tempo": {
+            "sourceSamples": 74781,
+            "nominalFactor": 1.038625,
+            "appliedFactor": 1.038625,
+            "silenceAdjustmentSamples": -25,
+            "passes": 1
+          }
+        },
+        "continuing left orbit": {
+          "offset": 547200,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 58098,
+            "nominalFactor": 1.344861111111111,
+            "appliedFactor": 1.344861111111111,
+            "silenceAdjustmentSamples": -64,
+            "passes": 1
+          }
+        },
+        "continuing right orbit": {
+          "offset": 590400,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 56306,
+            "nominalFactor": 1.3033796296296296,
+            "appliedFactor": 1.3033796296296296,
+            "silenceAdjustmentSamples": 91,
+            "passes": 1
+          }
+        },
+        "orbiting left": {
+          "offset": 633600,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 35129,
+            "nominalFactor": 1.2197569444444445,
+            "appliedFactor": 1.2197569444444445,
+            "silenceAdjustmentSamples": -361,
+            "passes": 1
+          }
+        },
+        "orbiting right": {
+          "offset": 662400,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 34790,
+            "nominalFactor": 1.2079861111111112,
+            "appliedFactor": 1.2079861111111112,
+            "silenceAdjustmentSamples": -103,
+            "passes": 1
+          }
+        },
+        "turning left": {
+          "offset": 691200,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 29452,
+            "nominalFactor": 1.0226388888888889,
+            "appliedFactor": 1.0226388888888889,
+            "silenceAdjustmentSamples": -68,
+            "passes": 1
+          }
+        },
+        "turning right": {
+          "offset": 720000,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 30226,
+            "nominalFactor": 1.0495138888888889,
+            "appliedFactor": 1.0495138888888889,
+            "silenceAdjustmentSamples": 162,
+            "passes": 1
+          }
+        },
+        "stop turn": {
+          "offset": 748800,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 30279,
+            "nominalFactor": 1.0513541666666666,
+            "appliedFactor": 1.0513541666666666,
+            "silenceAdjustmentSamples": -45,
+            "passes": 1
+          }
+        },
+        "roger turning left": {
+          "offset": 777600,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 45412,
+            "nominalFactor": 1.0512037037037036,
+            "appliedFactor": 1.0512037037037036,
+            "silenceAdjustmentSamples": -276,
+            "passes": 1
+          }
+        },
+        "roger turning right": {
+          "offset": 820800,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 47186,
+            "nominalFactor": 1.0922685185185186,
+            "appliedFactor": 1.0922685185185186,
+            "silenceAdjustmentSamples": -153,
+            "passes": 1
+          }
+        },
+        "will report passing": {
+          "offset": 864000,
+          "length": 43200,
+          "words": 3,
+          "tempo": {
+            "sourceSamples": 42889,
+            "nominalFactor": 0.992800925925926,
+            "appliedFactor": 0.992800925925926,
+            "silenceAdjustmentSamples": 197,
+            "passes": 1
+          }
+        },
+        "passed": {
+          "offset": 907200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19116,
+            "nominalFactor": 1.3275,
+            "appliedFactor": 1.3275,
+            "silenceAdjustmentSamples": -25,
+            "passes": 1
+          }
+        },
+        "passing": {
+          "offset": 921600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 22320,
+            "nominalFactor": 1.55,
+            "appliedFactor": 1.55,
+            "silenceAdjustmentSamples": -106,
+            "passes": 1
+          }
+        },
+        "heading": {
+          "offset": 936000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 20227,
+            "nominalFactor": 1.4046527777777778,
+            "appliedFactor": 1.4046527777777778,
+            "silenceAdjustmentSamples": -320,
+            "passes": 1
+          }
+        },
+        "range": {
+          "offset": 950400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 22500,
+            "nominalFactor": 1.5625,
+            "appliedFactor": 1.5625,
+            "silenceAdjustmentSamples": -305,
+            "passes": 1
+          }
+        },
+        "decimal": {
+          "offset": 964800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 25348,
+            "nominalFactor": 1.7602777777777778,
+            "appliedFactor": 1.7602777777777778,
+            "silenceAdjustmentSamples": -319,
+            "passes": 1
+          }
+        },
+        "nautical miles": {
+          "offset": 979200,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 37816,
+            "nominalFactor": 1.3130555555555556,
+            "appliedFactor": 1.3130555555555556,
+            "silenceAdjustmentSamples": -242,
+            "passes": 1
+          }
+        },
+        "transmitting for direction finding": {
+          "offset": 1008000,
+          "length": 57600,
+          "words": 4,
+          "tempo": {
+            "sourceSamples": 70205,
+            "nominalFactor": 1.2188368055555556,
+            "appliedFactor": 1.2188368055555556,
+            "silenceAdjustmentSamples": -116,
+            "passes": 1
+          }
+        },
+        "speed": {
+          "offset": 1065600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19078,
+            "nominalFactor": 1.324861111111111,
+            "appliedFactor": 1.324861111111111,
+            "silenceAdjustmentSamples": -210,
+            "passes": 1
+          }
+        },
+        "knots": {
+          "offset": 1080000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19329,
+            "nominalFactor": 1.3422916666666667,
+            "appliedFactor": 1.3422916666666667,
+            "silenceAdjustmentSamples": -54,
+            "passes": 1
+          }
+        },
+        "flying independently": {
+          "offset": 1094400,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 48286,
+            "nominalFactor": 1.6765972222222223,
+            "appliedFactor": 1.6765972222222223,
+            "silenceAdjustmentSamples": 80,
+            "passes": 1
+          }
+        },
+        "falcon": {
+          "offset": 1123200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 23700,
+            "nominalFactor": 1.6458333333333333,
+            "appliedFactor": 1.6458333333333333,
+            "silenceAdjustmentSamples": 60,
+            "passes": 1
+          }
+        },
+        "raven": {
+          "offset": 1137600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 23712,
+            "nominalFactor": 1.6466666666666667,
+            "appliedFactor": 1.6466666666666667,
+            "silenceAdjustmentSamples": 18,
+            "passes": 1
+          }
+        },
+        "viper": {
+          "offset": 1152000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 23823,
+            "nominalFactor": 1.654375,
+            "appliedFactor": 1.654375,
+            "silenceAdjustmentSamples": -247,
+            "passes": 1
+          }
+        },
+        "hawk": {
+          "offset": 1166400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15584,
+            "nominalFactor": 1.0822222222222222,
+            "appliedFactor": 1.0822222222222222,
+            "silenceAdjustmentSamples": -304,
+            "passes": 1
+          }
+        },
+        "eagle": {
+          "offset": 1180800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 20482,
+            "nominalFactor": 1.4223611111111112,
+            "appliedFactor": 1.4223611111111112,
+            "silenceAdjustmentSamples": 89,
+            "passes": 1
+          }
+        },
+        "zero": {
+          "offset": 1195200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 22456,
+            "nominalFactor": 1.5594444444444444,
+            "appliedFactor": 1.5594444444444444,
+            "silenceAdjustmentSamples": 177,
+            "passes": 1
+          }
+        },
+        "one": {
+          "offset": 1209600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19161,
+            "nominalFactor": 1.330625,
+            "appliedFactor": 1.330625,
+            "silenceAdjustmentSamples": -216,
+            "passes": 1
+          }
+        },
+        "two": {
+          "offset": 1224000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17152,
+            "nominalFactor": 1.191111111111111,
+            "appliedFactor": 1.191111111111111,
+            "silenceAdjustmentSamples": -297,
+            "passes": 1
+          }
+        },
+        "three": {
+          "offset": 1238400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19445,
+            "nominalFactor": 1.3503472222222221,
+            "appliedFactor": 1.3503472222222221,
+            "silenceAdjustmentSamples": 31,
+            "passes": 1
+          }
+        },
+        "four": {
+          "offset": 1252800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19187,
+            "nominalFactor": 1.3324305555555556,
+            "appliedFactor": 1.3324305555555556,
+            "silenceAdjustmentSamples": -150,
+            "passes": 1
+          }
+        },
+        "five": {
+          "offset": 1267200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 20779,
+            "nominalFactor": 1.442986111111111,
+            "appliedFactor": 1.442986111111111,
+            "silenceAdjustmentSamples": 43,
+            "passes": 1
+          }
+        },
+        "six": {
+          "offset": 1281600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15378,
+            "nominalFactor": 1.0679166666666666,
+            "appliedFactor": 1.0679166666666666,
+            "silenceAdjustmentSamples": -161,
+            "passes": 1
+          }
+        },
+        "seven": {
+          "offset": 1296000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 22267,
+            "nominalFactor": 1.5463194444444444,
+            "appliedFactor": 1.5463194444444444,
+            "silenceAdjustmentSamples": -167,
+            "passes": 1
+          }
+        },
+        "eight": {
+          "offset": 1310400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17179,
+            "nominalFactor": 1.192986111111111,
+            "appliedFactor": 1.192986111111111,
+            "silenceAdjustmentSamples": -61,
+            "passes": 1
+          }
+        },
+        "nine": {
+          "offset": 1324800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 20894,
+            "nominalFactor": 1.4509722222222223,
+            "appliedFactor": 1.4509722222222223,
+            "silenceAdjustmentSamples": -7,
+            "passes": 1
+          }
+        },
+        "tree": {
+          "offset": 1339200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16666,
+            "nominalFactor": 1.157361111111111,
+            "appliedFactor": 1.157361111111111,
+            "silenceAdjustmentSamples": -131,
+            "passes": 1
+          }
+        },
+        "fife": {
+          "offset": 1353600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 18401,
+            "nominalFactor": 1.2778472222222221,
+            "appliedFactor": 1.2778472222222221,
+            "silenceAdjustmentSamples": 164,
+            "passes": 1
+          }
+        },
+        "niner": {
+          "offset": 1368000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 23474,
+            "nominalFactor": 1.6301388888888888,
+            "appliedFactor": 1.6301388888888888,
+            "silenceAdjustmentSamples": -9,
+            "passes": 1
+          }
+        },
+        "letter:a": {
+          "offset": 1382400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17332,
+            "nominalFactor": 1.2036111111111112,
+            "appliedFactor": 1.2036111111111112,
+            "silenceAdjustmentSamples": -360,
+            "passes": 1
+          }
+        },
+        "letter:b": {
+          "offset": 1396800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15046,
+            "nominalFactor": 1.044861111111111,
+            "appliedFactor": 1.044861111111111,
+            "silenceAdjustmentSamples": -171,
+            "passes": 1
+          }
+        },
+        "letter:c": {
+          "offset": 1411200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14058,
+            "nominalFactor": 0.97625,
+            "appliedFactor": 0.97625,
+            "silenceAdjustmentSamples": 260,
+            "passes": 1
+          }
+        },
+        "letter:d": {
+          "offset": 1425600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16252,
+            "nominalFactor": 1.128611111111111,
+            "appliedFactor": 1.128611111111111,
+            "silenceAdjustmentSamples": -319,
+            "passes": 1
+          }
+        },
+        "letter:e": {
+          "offset": 1440000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 12782,
+            "nominalFactor": 0.8876388888888889,
+            "appliedFactor": 0.8876388888888889,
+            "silenceAdjustmentSamples": 418,
+            "passes": 1
+          }
+        },
+        "letter:f": {
+          "offset": 1454400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14913,
+            "nominalFactor": 1.035625,
+            "appliedFactor": 1.035625,
+            "silenceAdjustmentSamples": -251,
+            "passes": 1
+          }
+        },
+        "letter:g": {
+          "offset": 1468800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 16511,
+            "nominalFactor": 1.1465972222222223,
+            "appliedFactor": 1.1465972222222223,
+            "silenceAdjustmentSamples": -176,
+            "passes": 1
+          }
+        },
+        "letter:h": {
+          "offset": 1483200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15236,
+            "nominalFactor": 1.0580555555555555,
+            "appliedFactor": 1.0580555555555555,
+            "silenceAdjustmentSamples": -71,
+            "passes": 1
+          }
+        },
+        "letter:i": {
+          "offset": 1497600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19680,
+            "nominalFactor": 1.3666666666666667,
+            "appliedFactor": 1.3666666666666667,
+            "silenceAdjustmentSamples": -94,
+            "passes": 1
+          }
+        },
+        "letter:j": {
+          "offset": 1512000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 20238,
+            "nominalFactor": 1.4054166666666668,
+            "appliedFactor": 1.4054166666666668,
+            "silenceAdjustmentSamples": 80,
+            "passes": 1
+          }
+        },
+        "letter:k": {
+          "offset": 1526400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 19215,
+            "nominalFactor": 1.334375,
+            "appliedFactor": 1.334375,
+            "silenceAdjustmentSamples": -284,
+            "passes": 1
+          }
+        },
+        "letter:l": {
+          "offset": 1540800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17846,
+            "nominalFactor": 1.2393055555555557,
+            "appliedFactor": 1.2393055555555557,
+            "silenceAdjustmentSamples": 1,
+            "passes": 1
+          }
+        },
+        "letter:m": {
+          "offset": 1555200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 18818,
+            "nominalFactor": 1.3068055555555556,
+            "appliedFactor": 1.3068055555555556,
+            "silenceAdjustmentSamples": -132,
+            "passes": 1
+          }
+        },
+        "letter:n": {
+          "offset": 1569600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17705,
+            "nominalFactor": 1.2295138888888888,
+            "appliedFactor": 1.2295138888888888,
+            "silenceAdjustmentSamples": -169,
+            "passes": 1
+          }
+        },
+        "letter:o": {
+          "offset": 1584000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 18078,
+            "nominalFactor": 1.2554166666666666,
+            "appliedFactor": 1.2554166666666666,
+            "silenceAdjustmentSamples": -217,
+            "passes": 1
+          }
+        },
+        "letter:p": {
+          "offset": 1598400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15676,
+            "nominalFactor": 1.0886111111111112,
+            "appliedFactor": 1.0886111111111112,
+            "silenceAdjustmentSamples": -320,
+            "passes": 1
+          }
+        },
+        "letter:q": {
+          "offset": 1612800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 18449,
+            "nominalFactor": 1.2811805555555555,
+            "appliedFactor": 1.2811805555555555,
+            "silenceAdjustmentSamples": -197,
+            "passes": 1
+          }
+        },
+        "letter:r": {
+          "offset": 1627200,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17980,
+            "nominalFactor": 1.2486111111111111,
+            "appliedFactor": 1.2486111111111111,
+            "silenceAdjustmentSamples": -135,
+            "passes": 1
+          }
+        },
+        "letter:s": {
+          "offset": 1641600,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17957,
+            "nominalFactor": 1.2470138888888889,
+            "appliedFactor": 1.2470138888888889,
+            "silenceAdjustmentSamples": -313,
+            "passes": 1
+          }
+        },
+        "letter:t": {
+          "offset": 1656000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 15373,
+            "nominalFactor": 1.0675694444444443,
+            "appliedFactor": 1.0675694444444443,
+            "silenceAdjustmentSamples": -153,
+            "passes": 1
+          }
+        },
+        "letter:u": {
+          "offset": 1670400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 18477,
+            "nominalFactor": 1.283125,
+            "appliedFactor": 1.283125,
+            "silenceAdjustmentSamples": -285,
+            "passes": 1
+          }
+        },
+        "letter:v": {
+          "offset": 1684800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 17929,
+            "nominalFactor": 1.2450694444444443,
+            "appliedFactor": 1.2450694444444443,
+            "silenceAdjustmentSamples": 12,
+            "passes": 1
+          }
+        },
+        "letter:w": {
+          "offset": 1699200,
+          "length": 28800,
+          "words": 2,
+          "tempo": {
+            "sourceSamples": 29718,
+            "nominalFactor": 1.031875,
+            "appliedFactor": 1.031875,
+            "silenceAdjustmentSamples": -98,
+            "passes": 1
+          }
+        },
+        "letter:x": {
+          "offset": 1728000,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14769,
+            "nominalFactor": 1.025625,
+            "appliedFactor": 1.025625,
+            "silenceAdjustmentSamples": -220,
+            "passes": 1
+          }
+        },
+        "letter:y": {
+          "offset": 1742400,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 20446,
+            "nominalFactor": 1.419861111111111,
+            "appliedFactor": 1.419861111111111,
+            "silenceAdjustmentSamples": -168,
+            "passes": 1
+          }
+        },
+        "letter:z": {
+          "offset": 1756800,
+          "length": 14400,
+          "words": 1,
+          "tempo": {
+            "sourceSamples": 14430,
+            "nominalFactor": 1.0020833333333334,
+            "appliedFactor": 1.0020833333333334,
+            "silenceAdjustmentSamples": 111,
+            "passes": 1
+          }
+        }
+      }
+    }
+  },
+  "phrases": [
+    "radio check pilot replies are set to one hundred words per minute",
+    "roger",
+    "instruction received this action is not simulated",
+    "will resume normal after this orbit",
+    "resuming normal",
+    "orbit complete continuing left orbit",
+    "orbit complete continuing right orbit",
+    "continuing left orbit",
+    "continuing right orbit",
+    "orbiting left",
+    "orbiting right",
+    "turning left",
+    "turning right",
+    "stop turn",
+    "roger turning left",
+    "roger turning right",
+    "will report passing",
+    "passed",
+    "passing",
+    "heading",
+    "range",
+    "decimal",
+    "nautical miles",
+    "transmitting for direction finding",
+    "speed",
+    "knots",
+    "flying independently",
+    "falcon",
+    "raven",
+    "viper",
+    "hawk",
+    "eagle",
+    "zero",
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "tree",
+    "fife",
+    "niner"
+  ],
+  "modelRevision": "1939ad2a8e416c0acfeecc08a694d14ef25f2231",
+  "recipeSha256": "83c20edd8c5e1fa3cb5b9e8e9f6f3af02abdacb41aabc91ee91a542cfc9d605b",
+  "tempoNormalization": {
+    "tool": "ffmpeg version 7.1-essentials_build-www.gyan.dev Copyright (c) 2000-2024 the FFmpeg developers",
+    "sha256": "2ce797a0f88d7f067180338fb227f7b1928ea727bd9a4d7a1d022f7c52af71a3",
+    "method": "atempo",
+    "targetWPM": 100,
+    "minFactor": 0.5,
+    "maxFactor": 2.0,
+    "maxPaddingSamples": 720,
+    "sourceBanks": [
+      {
+        "file": "am_michael.wav",
+        "bytes": 3661992,
+        "sha256": "941d0886112abac534a9e32d5bf0811f62290417bef04db6efdfaed29e2b60d0"
+      },
+      {
+        "file": "am_fenrir.wav",
+        "bytes": 3813940,
+        "sha256": "3f3449e8f5efd91fd363fc011ac0bd60b48f878ba2d6ad1d5768a080c7163b57"
+      },
+      {
+        "file": "am_puck.wav",
+        "bytes": 3852728,
+        "sha256": "2fd7071e78674e274f34772d4dfef4eb56124c59069cc2f4ed1b982d87690701"
+      },
+      {
+        "file": "bm_george.wav",
+        "bytes": 4120296,
+        "sha256": "7837a72510c6a39dc279cfb1e8aef23e4b3d0631d6c35849b152d89228d0d420"
+      }
+    ],
+    "segments": 284,
+    "observedFactorRange": [
+      0.7127893518518519,
+      1.7602777777777778
+    ]
+  }
+}

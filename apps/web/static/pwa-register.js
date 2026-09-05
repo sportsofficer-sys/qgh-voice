@@ -5,6 +5,55 @@
 
   let reloadApproved = false;
   let updateNotice;
+  let pilotRegistration;
+  let pilotNotice;
+  let pilotCopy;
+  let pilotRetry;
+
+  const prepareOfflinePilots = () => {
+    pilotRegistration?.active?.postMessage({ type: 'CACHE_PILOT_PACK' });
+  };
+
+  const showPilotStatus = status => {
+    // Keep download progress on the entry page, outside exercise controls.
+    const entry = document.querySelector('.entry-app .entry-card');
+    if (!entry) return;
+    if (!pilotNotice) {
+      pilotNotice = document.createElement('p');
+      pilotNotice.className = 'entry-release-availability';
+      pilotNotice.setAttribute('role', 'status');
+      pilotNotice.setAttribute('aria-live', 'polite');
+      pilotCopy = document.createElement('span');
+      pilotRetry = document.createElement('button');
+      pilotRetry.type = 'button';
+      pilotRetry.textContent = 'Retry download';
+      pilotRetry.addEventListener('click', () => {
+        showPilotStatus({ state: 'checking' });
+        prepareOfflinePilots();
+      });
+      pilotNotice.append(pilotCopy, document.createTextNode(' '), pilotRetry);
+      entry.append(pilotNotice);
+    }
+    pilotRetry.hidden = status.state !== 'incomplete';
+    if (status.state === 'ready') {
+      pilotCopy.textContent = 'Pilot voices are saved for offline use.';
+    } else if (status.state === 'incomplete') {
+      pilotCopy.textContent = status.reason === 'storage'
+        ? 'Pilot voices could not be saved. Free some browser storage and retry. You can still use the simulator.'
+        : 'Pilot voice download is incomplete. Reconnect and retry for offline voices. You can still use the simulator.';
+    } else if (status.state === 'downloading') {
+      const total = Number(status.totalBytes);
+      const loaded = Math.min(Number(status.loadedBytes) || 0, total);
+      const progress = total > 0 ? ` ${Math.floor(loaded / 1000000)} of ${Math.ceil(total / 1000000)} MB.` : '';
+      pilotCopy.textContent = `Saving pilot voices for offline use…${progress} Keep this page open until complete.`;
+    } else {
+      pilotCopy.textContent = 'Checking offline pilot voices…';
+    }
+  };
+
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data?.type === 'PILOT_PACK_STATUS') showPilotStatus(event.data);
+  });
 
   const hasActiveExercise = () => Boolean(
     document.querySelector('#console.active, #tConsole.active')
@@ -57,6 +106,14 @@
     try {
       const registration = await navigator.serviceWorker.register('service-worker.js', { scope: './' });
       observeRegistration(registration);
+      // The small application shell activates first. Downloading the voice pack
+      // is a separate extendable message so it cannot delay manual exercises.
+      void navigator.serviceWorker.ready.then(activeRegistration => {
+        pilotRegistration = activeRegistration;
+        showPilotStatus({ state: 'checking' });
+        prepareOfflinePilots();
+      }).catch(() => {});
+      window.addEventListener('online', prepareOfflinePilots);
 
       let updateCheck;
       const checkForUpdate = () => {

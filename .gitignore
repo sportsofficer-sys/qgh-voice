@@ -59,6 +59,7 @@ xcuserdata/
 # Local release material / temporary exports
 release/
 artifacts/
+.worktrees/
 *.zip
 *.log
 

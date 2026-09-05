@@ -50,7 +50,7 @@ The output directory is `apps/web/dist`. The build copies only the current entry
 
 The repository includes a GitHub Actions deployment workflow. In the repository's **Settings** → **Pages**, select **GitHub Actions** as the build and deployment source. A push to `main` builds the PWA and deploys it to:
 
-`https://sportsofficer-sys.github.io/qgh-voice/`
+`https://reds-aviation.github.io/qgh-voice/`
 
 Wait for the **Deploy QGH PWA to GitHub Pages** workflow to complete, then run the checks in the next section before sharing the URL.
 

@@ -23,6 +23,10 @@ gradlew text eol=lf
 *.ico binary
 *.png binary
 *.ttf binary
+*.wav binary
+packages/qgh-engine/vendor/pilot-tts/*.mjs text eol=lf
+packages/qgh-engine/vendor/pilot-tts/*.txt text eol=lf
+packages/qgh-engine/pilot-voices/*.txt text eol=lf
 OFL-1.1.txt -whitespace
 *.jar binary
 *.jks binary

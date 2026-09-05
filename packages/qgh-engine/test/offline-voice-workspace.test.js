@@ -97,7 +97,10 @@ class FakeDocument {
   }
 
   createElement(tagName) { return new FakeElement(tagName); }
-  getElementById() { return null; }
+  getElementById(id) {
+    const find = node => node.id === id ? node : node.children.map(find).find(Boolean);
+    return find(this.body) || null;
+  }
   querySelector(selector) { return this.body.querySelector(selector); }
   querySelectorAll(selector) { return this.body.querySelectorAll(selector); }
   addEventListener(type, listener) { this.listeners.set(type, listener); }
@@ -177,6 +180,7 @@ function createEnvironment(options) {
     QGHVoiceControl: options?.voiceControl || Voice,
     QGHOfflineVoiceEngine: options?.offlineVoice,
     QghNativeVoice: options?.nativeVoice,
+    QghNativePilotSpeech: options?.nativeSpeech,
     QGHRadioWorkspace: options?.radio ? { status: () => ({ audioEnabled: false }), audioAvailable: () => false, ...options.radio } : undefined,
     document,
     Event: FakeEvent,
@@ -245,6 +249,170 @@ async function flush() {
   await Promise.resolve();
   await Promise.resolve();
 }
+
+function createNativeRadioEnvironment() {
+  const nativeVoice = {
+    starts: [], stops: 0, cancels: 0,
+    getCapability: () => 'available',
+    start(continuous, requestId) { this.starts.push({ continuous, requestId }); },
+    stop() { this.stops += 1; },
+    cancel() { this.cancels += 1; }
+  };
+  let env;
+  const nativeSpeech = {
+    capability: 'ready', calls: [], cancels: 0,
+    getCapability() { return this.capability; },
+    speak(id, text, rate) {
+      this.calls.push({ id, text, rate });
+      env.radio.receiveNativeSpeechEvent({ type: 'start', id });
+    },
+    cancel() { this.cancels += 1; }
+  };
+  env = createRadioEnvironment({ nativeVoice, nativeSpeech, radio: {} });
+  const setup = env.document.createElement('section');
+  setup.id = 'setup'; setup.className = 'screen';
+  const consoleScreen = env.document.createElement('section');
+  consoleScreen.id = 'console'; consoleScreen.className = 'screen active';
+  const commands = [];
+  for (const id of ['requestHeading', 'requestDistance']) {
+    const control = env.document.createElement('button');
+    control.id = id;
+    control.addEventListener('click', () => commands.push(id));
+    consoleScreen.append(control);
+  }
+  env.document.body.append(setup, consoleScreen);
+  env.radio.setAudioEnabled(true);
+  return { ...env, nativeVoice, nativeSpeech, commands };
+}
+
+async function startNativeContinuous(env) {
+  await flush();
+  const continuous = env.document.querySelector('.voice-continuous').children[0];
+  continuous.checked = true;
+  continuous.dispatchEvent(new FakeEvent('change'));
+  await flush();
+  const requestId = env.nativeVoice.starts.at(-1).requestId;
+  env.workspace.receiveNativeVoiceEvent({ type: 'started', requestId });
+  return requestId;
+}
+
+test('native activity interrupts real pilot audio, extends the quiet boundary, and executes only one final', async () => {
+  const env = createNativeRadioEnvironment();
+  const requestId = await startNativeContinuous(env);
+  env.radio.manualCommand({ intent: 'report-heading' });
+  env.advanceTime(300);
+  assert.equal(env.receiver.read().phase, 'live');
+  assert.equal(env.nativeSpeech.calls.length, 1);
+  const cancelledBefore = env.nativeVoice.cancels;
+  env.workspace.receiveNativeVoiceEvent({ type: 'speech-activity', requestId });
+  assert.equal(env.nativeSpeech.cancels, 1, 'pilot output stops before a final transcript exists');
+  assert.equal(env.nativeVoice.cancels, cancelledBefore, 'headphone continuous capture stays active');
+  assert.equal(env.radio.status().controllerHeld, true);
+  assert.deepEqual(env.commands, [], 'activity never executes a partial command');
+  assert.match(env.document.querySelector('.voice-last-call').children[1].textContent, /^No voice call yet/);
+  env.advanceTime(800);
+  env.workspace.receiveNativeVoiceEvent({ type: 'speech-activity', requestId });
+  env.advanceTime(899);
+  assert.equal(env.radio.status().controllerHeld, true, 'each activity signal renews the quiet deadline');
+  env.advanceTime(1);
+  assert.equal(env.radio.status().controllerHeld, false);
+
+  env.workspace.receiveNativeVoiceEvent({ type: 'result', requestId, transcript: 'report heading' });
+  env.workspace.receiveNativeVoiceEvent({ type: 'result', requestId, transcript: 'request distance' });
+  assert.deepEqual(env.commands, ['requestHeading'], 'one native utterance executes once, even if a duplicate differs');
+  env.workspace.receiveNativeVoiceEvent({ type: 'ended', requestId });
+  env.workspace.receiveNativeVoiceEvent({ type: 'result', requestId, transcript: 'request distance' });
+  env.workspace.receiveNativeVoiceEvent({ type: 'speech-activity', requestId });
+  assert.deepEqual(env.commands, ['requestHeading']);
+  assert.equal(env.radio.status().controllerHeld, false, 'ended and late activity cannot retain ownership');
+  env.advanceTime(300);
+  await flush();
+  assert.equal(env.nativeSpeech.calls.length, 2, 'the accepted final receives its normal pilot readback');
+  assert.equal(env.receiver.read().phase, 'live');
+});
+
+test('stale, cancelled, and other-document native events cannot take radio ownership or execute controls', async () => {
+  const env = createNativeRadioEnvironment();
+  const oldRequestId = await startNativeContinuous(env);
+  env.workspace.receiveNativeVoiceEvent({ type: 'ended', requestId: oldRequestId });
+  env.advanceTime(180); await flush();
+  const requestId = env.nativeVoice.starts.at(-1).requestId;
+  assert.notEqual(requestId, oldRequestId);
+  env.workspace.receiveNativeVoiceEvent({ type: 'started', requestId });
+  env.radio.manualCommand({ intent: 'report-heading' }); env.advanceTime(300);
+
+  const assertIgnored = (target, rejectedId) => {
+    const cancellations = target.nativeSpeech.cancels;
+    for (const type of ['started', 'speech-activity', 'result', 'no-result', 'error', 'ended']) {
+      target.workspace.receiveNativeVoiceEvent({ type, requestId: rejectedId,
+        transcript: 'report heading', code: 'unavailable' });
+      target.workspace.receiveNativeVoiceEvent({ type,
+        transcript: 'report heading', code: 'unavailable' });
+    }
+    assert.equal(target.nativeSpeech.cancels, cancellations);
+    assert.equal(target.radio.status().controllerHeld, false);
+    assert.equal(target.receiver.read().phase, 'live');
+    assert.deepEqual(target.commands, []);
+  };
+  assertIgnored(env, oldRequestId);
+  env.workspace.receiveNativeVoiceEvent({ type: 'speech-activity', requestId });
+  assert.equal(env.radio.status().controllerHeld, true, 'the current request still owns continuous capture');
+  env.workspace.stopListening({ cancel: true });
+  env.radio.manualCommand({ intent: 'report-heading' }); env.advanceTime(300);
+  assertIgnored(env, requestId);
+
+  const reloaded = createNativeRadioEnvironment();
+  const reloadedRequestId = await startNativeContinuous(reloaded);
+  assert.notEqual(reloadedRequestId, oldRequestId, 'same-URL documents have distinct request identities');
+  reloaded.radio.manualCommand({ intent: 'report-heading' }); reloaded.advanceTime(300);
+  assertIgnored(reloaded, oldRequestId);
+});
+
+test('native PTT ignores activity signals and accepts its delayed final after release exactly once', async () => {
+  const env = createNativeRadioEnvironment();
+  await flush();
+  let controllerStarts = 0;
+  env.sandbox.QGHRadioWorkspace = { ...env.radio, controllerStart() {
+    controllerStarts += 1;
+    env.radio.controllerStart();
+  } };
+  const mic = env.document.querySelector('.voice-mic');
+  mic.dispatchEvent(new FakeEvent('pointerdown', { pointerId: 1 })); await flush();
+  const { continuous, requestId } = env.nativeVoice.starts.at(-1);
+  assert.equal(continuous, false);
+  env.workspace.receiveNativeVoiceEvent({ type: 'started', requestId });
+  env.workspace.receiveNativeVoiceEvent({ type: 'speech-activity', requestId });
+  assert.equal(controllerStarts, 1, 'only the PTT press takes ownership');
+  mic.dispatchEvent(new FakeEvent('pointerup', { pointerId: 1 }));
+  assert.equal(env.nativeVoice.stops, 1);
+  assert.equal(env.radio.status().controllerHeld, true, 'release waits for the final flush');
+  env.workspace.receiveNativeVoiceEvent({ type: 'speech-activity', requestId });
+  assert.equal(controllerStarts, 1, 'processing PTT does not become continuous activity');
+  env.workspace.receiveNativeVoiceEvent({ type: 'result', requestId, transcript: 'report heading' });
+  env.workspace.receiveNativeVoiceEvent({ type: 'result', requestId, transcript: 'request distance' });
+  assert.deepEqual(env.commands, ['requestHeading']);
+  assert.equal(env.radio.status().controllerHeld, true);
+  env.workspace.receiveNativeVoiceEvent({ type: 'ended', requestId });
+  assert.equal(env.radio.status().controllerHeld, false);
+  assert.equal(mic.getAttribute('aria-pressed'), 'false');
+  env.advanceTime(300);
+  assert.equal(env.receiver.read().phase, 'live', 'the PTT final receives a normal readback');
+});
+
+test('opening VOICE refreshes native pilot output readiness without a browser voiceschanged event', async () => {
+  const env = createNativeRadioEnvironment();
+  await flush();
+  const settings = env.document.querySelector('.voice-settings-toggle');
+  const note = env.document.querySelector('.voice-engine-note');
+  env.nativeSpeech.capability = 'preparing';
+  settings.click();
+  assert.match(note.textContent, /No local English output voice/);
+  settings.click();
+  env.nativeSpeech.capability = 'ready';
+  settings.click();
+  assert.match(note.textContent, /your speech interrupts pilot audio/);
+  assert.equal(env.nativeSpeech.calls.length, 0, 'refreshing availability does not start audio');
+});
 
 test('silent continuous resume leaves manual replies and passing reports free to transmit', async () => {
   const runtime = makeOfflineEngine({ cachedArchive: true });

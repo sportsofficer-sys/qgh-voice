@@ -2,7 +2,7 @@
 
 Offline-first QGH training simulator for Windows, Android, iPhone, iPad, and modern web browsers.
 
-Latest web release: **v4.4.0 - Radio & Orbit**. [Open QGH Voice](https://sportsofficer-sys.github.io/qgh-voice/) or read the [release notes](docs/qa/v4.4.0-web-release.md). This is a web-only release; Windows and Android installers are built separately.
+Web update: **v4.4.1 - Headphone Pilots**. [Open Reds QGH Simulator](https://reds-aviation.github.io/qgh-voice/) or read the [release notes](docs/qa/v4.4.1-web-release.md). This release targets the web app; Windows and Android installers remain separate and have not been rebuilt for 4.4.1.
 
 See [USER_GUIDE.md](USER_GUIDE.md) for installation, exercise, replay, tactical, and voice-control guidance.
 
@@ -37,7 +37,7 @@ $tests = Get-ChildItem .\packages\qgh-engine\test\*.test.js | ForEach-Object Ful
 node --test $tests .\apps\web\test\*.test.mjs
 ~~~
 
-The generated `apps/web/dist` directory supports a browser-installed PWA on desktop, Android, iPhone, and iPad. It works offline after the first successful load, but exercise data remains in memory and is intentionally cleared by a page reload. Browser voice use has one additional, user-selected first-time step: open **VOICE** and select **SET UP OFFLINE VOICE** while online to cache the self-hosted Vosk model (about 40 MB). Windows and Android package that model locally. The public PWA is published independently at `https://sportsofficer-sys.github.io/qgh-voice/` after its Pages workflow completes. See [docs/WEB_PWA_DEPLOYMENT.md](docs/WEB_PWA_DEPLOYMENT.md) for Cloudflare Pages, GitHub, access-control, QR, iPhone installation, and release-download instructions.
+The generated `apps/web/dist` directory supports a browser-installed PWA on desktop and phones. Wait for the initial offline download to finish before going offline. Exercise data remains in memory and is intentionally cleared by a page reload. Browser voice recognition has one additional, user-selected first-time step: open **VOICE** and select **SET UP OFFLINE VOICE** while online to cache the self-hosted Vosk model (about 40 MB). The bundled male pilot replies require a fresh headphone test and user confirmation each session; no hardware-detection guarantee is made. The public PWA is published independently at `https://reds-aviation.github.io/qgh-voice/` after its Pages workflow completes. See [docs/WEB_PWA_DEPLOYMENT.md](docs/WEB_PWA_DEPLOYMENT.md) for hosting and installation instructions.
 
 ### Versioned releases
 

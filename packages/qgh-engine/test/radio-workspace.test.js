@@ -4,30 +4,39 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { pathToFileURL } = require('node:url');
 const Radio = require('../radio-session.js');
 const source = fs.readFileSync(path.join(__dirname, '..', 'radio-workspace.js'), 'utf8');
 
-function harness(voices = [], enableAudio = true) {
+function harness(voices = [], enableAudio = true, nativeCapability, bundled = false) {
   let time = 0;
   let next = 0;
   let selected = 'A';
   let qdm = 60;
   let enabled = true;
   const headings = { A: 230, B: 230 };
+  const callsigns = { A: 'FALCON 11', B: 'RAVEN 21' };
   let simulationSeconds = 0;
   let procedure = 'normal';
   const captions = [];
   const timers = new Map();
   const utterances = [];
   const gates = [];
-  const snapshots = id => ({ source: id || selected, callsign: (id || selected) === 'A' ? 'FALCON 11' : 'RAVEN 21', procedure, heading: headings[id || selected], simulationSeconds, range: 10, qdm, qte: (qdm + 180) % 360 });
+  const snapshots = id => ({ source: id || selected, callsign: callsigns[id || selected], procedure, heading: headings[id || selected], simulationSeconds, range: 10, qdm, qte: (qdm + 180) % 360 });
   const setTimer = (callback, ms) => { const id = ++next; timers.set(id, { callback, at: time + ms }); return id; };
   const clearTimer = id => timers.delete(id);
   let paints = 0;
   let queuedSpeech = null;
   let cancellations = 0;
+  const nativeUtterances = [];
+  let nativeCancellations = 0;
+  let headphoneConfirmed = true;
+  const bundledCalls = [];
+  let bundledCancellations = 0;
   const receiver = Radio.createReceiver({ observe: snapshots, now: () => time, setTimer, clearTimer, onChange: () => paints++ });
   const sandbox = {
+    QGHHeadphones: { confirmed: () => headphoneConfirmed },
+    localStorage: { getItem: () => 'on', setItem() {} },
     QGHRadioSession: Radio,
     QGHRadioAdapter: { snapshot: snapshots, active: () => enabled, beginTransmit: id => receiver.transmit(id), endTransmit: token => receiver.release(token), observation: () => receiver.read(), controllerStart: () => receiver.controllerStart() },
     QGHVoiceWorkspace: { setPilotSpeaking: value => gates.push(value), showPilotReply: reply => captions.push(reply.text), isDispatchingRadioCommand: () => false },
@@ -38,6 +47,16 @@ function harness(voices = [], enableAudio = true) {
       speak(utterance) { queuedSpeech = utterance; utterances.push(utterance); }
     },
     SpeechSynthesisUtterance: class { constructor(text) { this.text = text; } }
+  };
+  if (bundled) sandbox.QGHPilotVoiceEngine = {
+    capability: () => 'ready',
+    speak: request => bundledCalls.push(request),
+    cancel: () => { bundledCancellations++; }
+  };
+  if (nativeCapability !== undefined) sandbox.QghNativePilotSpeech = {
+    getCapability: () => nativeCapability,
+    speak(id, text, rate) { nativeUtterances.push({ id, text, rate }); },
+    cancel() { nativeCancellations += 1; }
   };
   sandbox.globalThis = sandbox;
   vm.runInNewContext(source, sandbox);
@@ -54,13 +73,197 @@ function harness(voices = [], enableAudio = true) {
     time = end;
   };
   return { radio: sandbox.QGHRadioWorkspace, receiver, utterances, gates, advance, captions,
+    bundledCalls, bundledCancellations: () => bundledCancellations,
+    confirmHeadphones: value => { headphoneConfirmed = value; },
+    nativeUtterances, nativeCancellations: () => nativeCancellations,
+    nativeEvent: (id, type) => sandbox.QGHRadioWorkspace.receiveNativeSpeechEvent({ id, type }),
     queuedSpeech: () => queuedSpeech, cancellations: () => cancellations,
+    callsign: (id, value) => { callsigns[id] = value; },
     heading: (id, value, seconds = .25) => { headings[id] = value; simulationSeconds += seconds; sandbox.QGHRadioWorkspace.observeHeading(id, value); },
     procedure: value => { procedure = value; },
     select: id => { selected = id; }, move: bearing => { qdm = bearing; }, close: () => { enabled = false; }, paints: () => paints };
 }
 const local = [{ localService: true, lang: 'en-IN', name: 'Local test voice' }];
 const turn = { intent: 'normal-turn-heading', aircraft: 'A', side: 'right', heading: 230 };
+
+test('stored opt-in never restores pilot sound and current headphone confirmation is required', () => {
+  const h = harness(local, false);
+  assert.equal(h.radio.status().audioEnabled, false);
+  h.confirmHeadphones(false);
+  h.radio.setAudioEnabled(true);
+  assert.equal(h.radio.status().audioEnabled, false);
+  assert.equal(h.radio.allowsBargeIn(), false);
+  h.confirmHeadphones(true); h.radio.setAudioEnabled(true);
+  assert.equal(h.radio.status().audioEnabled, true);
+});
+
+test('bundled pilot audio uses addressed aircraft and never device voices, even after interruptions', () => {
+  const h = harness(local, true, undefined, true);
+  h.radio.acknowledge(turn); h.select('B'); h.advance(300);
+  const old = h.bundledCalls[0];
+  assert.equal(old.source, 'A');
+  assert.equal(h.utterances.length, 0);
+  old.onstart();
+  assert.equal(h.receiver.read().source, 'A');
+  h.radio.controllerStart();
+  assert.equal(h.bundledCancellations(), 1);
+  h.radio.acknowledge({ ...turn, aircraft: 'B', side: 'left', heading: 10 });
+  h.radio.controllerEnd(); h.advance(300);
+  const fresh = h.bundledCalls[1]; fresh.onstart(); old.onend(); old.onerror();
+  assert.equal(h.receiver.read().source, 'B');
+  assert.match(h.captions.at(-1), /LEFT 010/);
+  fresh.onend(); h.advance(2000);
+  assert.equal(h.receiver.read().phase, 'idle');
+});
+
+test('muting bundled speech preserves visual transmission and never falls through to system TTS', () => {
+  const h = harness(local, true, undefined, true);
+  h.radio.acknowledge(turn); h.advance(300); h.bundledCalls[0].onstart();
+  h.radio.setAudioEnabled(false);
+  assert.equal(h.bundledCancellations(), 1);
+  assert.equal(h.receiver.read().phase, 'live');
+  assert.equal(h.utterances.length, 0);
+  h.advance(10000); assert.equal(h.receiver.read().phase, 'idle');
+});
+
+test('a real bundled readback with a twenty-letter callsign stays live past fifteen seconds until natural completion', async () => {
+  const runtime = await import(pathToFileURL(path.join(__dirname, '..', 'vendor/pilot-tts/runtime.mjs')).href);
+  const bankRoot = path.join(__dirname, '..', 'pilot-voices');
+  const index = JSON.parse(fs.readFileSync(path.join(bankRoot, 'index.json'), 'utf8'));
+  const bytes = fs.readFileSync(path.join(bankRoot, index.voices.am_michael.file));
+  const bank = runtime.decodeBank(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+  const h = harness(local, true, undefined, true);
+  h.callsign('A', 'ABCDEFGHIJKLMNOPQRST');
+  h.radio.acknowledge(turn); h.advance(300);
+  const speech = h.bundledCalls[0];
+  const audio = runtime.assemble(speech.text, 'am_michael', index, bank);
+  const durationSeconds = audio.samples.length / audio.sampleRate;
+  assert.ok(durationSeconds > 15, `actual generated duration: ${durationSeconds}`);
+  speech.onstart({ durationSeconds });
+  h.advance(15000);
+  assert.equal(h.receiver.read().phase, 'live');
+  assert.equal(h.bundledCancellations(), 0, 'playback must not be cancelled at the former watchdog limit');
+  assert.equal(h.gates.at(-1), true);
+  h.advance(durationSeconds * 1000 - 15000);
+  assert.equal(h.receiver.read().phase, 'live');
+  speech.onend();
+  assert.equal(h.radio.status().phase, 'idle');
+  assert.equal(h.receiver.read().phase, 'hold');
+  h.advance(250); assert.equal(h.gates.at(-1), false);
+  h.advance(1750); assert.equal(h.receiver.read().phase, 'idle');
+});
+
+test('bundled playback watchdog uses duration plus margin and bounds missing or invalid metadata', () => {
+  for (const durationSeconds of [20, 90, 1000, undefined, NaN, Infinity, -1, 0]) {
+    const h = harness(local, true, undefined, true);
+    h.radio.acknowledge(turn); h.advance(300);
+    h.bundledCalls[0].onstart({ durationSeconds });
+    const watchdogMs = durationSeconds === 20 ? 25000 : 95000;
+    h.advance(watchdogMs - 1);
+    assert.equal(h.receiver.read().phase, 'live', String(durationSeconds));
+    assert.equal(h.bundledCancellations(), 0);
+    h.advance(1);
+    assert.equal(h.bundledCancellations(), 1);
+    assert.equal(h.radio.status().phase, 'idle');
+    assert.equal(h.receiver.read().phase, 'hold');
+    h.advance(250); assert.equal(h.gates.at(-1), false);
+    h.advance(1750); assert.equal(h.receiver.read().phase, 'idle');
+  }
+});
+
+test('native local pilot audio drives the same transmission and frozen two-second hold without browser synthesis', () => {
+  const h = harness(local, true, 'ready');
+  assert.equal(h.radio.audioAvailable(), true);
+  h.radio.controllerStart(); h.radio.acknowledge(turn); h.select('B'); h.advance(1000);
+  assert.equal(h.nativeUtterances.length, 0);
+  h.radio.controllerEnd(); h.advance(300);
+  const speech = h.nativeUtterances[0];
+  assert.match(speech.text, /two three zero, FALCON 11/);
+  assert.equal(speech.rate, 100 / 150);
+  assert.equal(h.utterances.length, 0);
+  assert.equal(h.gates.at(-1), true);
+  h.nativeEvent(speech.id, 'start');
+  assert.equal(h.receiver.read().source, 'A');
+  assert.equal(h.receiver.read().phase, 'live');
+  h.move(70); h.nativeEvent(speech.id, 'end'); h.move(90);
+  assert.equal(h.receiver.read().qdm, 70);
+  assert.equal(h.receiver.read().phase, 'hold');
+  h.advance(250); assert.equal(h.gates.at(-1), false);
+  h.advance(1750); assert.equal(h.receiver.read().phase, 'idle');
+});
+
+test('native unavailable, preparing and disabled audio never use browser speech and retain muted DF', () => {
+  for (const capability of ['unavailable', 'preparing']) {
+    const h = harness(local, true, capability);
+    assert.equal(h.radio.audioAvailable(), false);
+    h.radio.acknowledge(turn); h.advance(300);
+    assert.equal(h.nativeUtterances.length, 0);
+    assert.equal(h.utterances.length, 0);
+    assert.equal(h.receiver.read().phase, 'live');
+    h.advance(10000); assert.equal(h.receiver.read().phase, 'idle');
+  }
+  const muted = harness(local, false, 'ready');
+  muted.radio.acknowledge(turn); muted.advance(300);
+  assert.equal(muted.nativeUtterances.length, 0);
+  assert.equal(muted.utterances.length, 0);
+  assert.equal(muted.receiver.read().phase, 'live');
+});
+
+test('native controller interruption invalidates all callbacks and only the fresh command receives a readback', () => {
+  for (const started of [false, true]) {
+    const h = harness([], true, 'ready');
+    h.radio.acknowledge({ ...turn, heading: 60 }); h.advance(300);
+    const stale = h.nativeUtterances[0];
+    if (started) h.nativeEvent(stale.id, 'start');
+    h.radio.controllerStart();
+    assert.equal(h.nativeCancellations(), 1);
+    h.radio.acknowledge({ ...turn, side: 'left', heading: 10 }); h.radio.controllerEnd(); h.advance(300);
+    const fresh = h.nativeUtterances[1];
+    assert.notEqual(fresh.id, stale.id);
+    h.nativeEvent(fresh.id, 'start');
+    for (const type of ['start', 'end', 'error']) h.nativeEvent(stale.id, type);
+    h.nativeEvent(fresh.id, 'unknown');
+    assert.equal(h.receiver.read().phase, 'live');
+    assert.equal(h.captions.at(-1), 'TURNING LEFT 010°M · FALCON 11');
+    assert.equal(h.nativeCancellations(), 1, 'stale callbacks cannot cancel the fresh native reply');
+    h.nativeEvent(fresh.id, 'end'); h.advance(20000);
+    assert.equal(h.nativeUtterances.length, 2);
+    assert.equal(h.receiver.read().phase, 'idle');
+  }
+});
+
+test('muting active native speech cancels audio but preserves DF and ignores callbacks from the cancelled output', () => {
+  const h = harness([], true, 'ready');
+  h.radio.acknowledge(turn); h.advance(300);
+  const speech = h.nativeUtterances[0]; h.nativeEvent(speech.id, 'start');
+  h.radio.setAudioEnabled(false);
+  assert.equal(h.nativeCancellations(), 1);
+  h.nativeEvent(speech.id, 'end'); h.nativeEvent(speech.id, 'error');
+  assert.equal(h.receiver.read().phase, 'live');
+  h.advance(250); assert.equal(h.gates.at(-1), false);
+  h.advance(10000); assert.equal(h.receiver.read().phase, 'idle');
+});
+
+test('native failed or missing callbacks have bounded muted fallback and release the microphone', () => {
+  for (const scenario of ['no-start', 'end-before-start', 'error', 'no-end']) {
+    const h = harness([], true, 'ready');
+    h.radio.acknowledge({ intent: 'transmit-df', aircraft: 'A' }); h.advance(300);
+    const speech = h.nativeUtterances[0];
+    if (scenario === 'no-start') h.advance(1500);
+    if (scenario === 'end-before-start') h.nativeEvent(speech.id, 'end');
+    if (scenario === 'error') h.nativeEvent(speech.id, 'error');
+    if (scenario === 'no-end') h.nativeEvent(speech.id, 'start');
+    assert.equal(h.receiver.read().phase, 'live', scenario);
+    if (scenario !== 'no-end') {
+      h.nativeEvent(speech.id, 'start'); h.nativeEvent(speech.id, 'end');
+      assert.equal(h.receiver.read().phase, 'live', 'stale native events cannot end the fallback');
+    }
+    h.advance(18000);
+    assert.equal(h.receiver.read().phase, 'idle', scenario);
+    assert.equal(h.gates.at(-1), false, scenario);
+    assert.ok(h.nativeCancellations() > 0, scenario);
+  }
+});
 
 test('a passing report is deferred, one-shot, source-stable and includes DF while muted', () => {
   const h = harness([], false);

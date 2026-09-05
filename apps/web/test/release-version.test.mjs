@@ -83,7 +83,7 @@ test(
         ],
         { cwd: repositoryRoot, stdio: 'pipe' }
       ),
-      (error) => /Cannot validate argument on\s+parameter 'Version'/i.test(
+      (error) => error.status !== 0 && /ParameterArgumentValidationError,Set-QghReleaseVersion\.ps1/i.test(
         error.stderr?.toString() ?? ''
       )
     );

@@ -1,0 +1,127 @@
+{
+  "version": "qgh-pilot-kokoro-clips-en-2",
+  "format": "pcm16-wav-segment-banks",
+  "sampleRate": 24000,
+  "targetWPM": 100,
+  "voices": [
+    "am_michael",
+    "am_fenrir",
+    "am_puck",
+    "bm_george"
+  ],
+  "model": "onnx-community/Kokoro-82M-v1.0-ONNX",
+  "modelRevision": "1939ad2a8e416c0acfeecc08a694d14ef25f2231",
+  "buildRuntime": "onnxruntime==1.22.0",
+  "buildNumpy": "numpy==2.3.5",
+  "recipeSha256": "83c20edd8c5e1fa3cb5b9e8e9f6f3af02abdacb41aabc91ee91a542cfc9d605b",
+  "tempoNormalization": {
+    "tool": "ffmpeg version 7.1-essentials_build-www.gyan.dev Copyright (c) 2000-2024 the FFmpeg developers",
+    "sha256": "2ce797a0f88d7f067180338fb227f7b1928ea727bd9a4d7a1d022f7c52af71a3",
+    "method": "atempo",
+    "targetWPM": 100,
+    "minFactor": 0.5,
+    "maxFactor": 2,
+    "maxPaddingSamples": 720,
+    "sourceBanks": [
+      {
+        "file": "am_michael.wav",
+        "bytes": 3661992,
+        "sha256": "941d0886112abac534a9e32d5bf0811f62290417bef04db6efdfaed29e2b60d0"
+      },
+      {
+        "file": "am_fenrir.wav",
+        "bytes": 3813940,
+        "sha256": "3f3449e8f5efd91fd363fc011ac0bd60b48f878ba2d6ad1d5768a080c7163b57"
+      },
+      {
+        "file": "am_puck.wav",
+        "bytes": 3852728,
+        "sha256": "2fd7071e78674e274f34772d4dfef4eb56124c59069cc2f4ed1b982d87690701"
+      },
+      {
+        "file": "bm_george.wav",
+        "bytes": 4120296,
+        "sha256": "7837a72510c6a39dc279cfb1e8aef23e4b3d0631d6c35849b152d89228d0d420"
+      }
+    ],
+    "segments": 284,
+    "observedFactorRange": [
+      0.7127893518518519,
+      1.7602777777777778
+    ]
+  },
+  "buildInputs": [
+    {
+      "filename": "model_quantized.onnx",
+      "url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/onnx/model_quantized.onnx",
+      "sha256": "fbae9257e1e05ffc727e951ef9b9c98418e6d79f1c9b6b13bd59f5c9028a1478"
+    },
+    {
+      "filename": "am_michael.bin",
+      "url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/voices/am_michael.bin",
+      "sha256": "1d1f21dd8da39c30705cd4c75d039d265e9bc4a2a93ed09bc9e1b1225eb95ba1"
+    },
+    {
+      "filename": "am_fenrir.bin",
+      "url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/voices/am_fenrir.bin",
+      "sha256": "c27989f741f7ee34d273a39d8a595cc0837d35f5ced9a29b7cc162614616df43"
+    },
+    {
+      "filename": "am_puck.bin",
+      "url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/voices/am_puck.bin",
+      "sha256": "fcf73c989033e9233e0b98713eca600c8c74dcc1614b37009d5450ff4a2274a0"
+    },
+    {
+      "filename": "bm_george.bin",
+      "url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231/voices/bm_george.bin",
+      "sha256": "c4b235a4c1f2cd3b939fed08b899ce9385638b763f7b73a59616c4fc9bd6c9bc"
+    }
+  ],
+  "assets": [
+    {
+      "path": "pilot-voices/am_fenrir.wav",
+      "bytes": 3542444,
+      "sha256": "1c5c8cb33248a10a8e97eb8499a81dd8cb4ce341fe65d220febe716094db3240"
+    },
+    {
+      "path": "pilot-voices/am_michael.wav",
+      "bytes": 3542444,
+      "sha256": "687b24f287c76fe2c39cf021bac5feb6496be7a2196abf206080ebfd36ee1c91"
+    },
+    {
+      "path": "pilot-voices/am_puck.wav",
+      "bytes": 3542444,
+      "sha256": "08c577fbc1b8be8494c11060ce54ae5272cccb3b8508308e266b788f51000ddd"
+    },
+    {
+      "path": "pilot-voices/bm_george.wav",
+      "bytes": 3542444,
+      "sha256": "f6f3f44c101fe0c8b61c3aebd3fb94c7a9d1680ba4d30b333d14b9b092254752"
+    },
+    {
+      "path": "pilot-voices/index.json",
+      "bytes": 101579,
+      "sha256": "38961510731596be63bf46b9a064a9c0184074716d9e38ece32973f774f7e5de"
+    },
+    {
+      "path": "vendor/pilot-tts/CMUDICT-LICENSE.txt",
+      "bytes": 1754,
+      "sha256": "bd4ce8e44170a5f9f481310ca85c51de3c4f851a65e679b40e603b143bd3542a"
+    },
+    {
+      "path": "vendor/pilot-tts/KOKORO-LICENSE.txt",
+      "bytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "path": "vendor/pilot-tts/NOTICE.md",
+      "bytes": 6074,
+      "sha256": "a668a528d0c07c17b6355611bae9eaf0afd0b9ee5e377d2a678bf5389436b08f"
+    },
+    {
+      "path": "vendor/pilot-tts/runtime.mjs",
+      "bytes": 5997,
+      "sha256": "d7b130becff02fc15de1fc41508656402bc074da17033760f61c3ec39e0242f2"
+    }
+  ]
+}
