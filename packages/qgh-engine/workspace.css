@@ -1072,3 +1072,124 @@ select:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+
+/* v4.3.0 — compact exercise and review presentation. */
+.brand,
+.console-head > div,
+.analysis-head > div { min-width: 0; }
+
+.mode-home-link { min-height: 44px; }
+
+.review-toolbar {
+  bottom: calc(var(--qgh-voice-dock-height, 0px) + max(8px, env(safe-area-inset-bottom, 0px)));
+}
+
+.review-toolbar button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.review-toolbar > button { font-size: 11px; }
+.review-toolbar .replay-speed { grid-template-columns: repeat(4, minmax(44px, 1fr)); }
+.review-toolbar .replay-speed button[aria-pressed='true'],
+.review-view-tools button[aria-pressed='true'],
+#replay[aria-pressed='true'] {
+  color: #fff;
+  background: var(--accent-dark);
+  box-shadow: inset 0 -3px 0 #99ddd3;
+}
+
+.review-zoom-help {
+  margin: 9px 2px 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  #console button,
+  #console input,
+  #analysis button { min-height: 44px; }
+
+  #console .console-head,
+  .analysis-head { align-items: center; gap: 8px; }
+  .console-head h2,
+  .analysis-head h2 { font-size: 19px; line-height: 1.25; }
+  .badge { flex-shrink: 0; padding: 7px 8px; font-size: 9px; }
+  .df-top { align-items: center; gap: 8px; }
+  .df-top h3 { font-size: 12px; }
+  .df-top b { flex-shrink: 0; font-size: 10px; }
+  .controls input { font-size: 16px; }
+
+  .clock {
+    grid-template-columns: auto repeat(3, minmax(44px, 1fr));
+    gap: 6px;
+  }
+  .clock small { display: block; grid-column: 1 / -1; }
+  .clock strong { padding-right: 4px; font-size: 18px; }
+  .clock button { min-width: 44px; padding-inline: 5px; }
+
+  .review-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .review-toolbar > button { padding-inline: 8px; }
+  .review-toolbar .replay-group {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding-left: 8px;
+  }
+  .replay-group > span { max-width: 70px; line-height: 1.4; font-size: 9px; }
+  .review-toolbar .replay-speed { width: auto; flex: 1; }
+  .review-view-tools { grid-template-columns: minmax(0, 1fr) 44px; }
+  .review-view-tools button { padding-inline: 5px; font-size: 10px; }
+}
+
+@media (max-width: 600px) {
+  .app:has(#console.active, #analysis.active) .app-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 2px;
+    min-height: 0;
+    padding-bottom: 4px;
+  }
+  .app:has(#console.active, #analysis.active) .brand { display: contents; }
+  .app:has(#console.active, #analysis.active) .brand h1 {
+    grid-column: 1;
+    grid-row: 1;
+    font-size: 14px;
+    letter-spacing: .025em;
+    line-height: 1.3;
+  }
+  .app:has(#console.active, #analysis.active) .credit {
+    grid-column: 2;
+    grid-row: 1;
+    max-width: none;
+    font-size: 10px;
+    line-height: 1.35;
+  }
+  .app:has(#console.active, #analysis.active) .credit small:first-child { display: none; }
+  .app:has(#console.active, #analysis.active) .credit small:last-child { margin: 2px 0 0; font-size: 8px; }
+  .app:has(#console.active, #analysis.active) .mode-home-link {
+    grid-row: 2;
+    justify-content: center;
+    min-width: 0;
+    border-left: 0;
+    padding: 0 4px;
+    font-size: 9px;
+  }
+}
+
+@media (forced-colors: active) {
+  .review-toolbar .replay-speed button[aria-pressed='true'],
+  .review-view-tools button[aria-pressed='true'],
+  #replay[aria-pressed='true'] {
+    outline: 2px solid Highlight;
+    outline-offset: -4px;
+    color: HighlightText;
+    background: Highlight;
+    forced-color-adjust: none;
+  }
+  .review-toolbar { border-color: CanvasText; box-shadow: none; }
+}

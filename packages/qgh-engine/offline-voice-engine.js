@@ -583,7 +583,10 @@
     stop(options) {
       const cancel = Boolean(options?.cancel);
       if (this.ending) {
-        if (cancel) this.finish();
+        if (cancel) {
+          this.awaitingFinalResult = false;
+          this.finish();
+        }
         return;
       }
       if (!this.listening) return;

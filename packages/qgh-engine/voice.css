@@ -3,6 +3,22 @@
 
 .voice-dock [hidden] { display: none !important; }
 
+/* Reserve space, not an overlay: the call receipt never obscures D/F digits. */
+.voice-ack-slot { min-height: 52px; display: grid; align-items: center; }
+.voice-command-ack {
+  display: block;
+  color: #a32c27;
+  background: #fff9f5;
+  border-left: 3px solid #b97416;
+  padding: 7px 10px;
+  font: 600 11px/1.5 'IBM Plex Mono', monospace;
+  overflow-wrap: anywhere;
+  letter-spacing: .02em;
+}
+.voice-command-ack[hidden] { display: none; }
+.voice-ack-slot > .voice-command-ack-active { animation: voice-call-receipt .2s ease-out; }
+@keyframes voice-call-receipt { from { opacity: .4; } to { opacity: 1; } }
+
 /* Invisible DOM controls let the local voice adapter reuse the same simulator event
    path without adding an unnecessary visual control to the controller console. */
 .voice-command-only {
@@ -328,4 +344,101 @@
 
   .voice-dock button { font-size: 8px; }
   .voice-mic { font-size: 10px !important; }
+}
+
+/* Desktop keeps the movable rail; phones get a reserved bottom dock. */
+:root { --qgh-voice-dock-height: 0px; }
+body:has(.voice-dock) { padding-right: 90px; }
+.voice-dock {
+  --voice-safe-top: env(safe-area-inset-top, 0px);
+  --voice-safe-right: env(safe-area-inset-right, 0px);
+  --voice-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --voice-safe-left: env(safe-area-inset-left, 0px);
+  width: 76px;
+  right: max(8px, env(safe-area-inset-right, 0px));
+  border-radius: 15px;
+  box-shadow: 0 5px 15px #17262b20;
+}
+.voice-dock button { min-height: 44px; min-width: 44px; font-size: 10px; }
+.voice-mic { touch-action: none; user-select: none; -webkit-user-select: none; }
+.voice-mic[aria-pressed='true'] { background: #064d50 !important; color: white !important; outline: 2px solid #fffefa; outline-offset: 2px; }
+.voice-mic[data-processing='true'] { border-style: dashed !important; }
+.voice-status { min-height: 34px; font-size: 9px; -webkit-line-clamp: 3; }
+.voice-feedback { font-size: 9px; }
+.voice-settings, .voice-confirmation,
+.voice-dock[data-popover-side] .voice-settings,
+.voice-dock[data-popover-side] .voice-confirmation {
+  position: fixed;
+  right: auto;
+  bottom: auto;
+  transform: none;
+  width: min(310px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  font-size: 12px;
+}
+.voice-settings button, .voice-confirmation button { min-height: 44px !important; }
+.voice-settings :is(button, input, summary):focus-visible,
+.voice-confirmation button:focus-visible { outline: 3px solid #b97416; outline-offset: 2px; }
+.voice-continuous { min-height: 44px; font-size: 12px; }
+.voice-continuous input { width: 24px; height: 24px; flex-shrink: 0; }
+.voice-settings small { font: 400 12px/1.6 'IBM Plex Sans', sans-serif; letter-spacing: 0; }
+.voice-reset-position { color: #075e60 !important; border-color: #b8c2be !important; }
+.voice-last-call { border-top: 1px solid #d9d9d1; color: #17262b; }
+.voice-last-call summary { min-height: 44px; padding: 13px 0; cursor: pointer; font: 600 11px 'IBM Plex Mono', monospace; }
+.voice-last-call p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 500 11px/1.65 'IBM Plex Mono', monospace; }
+.voice-confirmation small { white-space: normal; overflow-wrap: anywhere; font-size: 12px; line-height: 1.6; }
+.voice-confirmation strong { font-size: 11px; }
+
+@media (max-width: 600px) and (orientation: portrait) {
+  :root { --qgh-voice-dock-height: calc(120px + env(safe-area-inset-bottom, 0px)); }
+  body:has(.voice-dock) { padding: 0; height: 100dvh; overflow: hidden; }
+  body:has(.voice-dock) :is(.app, .tactical-app, .entry-app) {
+    height: calc(100dvh - var(--qgh-voice-dock-height));
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    margin: 0;
+    padding: 12px 12px 20px;
+    width: 100%;
+    max-width: none;
+    scrollbar-width: thin;
+    scroll-padding-block: 12px;
+  }
+  body:has(.voice-dock) :is(.review-toolbar, .tactical-review-toolbar) { bottom: 8px; }
+  body:has(.voice-dock[data-edge='top']) { padding-top: calc(120px + env(safe-area-inset-top, 0px)); }
+  .voice-dock {
+    top: auto;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    right: max(8px, env(safe-area-inset-right, 0px));
+    left: max(8px, env(safe-area-inset-left, 0px));
+    width: auto;
+    min-height: 100px;
+    padding: 8px 12px;
+    grid-template-columns: 56px minmax(0, 1fr) 56px;
+    grid-template-areas: 'drag mic settings' 'status status status';
+    align-items: center;
+    gap: 6px 14px;
+    border-radius: 16px;
+  }
+  .voice-dock[data-edge='top'] { top: max(8px, env(safe-area-inset-top, 0px)); bottom: auto; }
+  .voice-drag-handle { grid-area: drag; }
+  .voice-mic { grid-area: mic; min-height: 56px !important; font-size: 15px !important; letter-spacing: .16em; }
+  .voice-settings-toggle { grid-area: settings; }
+  .voice-status { grid-area: status; min-height: 17px; font-size: 10px; -webkit-line-clamp: 2; }
+  .voice-feedback, .voice-listening-indicator { display: none; }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .voice-dock { top: max(8px, env(safe-area-inset-top, 0px)); bottom: auto; gap: 4px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-dock *, .voice-command-ack { animation: none !important; transition: none !important; }
+}
+@media (forced-colors: active) {
+  .voice-dock, .voice-settings, .voice-confirmation, .voice-command-ack { border: 1px solid CanvasText; }
+  .voice-dock button { border: 1px solid ButtonText !important; }
+  .voice-mic[aria-pressed='true'], .voice-command-effect { outline: 3px solid Highlight !important; }
 }

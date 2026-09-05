@@ -102,12 +102,12 @@
           </div>
           <b id="dfState" aria-live="polite">NO SIGNAL</b>
         </div>
+        <div class="voice-ack-slot"><output id="voiceCommandAck" class="voice-command-ack" aria-live="off" hidden></output></div>
         <div class="display">
           <div class="readout">
             <small id="bearingType">QDM · HOMING</small>
             <strong id="bearing" aria-live="polite">---</strong>
           </div>
-          <output id="voiceCommandAck" class="voice-command-ack" role="status" aria-live="polite" aria-atomic="true" hidden></output>
           <div class="signal" id="signal"><i></i>NO TRANSMISSION</div>
         </div>
         <div class="segmented df-mode" role="group" aria-label="Direction finding display mode">
@@ -181,9 +181,11 @@
             <div><span>BASE TURN</span><b id="sumBaseTurn">—</b></div>
           </div>
           <div class="plot">
-          <canvas id="plot" width="900" height="720" tabindex="0" aria-label="Flight path review chart. Enable zoom to inspect the replay with keyboard controls."></canvas>
+          <canvas id="plot" width="900" height="720" tabindex="0" aria-describedby="reviewZoomHelp" aria-label="Flight path review chart. Enable zoom to inspect the replay with keyboard controls."></canvas>
             <output class="replay-elapsed" id="replayElapsed" aria-label="Track replay elapsed time">TRACK 00:00</output>
           </div>
+          <p class="review-zoom-help" id="reviewZoomHelp">Turn zoom on to pinch or scroll; drag to pan. Keyboard: + / −, arrows; 0 to fit.</p>
+          <output id="reviewVoiceAck" class="voice-command-ack" aria-live="off" hidden></output>
           <div class="actions review-toolbar" aria-label="Replay controls">
             <button id="returnConsole" type="button">RETURN TO CONSOLE</button>
             <button id="replay" type="button" aria-pressed="false">REPLAY TRACK</button>
@@ -197,7 +199,7 @@
               </div>
             </div>
             <div class="review-view-tools" role="group" aria-label="Track view controls">
-              <button id="zoomToggle" type="button" aria-pressed="false" title="Enable pan and zoom for the flight-path view">ZOOM OFF</button>
+              <button id="zoomToggle" type="button" aria-pressed="false" aria-describedby="reviewZoomHelp" title="Enable pan and zoom for the flight-path view">ZOOM OFF</button>
               <button id="fitReview" type="button" title="Fit the complete flight path in view">FIT</button>
             </div>
             <button class="new-exercise" id="newExercise" type="button">NEW EXERCISE</button>

@@ -137,7 +137,7 @@ function makeOfflineEngine(options) {
     },
     stop(settings) {
       this.stopCalls.push(settings || {});
-      hooks?.onEnded?.();
+      if (!config.deferStop) hooks?.onEnded?.();
     },
     cancel() {
       this.cancelCalls += 1;
@@ -164,10 +164,10 @@ function createEnvironment(options) {
   const document = new FakeDocument();
   const timers = new Map();
   const listeners = new Map();
-  const storage = new Map();
+  const storage = new Map(options?.stored || []);
   let nextTimer = 1;
   const sandbox = {
-    QGHVoiceControl: Voice,
+    QGHVoiceControl: options?.voiceControl || Voice,
     QGHOfflineVoiceEngine: options?.offlineVoice,
     QghNativeVoice: options?.nativeVoice,
     document,
@@ -179,14 +179,15 @@ function createEnvironment(options) {
     innerHeight: options?.viewportHeight,
     localStorage: {
       getItem(key) { return storage.get(key) || null; },
-      setItem(key, value) { storage.set(key, String(value)); }
+      setItem(key, value) { storage.set(key, String(value)); },
+      removeItem(key) { storage.delete(key); }
     },
     location: { href: 'https://example.test/qgh/single.html' }
   };
   sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
   vm.runInContext(workspaceSource, sandbox);
-  return { document, timers, listeners, storage, workspace: sandbox.QGHVoiceWorkspace };
+  return { document, timers, listeners, storage, sandbox, workspace: sandbox.QGHVoiceWorkspace };
 }
 
 async function flush() {
@@ -194,6 +195,104 @@ async function flush() {
   await Promise.resolve();
   await Promise.resolve();
 }
+
+test('PTT releases outside without capture and ignores unrelated or duplicate releases', async () => {
+  const runtime = makeOfflineEngine({ cachedArchive: true, deferStop: true });
+  const env = createEnvironment({ offlineVoice: runtime.api });
+  await flush();
+  const mic = env.document.querySelector('.voice-mic');
+  mic.setPointerCapture = () => { throw new Error('capture unsupported'); };
+  mic.dispatchEvent(new FakeEvent('pointerdown', { pointerId: 7 }));
+  assert.equal(mic.getAttribute('aria-pressed'), 'true', 'press feedback is immediate');
+  await flush();
+  env.listeners.get('pointerup')(new FakeEvent('pointerup', { pointerId: 8 }));
+  assert.equal(runtime.engine.stopCalls.length, 0);
+  env.listeners.get('pointerup')(new FakeEvent('pointerup', { pointerId: 7 }));
+  assert.equal(runtime.engine.stopCalls.length, 1);
+  assert.equal(env.document.querySelector('.voice-status').textContent, 'PROCESSING');
+  assert.equal(mic.getAttribute('aria-pressed'), 'false');
+  mic.dispatchEvent(new FakeEvent('lostpointercapture', { pointerId: 7 }));
+  assert.equal(runtime.engine.cancelCalls, 0, 'normal release still accepts its delayed final');
+});
+
+test('interrupted PTT cancels instead of submitting and stale errors cannot stop a fresh press', async () => {
+  const runtime = makeOfflineEngine({ cachedArchive: true });
+  const env = createEnvironment({ offlineVoice: runtime.api });
+  await flush();
+  const mic = env.document.querySelector('.voice-mic');
+  mic.dispatchEvent(new FakeEvent('pointerdown', { pointerId: 1 }));
+  await flush();
+  const old = runtime.engine.lastStart;
+  mic.dispatchEvent(new FakeEvent('pointercancel', { pointerId: 1 }));
+  assert.equal(runtime.engine.cancelCalls, 1);
+  assert.equal(runtime.engine.stopCalls.length, 0);
+  mic.dispatchEvent(new FakeEvent('pointerdown', { pointerId: 2 }));
+  await flush();
+  old.onError('not-allowed');
+  assert.equal(mic.getAttribute('aria-pressed'), 'true');
+  env.listeners.get('pagehide')();
+  assert.equal(mic.getAttribute('aria-pressed'), 'false');
+});
+
+test('one PTT call is not dispatched twice, but a deliberate repeat on a new press is accepted', async () => {
+  const runtime = makeOfflineEngine({ cachedArchive: true });
+  let parsed = 0;
+  const voiceControl = { ...Voice, parseCommand: (...args) => { parsed += 1; return Voice.parseCommand(...args); } };
+  const env = createEnvironment({ offlineVoice: runtime.api, voiceControl });
+  await flush();
+  const mic = env.document.querySelector('.voice-mic');
+  mic.dispatchEvent(new FakeEvent('pointerdown', { pointerId: 1 }));
+  await flush();
+  runtime.engine.triggerResult('transmit for df');
+  runtime.engine.triggerResult('transmit for df');
+  assert.equal(parsed, 1);
+  mic.dispatchEvent(new FakeEvent('pointerup', { pointerId: 1 }));
+  mic.dispatchEvent(new FakeEvent('pointerdown', { pointerId: 2 }));
+  await flush();
+  runtime.engine.triggerResult('transmit for df');
+  assert.equal(parsed, 2);
+  assert.equal(env.storage.size, 0, 'no heard text is persisted');
+  const fresh = createEnvironment({ offlineVoice: runtime.api });
+  assert.match(fresh.document.querySelector('.voice-last-call').textContent || fresh.document.querySelector('.voice-last-call').children[1].textContent, /No voice call yet/);
+});
+
+test('saved dock position recovers into the viewport and can be reset', async () => {
+  const env = createEnvironment({ offlineVoice: makeOfflineEngine().api, viewportWidth: 900, viewportHeight: 600,
+    stored: [['qgh-voice-dock-position-v2', JSON.stringify({left:9999, top:9999})]] });
+  await flush();
+  const dock = env.document.querySelector('.voice-dock');
+  assert.equal(dock.style.left, '824px');
+  assert.equal(dock.style.top, '396px');
+  env.document.querySelector('.voice-reset-position').click();
+  assert.equal(dock.style.left, '');
+  assert.equal(env.storage.size, 0);
+});
+
+test('voice result has one dedicated live announcement and no duplicated live dock outputs', async () => {
+  const env = createEnvironment({ offlineVoice: makeOfflineEngine().api });
+  await flush();
+  env.workspace.dispatchTranscript('random words');
+  const live = env.document.querySelector('.voice-announcement');
+  assert.equal(live.getAttribute('aria-live'), 'polite');
+  assert.equal(env.document.querySelector('.voice-status').getAttribute('aria-live'), 'off');
+  assert.equal(env.document.querySelector('.voice-feedback').getAttribute('aria-live'), 'off');
+  for (const callback of [...env.timers.values()]) callback();
+  assert.match(live.textContent, /^NOT RECOGNISED/);
+});
+
+test('keyboard PTT does not repeat on keydown and cancels when keyboard focus leaves', async () => {
+  const runtime = makeOfflineEngine({ cachedArchive: true });
+  const env = createEnvironment({ offlineVoice: runtime.api });
+  await flush();
+  const mic = env.document.querySelector('.voice-mic');
+  mic.dispatchEvent(new FakeEvent('keydown', { key: ' ' }));
+  mic.dispatchEvent(new FakeEvent('keydown', { key: ' ', repeat: true }));
+  await flush();
+  assert.equal(runtime.engine.startCalls.length, 1);
+  mic.dispatchEvent(new FakeEvent('blur'));
+  assert.equal(runtime.engine.cancelCalls, 1);
+  assert.equal(mic.getAttribute('aria-pressed'), 'false');
+});
 
 test('offline voice requires an explicit one-time setup, coalesces it, and exposes PTT', async () => {
   const runtime = makeOfflineEngine({ deferPrepare: true });
@@ -372,7 +471,7 @@ test('the dock preserves what local voice heard and its command result after the
   assert.match(feedback.textContent, /HEARD/i);
   assert.match(feedback.getAttribute('aria-label'), /TRANSMIT FOR DF/i);
   assert.match(feedback.getAttribute('aria-label'), /AVAILABLE ON THIS SCREEN/i);
-  assert.equal(environment.document.querySelector('.voice-status').textContent, 'PTT READY');
+  assert.equal(environment.document.querySelector('.voice-status').textContent, 'REJECTED');
 });
 
 test('the dock explains an empty final result and includes a movable control handle', async () => {

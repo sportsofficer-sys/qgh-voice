@@ -119,6 +119,18 @@ test('keeps a PTT session alive until a delayed final offline result arrives', a
   assert.equal(runtime.state.recognizer.removed, true, 'the session cleans up after forwarding the final result');
 });
 
+test('cancelling during final drain suppresses late speech and false no-speech feedback', async () => {
+  const runtime = loadEngineRuntime();
+  const callbacks = [];
+  const session = runtime.api.create();
+  await session.start({ onResult: () => callbacks.push('result'), onNoResult: () => callbacks.push('empty') });
+  const recognizer = runtime.state.recognizer;
+  session.stop();
+  session.cancel();
+  recognizer.emit('result', { result: { text: 'transmit for df' } });
+  assert.deepEqual(callbacks, []);
+});
+
 test('replaces a pending PTT final-result drain before a new press starts', async () => {
   const runtime = loadEngineRuntime();
   const lifecycle = [];

@@ -17,6 +17,8 @@
     listening: false,
     starting: false,
     pressHeld: false,
+    pressPointerId: null,
+    processing: false,
     continuous: false,
     manuallyStopped: false,
     localAvailability: 'unknown',
@@ -25,6 +27,14 @@
     statusTimer: null,
     feedbackTimer: null,
     commandAcknowledgementTimer: null,
+    acknowledgementStageTimer: null,
+    feedbackSequence: 0,
+    lastCall: null,
+    currentOutcome: null,
+    lastCallDetail: null,
+    announcement: null,
+    effectBatch: null,
+    callTranscripts: new Set(),
     restartTimer: null,
     readinessTimer: null,
     availabilityPromise: null,
@@ -118,7 +128,7 @@
     if (!state.feedback) return;
     const heard = String(transcript || '').trim();
     const compactMessage = heard
-      ? `HEARD\n${tone === 'success' ? 'ACCEPTED' : 'CHECK CALL'}`
+      ? `HEARD\n${tone === 'success' ? 'APPLIED' : message.startsWith('CONFIRM REQUIRED') ? 'CONFIRM' : 'CHECK CALL'}`
       : 'NO SPEECH\nTRY AGAIN';
     const detail = heard ? `Heard ${heard}. ${message}` : message;
     root.clearTimeout(state.feedbackTimer);
@@ -133,6 +143,8 @@
   function commandAcknowledgementTarget() {
     if (pageKind() === 'single' && activeScreen('console')) return $('voiceCommandAck');
     if (pageKind() === 'tactical' && activeScreen('tConsole')) return $('tVoiceCommandAck');
+    if (activeScreen('analysis')) return $('reviewVoiceAck');
+    if (activeScreen('tAnalysis')) return $('tReviewVoiceAck');
     return null;
   }
 
@@ -145,26 +157,50 @@
       : String(fallback || command?.intent || 'COMMAND').replace(/-/g, ' ').toUpperCase();
   }
 
-  function showVoiceCommandAcknowledgement(command, outcome) {
-    if (!outcome?.ok) return;
-    const acknowledgement = commandAcknowledgementTarget();
-    if (!acknowledgement) return;
-    const description = describeWorkspaceVoiceCommand(command, outcome.message || 'COMMAND ACCEPTED');
+  function presentVoiceResult(command, outcome, transcript) {
+    state.feedbackSequence += 1;
+    state.processing = false;
+    updateMicState();
+    const pending = Boolean(state.pendingCommand) || /CONFIRMATION OPEN/.test(outcome.message);
+    const cancelled = /CANCELLED/.test(outcome.message);
+    const applied = outcome.ok && !pending && !cancelled;
+    const phase = pending ? 'CONFIRM REQUIRED' : cancelled ? 'CANCELLED' : applied ? 'APPLIED' : command?.accepted ? 'REJECTED' : 'NOT RECOGNISED';
+    state.currentOutcome = phase;
+    const description = command?.accepted ? describeWorkspaceVoiceCommand(command, outcome.message) : String(transcript || '').trim();
+    state.lastCall = { heard: String(transcript || '').trim(), interpreted: description, result: phase, reason: outcome.message };
+    setStatus(phase, applied ? 'success' : pending ? 'active' : 'error');
+    if (state.lastCallDetail) state.lastCallDetail.textContent = `HEARD · ${state.lastCall.heard}\nINTERPRETED · ${description || '—'}\n${phase} · ${outcome.message}`;
+    setVoiceFeedback(transcript, `${phase} · ${outcome.message}`, applied ? 'success' : pending ? 'neutral' : 'error');
+    root.clearTimeout(state.acknowledgementStageTimer);
     root.clearTimeout(state.commandAcknowledgementTimer);
-    const message = `VOICE · ${description}`;
-    acknowledgement.textContent = message;
-    acknowledgement.setAttribute?.('aria-label', message);
-    acknowledgement.title = message;
-    acknowledgement.hidden = false;
-    const wasActive = acknowledgement.classList?.contains?.('voice-command-ack-active');
-    acknowledgement.classList?.remove('voice-command-ack-active');
-    // Reflow only when a repeated RT call needs to restart an active animation.
-    if (wasActive) void acknowledgement.offsetWidth;
-    acknowledgement.classList?.add('voice-command-ack-active');
-    state.commandAcknowledgementTimer = root.setTimeout(() => {
-      acknowledgement.hidden = true;
+    if (state.announcement) state.announcement.textContent = '';
+    const acknowledgement = commandAcknowledgementTarget();
+    const paint = message => {
+      if (!acknowledgement) return;
+      acknowledgement.textContent = message;
+      acknowledgement.setAttribute?.('aria-label', message);
+      acknowledgement.title = message;
+      acknowledgement.hidden = false;
+    };
+    if (acknowledgement) {
+      const wasActive = acknowledgement.classList?.contains?.('voice-command-ack-active');
       acknowledgement.classList?.remove('voice-command-ack-active');
-    }, 3000);
+      if (wasActive) void acknowledgement.offsetWidth;
+      acknowledgement.classList?.add('voice-command-ack-active');
+    }
+    paint(`HEARD · ${description || '—'}`);
+    // Execution is immediate. Only the visual transition waits, never the command.
+    state.acknowledgementStageTimer = root.setTimeout(() => {
+      const message = `${phase} · ${applied || pending ? description : outcome.message}`;
+      paint(message);
+      if (state.announcement) state.announcement.textContent = message;
+    }, 250);
+    state.commandAcknowledgementTimer = root.setTimeout(() => {
+      if (acknowledgement) {
+        acknowledgement.hidden = true;
+        acknowledgement.classList?.remove('voice-command-ack-active');
+      }
+    }, 5500);
   }
 
   function nativeVoiceBridge() {
@@ -182,8 +218,9 @@
 
   function updateMicState() {
     if (!state.mic) return;
-    state.mic.setAttribute('aria-pressed', String(state.listening));
-    state.mic.dataset.listening = String(state.listening);
+    state.mic.setAttribute('aria-pressed', String(state.pressHeld || (state.listening && !state.processing)));
+    state.mic.dataset.listening = String(state.listening && !state.processing);
+    state.mic.dataset.processing = String(state.processing);
     state.mic.disabled = ['unavailable', 'downloadable', 'downloading'].includes(state.localAvailability);
     state.mic.textContent = state.continuous && (state.listening || state.starting) ? 'STOP' : (state.continuous ? 'VOICE' : 'PTT');
     state.mic.setAttribute('aria-label', state.continuous
@@ -196,12 +233,13 @@
     if (state.prepareButton) {
       state.prepareButton.disabled = state.localAvailability === 'downloading' || Boolean(state.preparePromise);
     }
-    if (state.engineNote) {
-      state.engineNote.textContent = state.localAvailability === 'ready'
-        ? 'OFFLINE VOICE READY'
-        : 'ON-DEVICE SPEECH ONLY';
-    }
-    if (state.listeningIndicator) state.listeningIndicator.hidden = !(state.continuous && (state.listening || state.starting));
+    if (state.engineNote) state.engineNote.textContent = state.localAvailability === 'permission-denied'
+      ? 'MICROPHONE BLOCKED. Allow microphone access in browser site settings, then press PTT to retry. Manual controls remain available.'
+      : state.localAvailability === 'ready' ? 'VOICE READY. Speech stays on this device. Hold PTT, speak, then release. Continuous mode is optional.'
+      : nativeVoiceBridge() ? 'Preparing the bundled voice model on this device. Manual controls remain available.'
+      : 'One-time download: approximately 40 MB, only when you choose Setup. Speech is processed on this device, never uploaded. Manual controls always work.';
+    if (state.listeningIndicator) state.listeningIndicator.hidden = !(state.continuous && state.listening && !state.processing);
+    positionVoicePopovers();
   }
 
   function updatePrepareVisibility(visible) {
@@ -213,12 +251,40 @@
     if (!state.settings || !state.settingsToggle) return;
     state.settings.hidden = !open;
     state.settingsToggle.setAttribute('aria-expanded', String(open));
+    positionVoicePopovers();
+  }
+
+  function phoneDock() {
+    return Boolean(root.matchMedia?.('(max-width: 600px) and (orientation: portrait)').matches);
+  }
+
+  function safeArea() {
+    const styles = root.getComputedStyle?.(state.dock);
+    const inset = side => Number.parseFloat(styles?.getPropertyValue(`--voice-safe-${side}`)) || 0;
+    return { left: Math.max(8, inset('left')), right: Math.max(8, inset('right')), top: Math.max(8, inset('top')), bottom: Math.max(8, inset('bottom')) };
+  }
+
+  function positionVoicePopovers() {
+    if ([state.settings, state.confirmationPanel].every(panel => !panel || panel.hidden)) return;
+    const rect = state.dock?.getBoundingClientRect?.();
+    if (!rect) return;
+    const safe = safeArea();
+    [state.settings, state.confirmationPanel].forEach(panel => {
+      if (!panel || panel.hidden) return;
+      const size = panel.getBoundingClientRect?.();
+      if (!size) return;
+      const left = phoneDock() ? rect.left : rect.left > size.width + 16 ? rect.left - size.width - 8 : rect.right + 8;
+      const top = phoneDock() ? (rect.top > size.height + 16 ? rect.top - size.height - 8 : rect.bottom + 8) : rect.top;
+      panel.style.left = `${Math.max(safe.left, Math.min(left, root.innerWidth - size.width - safe.right))}px`;
+      panel.style.top = `${Math.max(safe.top, Math.min(top, root.innerHeight - size.height - safe.bottom))}px`;
+    });
   }
 
   function storedDockPosition() {
     try {
-      const value = root.localStorage?.getItem(VOICE_DOCK_POSITION_KEY);
+      const value = root.localStorage?.getItem(VOICE_DOCK_POSITION_KEY + (phoneDock() ? '-phone' : ''));
       const parsed = value ? JSON.parse(value) : null;
+      if (phoneDock()) return parsed?.edge === 'top' || parsed?.edge === 'bottom' ? parsed : null;
       return Number.isFinite(parsed?.left) && Number.isFinite(parsed?.top) ? parsed : null;
     } catch {
       return null;
@@ -234,23 +300,40 @@
     const viewportWidth = Number(root.innerWidth);
     const viewportHeight = Number(root.innerHeight);
     const margin = 8;
-    const maxLeft = Number.isFinite(viewportWidth) && viewportWidth > 0 ? Math.max(margin, viewportWidth - width - margin) : left;
-    const maxTop = Number.isFinite(viewportHeight) && viewportHeight > 0 ? Math.max(margin, viewportHeight - height - margin) : top;
-    const safeLeft = Math.round(Math.min(Math.max(margin, left), maxLeft));
-    const safeTop = Math.round(Math.min(Math.max(margin, top), maxTop));
+    const safe = safeArea();
+    const maxLeft = Number.isFinite(viewportWidth) && viewportWidth > 0 ? Math.max(safe.left, viewportWidth - width - safe.right) : left;
+    const maxTop = Number.isFinite(viewportHeight) && viewportHeight > 0 ? Math.max(safe.top, viewportHeight - height - safe.bottom) : top;
+    const safeLeft = Math.round(Math.min(Math.max(safe.left, left), maxLeft));
+    const safeTop = Math.round(Math.min(Math.max(safe.top, top), maxTop));
     dock.style.left = `${safeLeft}px`;
     dock.style.top = `${safeTop}px`;
     dock.style.right = 'auto';
     dock.style.bottom = 'auto';
     const popupWidth = 260;
     dock.dataset.popoverSide = safeLeft < popupWidth + margin ? 'right' : 'left';
+    positionVoicePopovers();
     if (!persist) return;
     try { root.localStorage?.setItem(VOICE_DOCK_POSITION_KEY, JSON.stringify({ left: safeLeft, top: safeTop })); } catch { /* Position persistence is optional. */ }
   }
 
   function restoreVoiceDockPosition() {
+    if (!state.dock) return;
+    state.dock.dataset.phone = String(phoneDock());
+    ['left', 'top', 'right', 'bottom'].forEach(property => { state.dock.style[property] = ''; });
     const saved = storedDockPosition();
-    if (saved) positionVoiceDock(saved.left, saved.top, false);
+    if (phoneDock()) {
+      state.dock.dataset.edge = saved?.edge || 'bottom';
+    } else if (saved) positionVoiceDock(saved.left, saved.top, false);
+    positionVoicePopovers();
+  }
+
+  function resetVoiceDockPosition() {
+    try {
+      root.localStorage?.removeItem(VOICE_DOCK_POSITION_KEY);
+      root.localStorage?.removeItem(VOICE_DOCK_POSITION_KEY + '-phone');
+    } catch { /* A temporary position remains usable without storage. */ }
+    restoreVoiceDockPosition();
+    state.dragHandle?.focus();
   }
 
   function beginDockDrag(event) {
@@ -283,6 +366,13 @@
     if (dock?.dataset) delete dock.dataset.dragging;
     const left = Number.parseFloat(dock?.style?.left);
     const top = Number.parseFloat(dock?.style?.top);
+    if (phoneDock()) {
+      const edge = top < root.innerHeight / 2 ? 'top' : 'bottom';
+      try { root.localStorage?.setItem(VOICE_DOCK_POSITION_KEY + '-phone', JSON.stringify({ edge })); } catch { /* Optional preference. */ }
+      restoreVoiceDockPosition();
+      dock.dataset.edge = edge;
+      return;
+    }
     if (Number.isFinite(left) && Number.isFinite(top)) positionVoiceDock(left, top, true);
   }
 
@@ -293,6 +383,12 @@
     const rect = state.dock?.getBoundingClientRect?.();
     if (!rect) return;
     event.preventDefault?.();
+    if (phoneDock()) {
+      state.dock.dataset.edge = event.key === 'ArrowUp' ? 'top' : 'bottom';
+      try { root.localStorage?.setItem(VOICE_DOCK_POSITION_KEY + '-phone', JSON.stringify({ edge: state.dock.dataset.edge })); } catch { /* Optional preference. */ }
+      restoreVoiceDockPosition();
+      return;
+    }
     positionVoiceDock(Number(rect.left) + movement[0], Number(rect.top) + movement[1], true);
   }
 
@@ -302,6 +398,7 @@
 
   function markVoiceAffected(element) {
     if (!element?.classList) return;
+    if (state.effectBatch) { state.effectBatch.add(element); return; }
     const priorTimer = voiceEffectTimers.get(element);
     if (priorTimer !== undefined) root.clearTimeout(priorTimer);
     const wasActive = element.classList?.contains?.('voice-command-effect');
@@ -785,17 +882,25 @@
 
   function runCommand(command) {
     if (!command?.accepted) return result(false, 'COMMAND NOT RECOGNISED');
-    if (pageKind() === 'single') return runSingleCommand(command);
-    if (pageKind() === 'tactical') return runTacticalCommand(command);
-    return runEntryCommand(command);
+    const effects = new Set();
+    state.effectBatch = effects;
+    let outcome;
+    try {
+      outcome = pageKind() === 'single' ? runSingleCommand(command)
+        : pageKind() === 'tactical' ? runTacticalCommand(command) : runEntryCommand(command);
+    } finally { state.effectBatch = null; }
+    if (outcome.ok) effects.forEach(markVoiceAffected);
+    return outcome;
   }
 
   function clearPendingVoiceCommand() {
+    const restoreFocus = state.confirmationPanel?.contains?.(documentRef.activeElement);
     root.clearTimeout(state.pendingTimer);
     state.pendingCommand = null;
     state.pendingContext = null;
     state.pendingTimer = null;
     if (state.confirmationPanel) state.confirmationPanel.hidden = true;
+    if (restoreFocus) state.mic?.focus();
     updateMicState();
   }
 
@@ -837,7 +942,6 @@
     const description = describeWorkspaceVoiceCommand(command);
     if (state.confirmationDetail) state.confirmationDetail.textContent = `HEARD · ${description}`;
     if (state.confirmationPanel) state.confirmationPanel.hidden = false;
-    markVoiceAffected(state.confirmationButton);
     updateMicState();
     state.pendingTimer = root.setTimeout(() => {
       if (state.pendingCommand !== command) return;
@@ -867,15 +971,18 @@
     clearPendingVoiceCommand();
     const outcome = runCommand(command);
     setStatus(outcome.message, outcome.ok ? 'success' : 'error');
-    showVoiceCommandAcknowledgement(command, outcome);
+    presentVoiceResult(command, outcome, state.lastCall?.heard || command.intent);
     return outcome;
   }
 
   function cancelPendingVoiceCommand() {
     if (!state.pendingCommand) return result(false, 'NO VOICE COMMAND AWAITS CONFIRMATION');
+    const command = state.pendingCommand;
     clearPendingVoiceCommand();
     setStatus('VOICE COMMAND CANCELLED', 'neutral');
-    return result(true, 'VOICE COMMAND CANCELLED');
+    const outcome = result(true, 'VOICE COMMAND CANCELLED');
+    presentVoiceResult(command, outcome, state.lastCall?.heard || command.intent);
+    return outcome;
   }
 
   function dispatchTranscript(transcript) {
@@ -883,6 +990,13 @@
       callsigns: tacticalCallsignOptions(),
       profiles: availableProfileOptions()
     });
+    const sequence = state.feedbackSequence;
+    const outcome = routeTranscript(transcript, command);
+    if (sequence === state.feedbackSequence) presentVoiceResult(command, outcome, transcript);
+    return outcome;
+  }
+
+  function routeTranscript(transcript, command) {
     if (state.pendingCommand) {
       const response = pendingVoiceResponse(transcript, command);
       if (response === 'confirm') return confirmPendingVoiceCommand();
@@ -906,7 +1020,6 @@
     }
     const outcome = runCommand(command);
     setStatus(outcome.message, outcome.ok ? 'success' : 'error');
-    showVoiceCommandAcknowledgement(command, outcome);
     return outcome;
   }
 
@@ -955,14 +1068,19 @@
     const normalized = Voice.normalizeTranscript(transcript);
     const now = Date.now();
     if (!normalized || (normalized === state.lastTranscript && now - state.lastTranscriptAt < RECENT_TRANSCRIPT_WINDOW_MS)) return;
+    if (!state.continuous && state.callTranscripts.has(normalized)) return;
+    if (!state.continuous) state.callTranscripts.add(normalized);
     state.lastTranscript = normalized;
     state.lastTranscriptAt = now;
-    const outcome = dispatchTranscript(transcript);
-    setVoiceFeedback(transcript, outcome.message, outcome.ok ? 'success' : 'error');
+    dispatchTranscript(transcript);
   }
 
   function rememberNoSpeech() {
+    state.currentOutcome = 'NO SPEECH';
+    state.processing = false;
+    updateMicState();
     setVoiceFeedback('', 'NO SPEECH DETECTED · TRY AGAIN', 'error');
+    if (state.announcement) state.announcement.textContent = 'NO SPEECH DETECTED · TRY AGAIN';
   }
 
   function ensureOfflineEngine() {
@@ -1010,6 +1128,7 @@
   }
 
   function handleTerminalRecognitionError(error) {
+    state.processing = false;
     clearRestartTimer();
     clearReadinessTimer();
     state.startAttempt += 1;
@@ -1039,12 +1158,13 @@
   }
 
   function handleRecognitionEnd() {
+    state.processing = false;
     state.starting = false;
     state.listening = false;
     updateMicState();
     if (canContinueListening()) scheduleContinuousRestart();
     else if (state.pressHeld && !state.continuous && !state.manuallyStopped && state.localAvailability === 'ready') beginListening(false);
-    else if (state.localAvailability === 'ready') setStatus('PTT READY', 'neutral');
+    else if (state.localAvailability === 'ready') setStatus(state.currentOutcome || 'PTT READY', state.currentOutcome === 'APPLIED' ? 'success' : 'neutral');
   }
 
   function receiveNativeVoiceEvent(event) {
@@ -1263,7 +1383,7 @@
         onPartial: () => {
           if (state.listening) setStatus(state.continuous ? 'VOICE ASSISTANT LISTENING' : 'LISTENING', 'active');
         },
-        onError: handleRecognitionError
+        onError: error => { if (attempt === state.startAttempt) handleRecognitionError(error); }
       });
       return startOutcome === true || Boolean(startOutcome?.started);
     } catch {
@@ -1273,6 +1393,8 @@
   }
 
   function beginListening(continuous, options) {
+    state.processing = false;
+    state.currentOutcome = null;
     if (options?.clearFeedback) clearVoiceFeedback();
     state.manuallyStopped = false;
     return startListening(continuous);
@@ -1280,6 +1402,9 @@
 
   function stopListening(options) {
     const cancel = Boolean(options?.cancel);
+    state.processing = !cancel && state.listening;
+    if (state.processing) setStatus('PROCESSING', 'active');
+    updateMicState();
     state.manuallyStopped = true;
     state.startAttempt += 1;
     clearRestartTimer();
@@ -1355,12 +1480,12 @@
 
     const status = documentRef.createElement('output');
     status.className = 'voice-status';
-    status.setAttribute('aria-live', 'polite');
+    status.setAttribute('aria-live', 'off');
     status.textContent = 'SET UP OFFLINE VOICE';
 
     const feedback = documentRef.createElement('output');
     feedback.className = 'voice-feedback';
-    feedback.setAttribute('aria-live', 'polite');
+    feedback.setAttribute('aria-live', 'off');
     feedback.hidden = true;
 
     const settings = documentRef.createElement('section');
@@ -1380,18 +1505,29 @@
     prepare.textContent = 'SET UP OFFLINE VOICE · 40 MB';
     const engineNote = documentRef.createElement('small');
     engineNote.textContent = 'ON-DEVICE SPEECH ONLY';
-    settings.append(continuousLabel, prepare, engineNote);
+    const resetPosition = documentRef.createElement('button');
+    resetPosition.type = 'button';
+    resetPosition.className = 'voice-reset-position';
+    resetPosition.textContent = 'RESET POSITION';
+    const lastCall = documentRef.createElement('details');
+    lastCall.className = 'voice-last-call';
+    const lastCallTitle = documentRef.createElement('summary');
+    lastCallTitle.textContent = 'LAST CALL';
+    const lastCallDetail = documentRef.createElement('p');
+    lastCallDetail.textContent = 'No voice call yet. Kept only until this page closes.';
+    lastCall.append(lastCallTitle, lastCallDetail);
+    settings.append(continuousLabel, prepare, engineNote, resetPosition, lastCall);
 
     const listeningIndicator = documentRef.createElement('output');
     listeningIndicator.className = 'voice-listening-indicator';
     listeningIndicator.hidden = true;
-    listeningIndicator.setAttribute('aria-live', 'polite');
+    listeningIndicator.setAttribute('aria-live', 'off');
     listeningIndicator.textContent = 'LISTENING';
 
     const confirmation = documentRef.createElement('section');
     confirmation.className = 'voice-confirmation';
     confirmation.hidden = true;
-    confirmation.setAttribute('aria-live', 'assertive');
+    confirmation.setAttribute('aria-label', 'Confirm voice command');
     const confirmationTitle = documentRef.createElement('strong');
     confirmationTitle.textContent = 'CONFIRM VOICE COMMAND';
     const confirmationDetail = documentRef.createElement('small');
@@ -1408,12 +1544,18 @@
     confirmationActions.append(confirmationButton, cancellationButton);
     confirmation.append(confirmationTitle, confirmationDetail, confirmationActions);
     dock.append(dragHandle, mic, listeningIndicator, status, settingsToggle, feedback, settings, confirmation);
+    const announcement = documentRef.createElement('div');
+    announcement.className = 'voice-announcement voice-command-only';
+    announcement.setAttribute('role', 'status');
+    announcement.setAttribute('aria-live', 'polite');
+    announcement.setAttribute('aria-atomic', 'true');
+    dock.append(announcement);
     documentRef.body.appendChild(dock);
 
     Object.assign(state, {
       dock, dragHandle, mic, status, feedback, settings, settingsToggle, continuousInput, prepareButton: prepare,
       listeningIndicator, engineNote, confirmationPanel: confirmation, confirmationDetail,
-      confirmationButton, cancellationButton
+      confirmationButton, cancellationButton, lastCallDetail, announcement
     });
     settingsToggle.addEventListener('click', () => {
       const opening = settings.hidden;
@@ -1421,6 +1563,11 @@
       if (opening) checkLocalAvailability({ force: true });
     });
     prepare.addEventListener('click', prepareLocalVoice);
+    resetPosition.addEventListener('click', resetVoiceDockPosition);
+    settings.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { setSettingsOpen(false); settingsToggle.focus(); }
+    });
+    lastCall.addEventListener('toggle', positionVoicePopovers);
     continuousInput.addEventListener('change', () => setListeningMode(continuousInput.checked ? 'continuous' : 'push-to-talk'));
     confirmationButton.addEventListener('click', confirmPendingVoiceCommand);
     cancellationButton.addEventListener('click', cancelPendingVoiceCommand);
@@ -1429,31 +1576,42 @@
     dragHandle.addEventListener('keydown', moveDockByKeyboard);
 
     const beginPressToTalk = event => {
-      if (state.continuous) return;
+      if (state.continuous || state.pressHeld || mic.disabled || (event.button !== undefined && event.button !== 0)) return;
       event.preventDefault();
       state.pressHeld = true;
-      if (typeof mic.setPointerCapture === 'function' && event.pointerId !== undefined) mic.setPointerCapture(event.pointerId);
+      state.pressPointerId = event.pointerId ?? null;
+      state.lastTranscript = '';
+      state.lastTranscriptAt = 0;
+      state.callTranscripts.clear();
+      updateMicState();
+      setStatus('STARTING MICROPHONE', 'neutral');
+      try { if (event.pointerId !== undefined) mic.setPointerCapture?.(event.pointerId); } catch { /* Window release fallback remains active. */ }
       primeOfflineAudio();
       beginListening(false, { clearFeedback: true });
     };
     const endPressToTalk = event => {
-      if (state.continuous) return;
+      if (state.continuous || !state.pressHeld) return;
+      if (event?.pointerId !== undefined && event.pointerId !== state.pressPointerId) return;
       event?.preventDefault();
       state.pressHeld = false;
-      stopListening();
+      state.pressPointerId = null;
+      stopListening({ cancel: ['pointercancel', 'lostpointercapture'].includes(event?.type) });
     };
     mic.addEventListener('pointerdown', beginPressToTalk);
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => mic.addEventListener(type, endPressToTalk));
     mic.addEventListener('keydown', event => {
       if (state.continuous || (event.key !== ' ' && event.key !== 'Enter') || event.repeat) return;
-      event.preventDefault();
-      state.pressHeld = true;
-      primeOfflineAudio();
-      beginListening(false, { clearFeedback: true });
+      beginPressToTalk(event);
     });
     mic.addEventListener('keyup', event => {
       if (state.continuous || (event.key !== ' ' && event.key !== 'Enter')) return;
       endPressToTalk(event);
+    });
+    mic.addEventListener('blur', () => {
+      if (state.pressHeld && state.pressPointerId === null) {
+        state.pressHeld = false;
+        stopListening({ cancel: true });
+      }
     });
     mic.addEventListener('click', () => {
       if (!state.continuous) return;
@@ -1464,15 +1622,22 @@
       }
     });
     root.addEventListener('pointermove', moveDock);
-    root.addEventListener('pointerup', endDockDrag);
-    root.addEventListener('pointercancel', endDockDrag);
+    root.addEventListener('pointerup', event => { endDockDrag(event); endPressToTalk(event); });
+    root.addEventListener('pointercancel', event => { endDockDrag(event); endPressToTalk(event); });
     root.addEventListener('resize', () => {
+      if (state.dock.dataset.phone !== String(phoneDock())) { restoreVoiceDockPosition(); return; }
       const left = Number.parseFloat(dock.style.left);
       const top = Number.parseFloat(dock.style.top);
       if (Number.isFinite(left) && Number.isFinite(top)) positionVoiceDock(left, top, true);
+      positionVoicePopovers();
     });
     root.addEventListener('blur', () => {
       endDockDrag();
+      state.pressHeld = false;
+      clearPendingVoiceCommand();
+      stopListening({ cancel: true });
+    });
+    root.addEventListener('pagehide', () => {
       state.pressHeld = false;
       clearPendingVoiceCommand();
       stopListening({ cancel: true });
@@ -1486,6 +1651,21 @@
     });
     updateMicState();
     restoreVoiceDockPosition();
+    // Phone content has its own scroll area above the dock. Reset that area only
+    // when the existing simulator changes screens; no simulator state is touched.
+    const app = documentRef.querySelector('.app, .tactical-app');
+    if (app && root.MutationObserver) {
+      let context = currentVoiceContext();
+      const screens = app.querySelectorAll('.screen, .tactical-screen');
+      const observer = new root.MutationObserver(() => {
+        const next = currentVoiceContext();
+        if (next !== context) {
+          context = next;
+          if (phoneDock()) app.scrollTop = 0;
+        }
+      });
+      screens.forEach(screen => observer.observe(screen, { attributes: true, attributeFilter: ['class'] }));
+    }
     checkLocalAvailability({ force: true });
   }
 

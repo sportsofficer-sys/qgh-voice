@@ -39,11 +39,11 @@ test('each live homing display includes an unobtrusive voice-command acknowledge
 
   assert.match(single, /id="voiceCommandAck" class="voice-command-ack"/);
   assert.match(tactical, /id="tVoiceCommandAck" class="voice-command-ack"/);
-  assert.match(single, /role="status" aria-live="polite"/);
-  assert.match(tactical, /role="status" aria-live="polite"/);
-  assert.match(voiceCss, /\.display > \.voice-command-ack[\s\S]*#a32c27/);
-  assert.match(voiceCss, /\.tactical-display > \.voice-command-ack[\s\S]*#a32c27/);
-  assert.match(voiceCss, /text-overflow: ellipsis/);
+  assert.match(single, /voice-ack-slot"><output id="voiceCommandAck"[^>]*aria-live="off"/);
+  assert.match(tactical, /voice-ack-slot"><output id="tVoiceCommandAck"[^>]*aria-live="off"/);
+  assert.match(voiceCss, /\.voice-command-ack\s*\{[\s\S]*#a32c27/);
+  assert.match(voiceCss, /overflow-wrap: anywhere/);
+  assert.match(readEngineFile('voice-workspace.js'), /announcement.setAttribute\('aria-live', 'polite'\)/);
   assert.match(voiceCss, /prefers-reduced-motion: reduce/);
 });
 

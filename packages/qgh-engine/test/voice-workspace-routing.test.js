@@ -52,6 +52,7 @@ class FakeElement {
     this.disabled = Boolean(settings.disabled);
     this.hidden = Boolean(settings.hidden);
     this.dataset = Object.assign({}, settings.dataset);
+    this.style = {};
     this.classList = new FakeClassList(settings.classes);
     Object.defineProperty(this, 'className', {
       get: () => [...this.classList.values].join(' '),
@@ -364,16 +365,21 @@ test('accepted voice calls visibly acknowledge above the active homing display a
   assert.equal(controls.headingInput.classList.contains('voice-command-effect'), true);
   assert.equal(controls.turnHeadingRight.classList.contains('voice-command-effect'), true);
   assert.equal(controls.voiceCommandAck.hidden, false);
+  assert.match(controls.voiceCommandAck.textContent, /^HEARD ·/);
   assert.match(controls.voiceCommandAck.textContent, /TURN RIGHT HEADING 270/);
   assert.equal(controls.voiceCommandAck.getAttribute('aria-label'), controls.voiceCommandAck.textContent);
   assert.equal(controls.voiceCommandAck.title, controls.voiceCommandAck.textContent);
   assert.equal(controls.voiceCommandAck.classList.contains('voice-command-ack-active'), true);
+  const stage = [...single.timers.values()].find(callback => callback.toString().includes('const message = `${phase}'));
+  assert.ok(stage);
+  stage();
+  assert.match(controls.voiceCommandAck.textContent, /^APPLIED ·/);
   [...single.timers.values()].forEach(callback => callback());
   assert.equal(controls.voiceCommandAck.hidden, true, 'the acknowledgement clears after its short acquisition window');
 
   const rejected = workspace.dispatchTranscript('random words without a control call');
   assert.equal(rejected.ok, false);
-  assert.equal(controls.voiceCommandAck.hidden, true, 'a rejected call must not look accepted over the homing display');
+  assert.doesNotMatch(controls.voiceCommandAck.textContent, /APPLIED/);
 
   const tactical = createTacticalHarness();
   const tacticalOutcome = tactical.workspace.dispatchTranscript('raven transmit for df');
@@ -392,6 +398,7 @@ test('voice router requires an explicit confirmation before restart and accepts 
   assert.equal(pending.ok, true);
   assert.equal(controls.restartExercise.clickCount, 0);
   assert.match(pending.message, /CONFIRM/);
+  assert.equal(controls.restartExercise.classList.contains('voice-command-effect'), false);
 
   const confirmed = workspace.dispatchTranscript('confirm voice command');
   assert.equal(confirmed.ok, true);
