@@ -13,8 +13,10 @@
   <script defer src="offline-voice-engine.js?v=4.2.0"></script>
   <script defer src="voice-control.js?v=4.2.0"></script>
   <script defer src="simulator-core.js?v=4.2.0"></script>
+  <script defer src="radio-session.js?v=4.2.0"></script>
   <script defer src="workspace.js?v=4.2.0"></script>
   <script defer src="simulator.js?v=4.2.0"></script>
+  <script defer src="radio-workspace.js?v=4.2.0"></script>
   <script defer src="voice-workspace.js?v=4.2.0"></script>
   <script defer src="guided-familiarisation.js?v=4.2.0"></script>
 </head>
@@ -75,6 +77,11 @@
           <div class="field">
             <label for="rate">RATE OF TURN</label>
             <div class="unit" data-unit="°/SEC"><input id="rate" type="number" inputmode="decimal" min=".5" max="8" step=".1" value="3"></div>
+          </div>
+          <div class="field">
+            <label for="callsign">AIRCRAFT CALLSIGN</label>
+            <input id="callsign" type="text" value="FALCON 11" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="callsignHint">
+              <small id="callsignHint">Callsign is optional in single-aircraft voice calls.</small>
           </div>
           <div class="field wide">
             <label>PROCEDURE</label>
@@ -143,6 +150,12 @@
           <button id="turnRight" type="button">TURN RIGHT NOW</button>
           <button id="turnStop" type="button" disabled>STOP TURN NOW</button>
         </div>
+        <div class="us-turns" aria-label="Orbit controls">
+          <button id="orbitLeft" type="button">ORBIT LEFT</button>
+          <button id="orbitRight" type="button">ORBIT RIGHT</button>
+          <button id="resumeNormal" type="button" disabled>RESUME NORMAL</button>
+        </div>
+        <button class="voice-command-only" id="continueOrbit" type="button" tabindex="-1" aria-hidden="true" disabled>CONTINUE ORBIT</button>
         <div class="speed-row">
           <label for="liveSpeed">GROUND SPEED</label>
           <div class="unit" data-unit="KT"><input id="liveSpeed" type="number" inputmode="numeric" min="60" max="600" step="5" value="240" aria-label="Ground speed in knots"></div>

@@ -20,6 +20,8 @@
     pressPointerId: null,
     processing: false,
     continuous: false,
+    pilotSpeaking: false,
+    dispatchingRadioCommand: false,
     manuallyStopped: false,
     localAvailability: 'unknown',
     lastTranscript: '',
@@ -36,6 +38,7 @@
     effectBatch: null,
     callTranscripts: new Set(),
     restartTimer: null,
+    radioQuietTimer: null,
     readinessTimer: null,
     availabilityPromise: null,
     preparePromise: null,
@@ -149,8 +152,13 @@
   }
 
   function describeWorkspaceVoiceCommand(command, fallback) {
-    const targetLabel = pageKind() === 'tactical' && command?.aircraft
-      ? tacticalCallsign(command.aircraft)
+    if (command?.intent === 'radio-exchange') return String(command.radioMessage).toUpperCase();
+    if (command?.intent === 'request-heading-passing') return `REPORT PASSING ${String(command.heading).padStart(3, '0')}°M`;
+    if (command?.intent === 'start-orbit') return `ORBIT ${command.side.toUpperCase()}`;
+    if (command?.intent === 'continue-orbit') return 'CONTINUE ORBIT';
+    if (command?.intent === 'resume-normal') return 'RESUME NORMAL';
+    const targetLabel = command?.aircraft
+      ? pageKind() === 'tactical' ? tacticalCallsign(command.aircraft) : singleCallsign()
       : undefined;
     return typeof Voice.describeCommand === 'function'
       ? Voice.describeCommand(command, { targetLabel })
@@ -161,7 +169,16 @@
     const tactical = pageKind() === 'tactical';
     if (!activeScreen(tactical ? 'tConsole' : 'console')) return '';
     let reply = '';
-    if (command.intent === 'report-heading') {
+    if (command.intent === 'start-orbit') {
+      reply = `ORBITING ${command.side.toUpperCase()}`;
+    } else if (command.intent === 'continue-orbit') {
+      reply = 'CONTINUING ORBIT';
+    } else if (command.intent === 'resume-normal') {
+      reply = root.QGHRadioAdapter?.snapshot(command.aircraft)?.orbitSide
+        ? 'WILL RESUME NORMAL AFTER THIS ORBIT' : 'RESUMING NORMAL';
+    } else if (command.intent === 'request-heading-passing') {
+      reply = `WILL REPORT PASSING ${String(command.heading).padStart(3, '0')}°M`;
+    } else if (command.intent === 'report-heading') {
       const reported = $(tactical ? 'tHeadingReply' : 'headingReply')?.textContent || '';
       if (/^HEADING \d{3}°M$/.test(reported)) reply = reported;
     } else if (command.intent === 'request-distance') {
@@ -178,7 +195,7 @@
     } else if (command.intent === 'us-turn-stop') {
       reply = 'TURN STOPPED';
     }
-    return reply && tactical && command.aircraft ? `${tacticalCallsign(command.aircraft)} · ${reply}` : reply;
+    return reply && command.aircraft ? `${tactical ? tacticalCallsign(command.aircraft) : singleCallsign()} · ${reply}` : reply;
   }
 
   function presentVoiceResult(command, outcome, transcript) {
@@ -188,12 +205,13 @@
     const pending = Boolean(state.pendingCommand) || /CONFIRMATION OPEN/.test(outcome.message);
     const cancelled = /CANCELLED/.test(outcome.message);
     const applied = outcome.ok && !pending && !cancelled;
-    const phase = pending ? 'CONFIRM REQUIRED' : cancelled ? 'CANCELLED' : applied ? 'APPLIED' : command?.accepted ? 'REJECTED' : 'NOT RECOGNISED';
+    const radioOnly = applied && command.intent === 'radio-exchange';
+    const phase = pending ? 'CONFIRM REQUIRED' : cancelled ? 'CANCELLED' : radioOnly ? 'RECEIVED' : applied ? 'APPLIED' : command?.accepted ? 'REJECTED' : 'NOT RECOGNISED';
     state.currentOutcome = phase;
     const description = command?.accepted ? describeWorkspaceVoiceCommand(command, outcome.message) : String(transcript || '').trim();
     // Snapshot the synchronous control reply now, before the display transition:
     // the aircraft may keep turning or the selected tactical aircraft may change.
-    const appliedReply = applied ? appliedExerciseReply(command) : '';
+    const appliedReply = radioOnly ? outcome.message : applied ? appliedExerciseReply(command) : '';
     const resultDetail = appliedReply || outcome.message;
     state.lastCall = { heard: String(transcript || '').trim(), interpreted: description, result: phase, reason: resultDetail };
     setStatus(phase, applied ? 'success' : pending ? 'active' : 'error');
@@ -229,6 +247,17 @@
         acknowledgement.classList?.remove('voice-command-ack-active');
       }
     }, 5500);
+  }
+
+  function showPilotReply(reply) {
+    const acknowledgement = commandAcknowledgementTarget();
+    if (!acknowledgement || !reply?.text) return;
+    root.clearTimeout(state.acknowledgementStageTimer);
+    root.clearTimeout(state.commandAcknowledgementTimer);
+    acknowledgement.textContent = `PILOT · ${reply.text}`;
+    acknowledgement.title = acknowledgement.textContent;
+    acknowledgement.hidden = false;
+    state.commandAcknowledgementTimer = root.setTimeout(() => { acknowledgement.hidden = true; }, 7000);
   }
 
   function nativeVoiceBridge() {
@@ -513,6 +542,14 @@
     });
   }
 
+  function singleCallsign() {
+    return String((!activeScreen('setup') && $('console')?.dataset.callsign) || $('callsign')?.value || 'FALCON 11').trim().replace(/\s+/g, ' ').toUpperCase();
+  }
+
+  function voiceCallsignOptions() {
+    return pageKind() === 'single' ? [{ id: 'single', callsign: singleCallsign() }] : tacticalCallsignOptions();
+  }
+
   function availableProfileOptions() {
     const profileValues = {};
     const selectors = pageKind() === 'tactical'
@@ -667,6 +704,7 @@
   }
 
   function runSingleCommand(command) {
+    if (command.aircraft && command.aircraft !== 'single') return result(false, 'AIRCRAFT CALLSIGN DOES NOT MATCH THIS EXERCISE');
     if (command.intent === 'return-to-mode-selection') {
       root.location.assign('index.html');
       return result(true, 'OPENING QGH TYPE SELECTION');
@@ -677,6 +715,7 @@
       return required || clickId(command.procedure === 'us' ? 'us' : 'normal', `${command.procedure === 'us' ? 'U/S COMPASS' : 'NORMAL QGH'} SELECTED`);
     }
     if (command.intent === 'set-field') return setSingleField(command);
+    if (command.intent === 'set-aircraft-field') return setSingleField(command);
     if (command.intent === 'set-aircraft-profile') {
       const required = requireActiveScreen('setup');
       if (required) return required;
@@ -701,16 +740,17 @@
       return clickId('transmit', 'D/F TRANSMIT');
     }
     if (command.intent === 'report-heading') return clickId('requestHeading', 'HEADING REQUESTED');
+    if (command.intent === 'start-orbit') return clickId(command.side === 'left' ? 'orbitLeft' : 'orbitRight', `ORBIT ${command.side.toUpperCase()}`);
+    if (command.intent === 'continue-orbit') return clickId('continueOrbit', 'CONTINUING ORBIT');
+    if (command.intent === 'resume-normal') return clickId('resumeNormal', 'RESUME NORMAL AFTER ORBIT');
     if (command.intent === 'request-distance') return clickId('requestDistance', 'DISTANCE REQUESTED');
     if (command.intent === 'normal-turn-heading') {
-      if (command.aircraft) return result(false, 'AIRCRAFT CALLSIGN COMMANDS APPLY TO TACTICAL QGH');
       if (isHidden($('turnHeadingLeft'))) return result(false, 'HEADING TURNS ARE NOT AVAILABLE IN U/S COMPASS');
       if (!isAvailable($('turnHeadingLeft'))) return result(false, 'TURN CONTROL IS NOT AVAILABLE');
       const heading = applyHeading($('headingInput'), command.heading);
       return heading.ok ? clickId(command.side === 'left' ? 'turnHeadingLeft' : 'turnHeadingRight', `TURN ${command.side.toUpperCase()} ${String(command.heading).padStart(3, '0')}°`) : heading;
     }
     if (command.intent === 'continue-turn-heading') {
-      if (command.aircraft) return result(false, 'AIRCRAFT CALLSIGN COMMANDS APPLY TO TACTICAL QGH');
       if (isHidden($('turnHeadingLeft'))) return result(false, 'CONTINUE HEADING IS NOT AVAILABLE IN U/S COMPASS');
       const heading = applyHeading($('headingInput'), command.heading);
       if (!heading.ok) return heading;
@@ -807,12 +847,19 @@
     if (command.aircraft && !tacticalId(command.aircraft)) return result(false, 'AIRCRAFT IS NOT AVAILABLE');
     const callsignRequired = new Set([
       'transmit-df', 'normal-turn-heading', 'continue-turn-heading', 'us-turn', 'us-turn-stop',
-      'report-heading', 'request-distance', 'set-field', 'set-aircraft-field', 'stop-following-leader'
+      'report-heading', 'request-distance', 'set-field', 'set-aircraft-field', 'stop-following-leader', 'start-orbit', 'continue-orbit', 'resume-normal'
     ]);
     if (callsignRequired.has(command.intent) && !command.aircraft) {
       return result(false, 'SAY THE AIRCRAFT CALLSIGN FOR A TACTICAL COMMAND');
     }
     if (command.intent === 'select-aircraft') return selectTacticalAircraft(command.aircraft);
+    if (['start-orbit', 'continue-orbit', 'resume-normal'].includes(command.intent)) {
+      const selected = selectTacticalAircraft(command.aircraft);
+      if (!selected.ok) return selected;
+      const control = command.intent === 'continue-orbit' ? 'tContinueOrbit' : command.intent === 'resume-normal' ? 'tResumeNormal'
+        : command.side === 'left' ? 'tOrbitLeft' : 'tOrbitRight';
+      return clickId(control, 'ORBIT COMMAND ACCEPTED');
+    }
     if (command.intent === 'set-bearing-mode') return clickId(command.mode === 'qdm' ? 'tQdm' : 'tQte', `${command.mode.toUpperCase()} SELECTED`);
     if (command.intent === 'transmit-df') {
       if (command.mode) {
@@ -910,6 +957,25 @@
 
   function runCommand(command) {
     if (!command?.accepted) return result(false, 'COMMAND NOT RECOGNISED');
+    if (command.intent === 'request-heading-passing') {
+      const tactical = pageKind() === 'tactical';
+      if (!activeScreen(tactical ? 'tConsole' : 'console')) return result(false, 'START AN EXERCISE FIRST');
+      const targets = voiceCallsignOptions();
+      const aircraft = targets.find(item => item.id === command.aircraft) || (!tactical && !command.aircraft ? targets[0] : null);
+      if (!aircraft) return result(false, 'AIRCRAFT CALLSIGN REQUIRED');
+      const outcome = root.QGHRadioWorkspace?.requestHeadingPassing({ ...command, aircraft: aircraft.id });
+      if (outcome?.ok) markVoiceAffected($(tactical ? 'tRequestHeading' : 'requestHeading'));
+      return outcome || result(false, 'HEADING PASSING REPORT UNAVAILABLE');
+    }
+    if (command.intent === 'radio-exchange') {
+      const tactical = pageKind() === 'tactical';
+      if (!activeScreen(tactical ? 'tConsole' : 'console')) return result(false, 'RT CALLS ARE AVAILABLE DURING THE EXERCISE');
+      const targets = voiceCallsignOptions();
+      const aircraft = targets.find(item => item.id === command.aircraft) || (!tactical && !command.aircraft ? targets[0] : null);
+      if (!aircraft) return result(false, 'AIRCRAFT CALLSIGN REQUIRED');
+      const reply = root.QGHRadioSession?.replyFor(command, aircraft);
+      return reply ? result(true, reply.text) : result(false, 'RT CALL NOT AVAILABLE');
+    }
     const effects = new Set();
     state.effectBatch = effects;
     let outcome;
@@ -1014,13 +1080,20 @@
   }
 
   function dispatchTranscript(transcript) {
-    const command = Voice.parseCommand(transcript, {
-      callsigns: tacticalCallsignOptions(),
+    if (pilotBlocksMicrophone()) return result(false, 'PILOT TRANSMITTING');
+    const radio = activeScreen(pageKind() === 'tactical' ? 'tConsole' : 'console')
+      ? root.QGHRadioSession?.parseMessage(transcript, Voice, { callsigns: voiceCallsignOptions(), single: pageKind() === 'single' }) : null;
+    const command = radio || Voice.parseCommand(transcript, {
+      callsigns: voiceCallsignOptions(),
       profiles: availableProfileOptions()
     });
     const sequence = state.feedbackSequence;
-    const outcome = routeTranscript(transcript, command);
+    let outcome;
+    state.dispatchingRadioCommand = true;
+    try { outcome = routeTranscript(transcript, command); }
+    finally { state.dispatchingRadioCommand = false; }
     if (sequence === state.feedbackSequence) presentVoiceResult(command, outcome, transcript);
+    if (outcome.ok && !state.pendingCommand) root.QGHRadioWorkspace?.acknowledge(command);
     return outcome;
   }
 
@@ -1064,12 +1137,9 @@
   // the PWA use the bundled Vosk WebAssembly worker; Android presents the same contract
   // through its bundled Vosk bridge.
   function grammarContext() {
-    const kind = pageKind();
     return {
       screen: currentVoiceContext(),
-      // Tactical identifiers are meaningful only on a tactical page. Keeping them out of
-      // the single-aircraft plan prevents needless grammar growth during every PTT re-arm.
-      callsigns: kind === 'tactical' ? tacticalCallsignOptions() : []
+      callsigns: voiceCallsignOptions()
     };
   }
 
@@ -1093,6 +1163,7 @@
   }
 
   function rememberTranscript(transcript) {
+    if (pilotBlocksMicrophone()) return;
     const normalized = Voice.normalizeTranscript(transcript);
     const now = Date.now();
     if (!normalized || (normalized === state.lastTranscript && now - state.lastTranscriptAt < RECENT_TRANSCRIPT_WINDOW_MS)) return;
@@ -1100,7 +1171,17 @@
     if (!state.continuous) state.callTranscripts.add(normalized);
     state.lastTranscript = normalized;
     state.lastTranscriptAt = now;
+    if (state.continuous) root.QGHRadioWorkspace?.controllerStart();
     dispatchTranscript(transcript);
+    if (state.continuous) scheduleRadioQuietEnd();
+  }
+
+  function scheduleRadioQuietEnd() {
+    root.clearTimeout(state.radioQuietTimer);
+    state.radioQuietTimer = root.setTimeout(() => {
+      state.radioQuietTimer = null;
+      if (!state.pilotSpeaking && !state.pressHeld) root.QGHRadioWorkspace?.controllerEnd();
+    }, 900);
   }
 
   function rememberNoSpeech() {
@@ -1150,9 +1231,31 @@
 
   function canContinueListening() {
     return state.continuous
+      && !pilotBlocksMicrophone()
       && !state.manuallyStopped
       && state.localAvailability === 'ready'
       && documentRef.visibilityState === 'visible';
+  }
+
+  function pilotBlocksMicrophone() {
+    return state.pilotSpeaking && !root.QGHRadioWorkspace?.allowsBargeIn?.();
+  }
+
+  function setPilotSpeaking(speaking) {
+    state.pilotSpeaking = Boolean(speaking);
+    if (pilotBlocksMicrophone()) {
+      state.startAttempt += 1;
+      clearRestartTimer();
+      state.starting = false;
+      try {
+        if (nativeVoiceBridge()) nativeVoiceBridge().cancel();
+        else state.engine?.cancel();
+      } catch { /* The result gate also excludes late playback transcripts. */ }
+      state.listening = false;
+      state.processing = false;
+      setStatus('PILOT TRANSMITTING', 'active');
+    } else if (canContinueListening()) scheduleContinuousRestart();
+    updateMicState();
   }
 
   function handleTerminalRecognitionError(error) {
@@ -1165,6 +1268,9 @@
     state.manuallyStopped = true;
     state.pressHeld = false;
     state.continuous = false;
+    root.clearTimeout(state.radioQuietTimer);
+    state.radioQuietTimer = null;
+    root.QGHRadioWorkspace?.controllerEnd();
     releasePrimedAudio();
     if (error === 'not-allowed' || error === 'service-not-allowed') {
       state.localAvailability = 'permission-denied';
@@ -1189,6 +1295,11 @@
     state.processing = false;
     state.starting = false;
     state.listening = false;
+    if (!state.pressHeld && !state.pilotSpeaking) {
+      root.clearTimeout(state.radioQuietTimer);
+      state.radioQuietTimer = null;
+      root.QGHRadioWorkspace?.controllerEnd();
+    }
     updateMicState();
     if (canContinueListening()) scheduleContinuousRestart();
     else if (state.pressHeld && !state.continuous && !state.manuallyStopped && state.localAvailability === 'ready') beginListening(false);
@@ -1351,6 +1462,7 @@
   }
 
   async function startListening(continuous) {
+    if (pilotBlocksMicrophone()) return false;
     // The engine owns final-result replacement. A finalizing session is allowed through
     // so `start()` can atomically replace it without the workspace duplicating lifecycle state.
     const pendingFinal = Boolean(state.listening && state.engine?.isFinalizing?.());
@@ -1406,9 +1518,14 @@
           updateMicState();
           setStatus(state.continuous ? 'VOICE ASSISTANT LISTENING' : 'LISTENING', 'active');
         },
-        onResult: rememberTranscript,
+        onResult: transcript => { if (attempt === state.startAttempt) rememberTranscript(transcript); },
         onNoResult: rememberNoSpeech,
-        onPartial: () => {
+        onPartial: partial => {
+          if (attempt !== state.startAttempt || pilotBlocksMicrophone()) return;
+          if (state.continuous && partial) {
+            root.QGHRadioWorkspace?.controllerStart();
+            scheduleRadioQuietEnd();
+          }
           if (state.listening) setStatus(state.continuous ? 'VOICE ASSISTANT LISTENING' : 'LISTENING', 'active');
         },
         onError: error => { if (attempt === state.startAttempt) handleRecognitionError(error); }
@@ -1430,11 +1547,17 @@
 
   function stopListening(options) {
     const cancel = Boolean(options?.cancel);
+    root.clearTimeout(state.radioQuietTimer);
+    state.radioQuietTimer = null;
+    if (cancel) root.QGHRadioWorkspace?.reset();
+    // PTT release asks the recognizer to flush; pilot playback waits for its
+    // ended callback so no later final segment is cancelled by our own reply.
+    else if (!state.listening) root.QGHRadioWorkspace?.controllerEnd();
     state.processing = !cancel && state.listening;
     if (state.processing) setStatus('PROCESSING', 'active');
     updateMicState();
     state.manuallyStopped = true;
-    state.startAttempt += 1;
+    if (cancel || state.starting) state.startAttempt += 1;
     clearRestartTimer();
     const bridge = nativeVoiceBridge();
     if (state.starting && !state.listening) {
@@ -1545,6 +1668,24 @@
     lastCallDetail.textContent = 'No voice call yet. Kept only until this page closes.';
     lastCall.append(lastCallTitle, lastCallDetail);
     settings.append(continuousLabel, prepare, engineNote, resetPosition, lastCall);
+    if (root.QGHRadioWorkspace) {
+      const pilotLabel = documentRef.createElement('label');
+      pilotLabel.className = 'voice-continuous';
+      const pilotAudio = documentRef.createElement('input');
+      pilotAudio.type = 'checkbox';
+      pilotAudio.id = 'pilotAudio';
+      pilotAudio.checked = root.QGHRadioWorkspace.status().audioEnabled;
+      pilotLabel.append(pilotAudio, 'HEADPHONES · PILOT READBACKS');
+      const pilotNote = documentRef.createElement('small');
+      pilotNote.className = 'voice-engine-note';
+      const updatePilotNote = () => { pilotNote.textContent = root.QGHRadioWorkspace.audioAvailable()
+        ? 'Off by default: muted. Enable only with headphones. In continuous mode, your speech interrupts pilot audio. PTT always takes priority.'
+        : 'No local English output voice available. Captions and timed pilot D/F still work offline.'; };
+      updatePilotNote();
+      root.speechSynthesis?.addEventListener?.('voiceschanged', updatePilotNote);
+      pilotAudio.addEventListener('change', () => root.QGHRadioWorkspace.setAudioEnabled(pilotAudio.checked));
+      settings.append(pilotLabel, pilotNote);
+    }
 
     const listeningIndicator = documentRef.createElement('output');
     listeningIndicator.className = 'voice-listening-indicator';
@@ -1606,6 +1747,7 @@
     const beginPressToTalk = event => {
       if (state.continuous || state.pressHeld || mic.disabled || (event.button !== undefined && event.button !== 0)) return;
       event.preventDefault();
+      root.QGHRadioWorkspace?.controllerStart();
       state.pressHeld = true;
       state.pressPointerId = event.pointerId ?? null;
       state.lastTranscript = '';
@@ -1688,6 +1830,7 @@
       const observer = new root.MutationObserver(() => {
         const next = currentVoiceContext();
         if (next !== context) {
+          root.QGHRadioWorkspace?.reset();
           context = next;
           if (phoneDock()) app.scrollTop = 0;
         }
@@ -1703,6 +1846,9 @@
     runCommand,
     pageKind,
     stopListening,
+    setPilotSpeaking,
+    showPilotReply,
+    isDispatchingRadioCommand: () => state.dispatchingRadioCommand,
     receiveNativeVoiceEvent
   });
 })(typeof globalThis === 'undefined' ? this : globalThis);

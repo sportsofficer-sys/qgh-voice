@@ -5,6 +5,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const Core = require('../simulator-core.js');
+const Radio = require('../radio-session.js');
 const SIMULATOR_PATH = path.join(__dirname, '..', 'simulator.js');
 const STEP_SECONDS = .25;
 const OVERHEAD_ZONE_NM = .25;
@@ -115,13 +116,14 @@ function numericBearing(element) {
 function makeHarness() {
   const defaults = {
     runway: '230', inbound: '225', outbound: '065', aircraft: 'fighter', distance: '8', speed: '360', rate: '4',
-    headingInput: '225', liveSpeed: '360'
+    headingInput: '225', liveSpeed: '360', callsign: 'FALCON 11'
   };
   const ids = [
-    'setup', 'console', 'analysis', 'runway', 'inbound', 'outbound', 'aircraft', 'distance', 'speed', 'rate',
+    'setup', 'console', 'analysis', 'runway', 'inbound', 'outbound', 'aircraft', 'distance', 'speed', 'rate', 'callsign',
     'normal', 'us', 'startExercise', 'consoleTitle', 'badge', 'mobileControlsToggle', 'controls', 'transmit',
     'terminate', 'advanceFlight', 'infoRow', 'requestHeading', 'headingReply', 'requestDistance', 'distanceReply', 'normalCtl',
     'turnHeadingLeft', 'headingInput', 'turnHeadingRight', 'continueHeading', 'usCtl', 'turnLeft', 'turnRight', 'turnStop', 'liveSpeed',
+    'orbitLeft', 'orbitRight', 'continueOrbit', 'resumeNormal',
     'clock', 'homingClock', 'clockStart', 'clockStop', 'clockReset', 'restartExercise', 'dfState', 'bearingType', 'bearing', 'signal',
     'qdm', 'qte', 'sumRunway', 'sumOutbound', 'sumInbound', 'sumProcedure', 'sumInitial', 'sumTerminal', 'sumSpeed',
     'sumTx', 'sumOverheadTurn', 'sumBaseTurn', 'plot', 'replayElapsed', 'returnConsole', 'replay', 'newExercise', 'logs', 'toast'
@@ -144,6 +146,7 @@ function makeHarness() {
   const intervals = new Map();
   const timeouts = new Map();
   let randomState = 0x5a17c0de;
+  let radioNow = 0;
   const reviewModels = [];
   const context = {
     document,
@@ -163,6 +166,7 @@ function makeHarness() {
     clearTimeout: id => timeouts.delete(id),
     alert: message => { throw new Error(`unexpected alert: ${message}`); },
     QGHCore: Core,
+    QGHRadioSession: { ...Radio, createReceiver: options => Radio.createReceiver({ ...options, now: () => radioNow }) },
     QGHReview: { draw: model => reviewModels.push(model) },
     crypto: {
       getRandomValues(values) {
@@ -184,6 +188,17 @@ function makeHarness() {
     elements,
     state: context.__qghTestState,
     reviewModels,
+    enableRadio() {
+      const captions = [];
+      context.QGHVoiceWorkspace = { isDispatchingRadioCommand: () => false, setPilotSpeaking() {}, showPilotReply: reply => captions.push(reply.text) };
+      vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'radio-workspace.js'), 'utf8'), context);
+      return { captions, workspace: context.QGHRadioWorkspace };
+    },
+    fireDelay(delay) {
+      const entry = [...timeouts].find(([, timer]) => timer.delay === delay);
+      assert.ok(entry, `missing ${delay}ms timer`);
+      timeouts.delete(entry[0]); entry[1].callback();
+    },
     click(id) {
       elements[id].click();
     },
@@ -197,6 +212,10 @@ function makeHarness() {
       for (let step = 0; step < count; step += 1) {
         [...intervals.values()].forEach(callback => callback());
       }
+    },
+    advanceRadioTime(milliseconds) {
+      radioNow += milliseconds;
+      [...intervals.values()].forEach(callback => callback());
     },
     fireTimeout(id) {
       const timeout = timeouts.get(id);
@@ -216,6 +235,104 @@ function makeHarness() {
     }
   };
 }
+
+test('single orbit buttons repeat a curved circle, report with DF and resume the actual entry heading in both procedures', () => {
+  for (const procedure of ['normal', 'us']) for (const side of ['left', 'right']) {
+    const h = makeHarness(); h.click(procedure); h.click('startExercise');
+    const radio = h.enableRadio();
+    h.state.plane.heading = 350; h.state.targetHeading = 120;
+    const entry = { ...h.state.plane };
+    h.click(side === 'left' ? 'orbitLeft' : 'orbitRight');
+    assert.deepEqual({ ...h.state.plane }, entry, 'command never teleports the aircraft');
+    radio.workspace.interrupt();
+    h.tick(360);
+    assert.ok(Math.hypot(h.state.plane.x - entry.x, h.state.plane.y - entry.y) < 1e-8);
+    assert.equal(h.state.orbit.laps, 1); h.fireDelay(300);
+    assert.match(radio.captions.at(-1), /ORBIT COMPLETE, CONTINUING/);
+    assert.equal(h.elements.dfState.textContent, 'SIGNAL LIVE');
+    h.tick(20); const progress = h.state.orbit.degrees;
+    h.click('continueOrbit'); assert.equal(h.state.orbit.degrees, progress);
+    h.click('resumeNormal'); assert.equal(h.state.orbit.exitRequested, true);
+    h.tick(341);
+    assert.equal(h.state.orbit, null);
+    assert.equal(h.state.plane.heading, 350);
+    assert.equal(h.state.manualTurnSide, null);
+    assert.equal(h.elements.resumeNormal.disabled, true);
+    assert.equal(h.elements.continueOrbit.disabled, true);
+    assert.equal(h.elements.turnStop.disabled, true);
+    if (procedure === 'us') assert.equal(h.elements.requestHeading.hidden, true);
+  }
+});
+
+test('single orbit manual override, Continue 060 and one-minute advance keep existing flight controls', () => {
+  const h = makeHarness(); h.click('startExercise');
+  h.state.plane.heading = 210; h.click('orbitLeft'); h.click('advanceFlight');
+  assert.equal(h.state.orbit.degrees, 240);
+  h.elements.headingInput.value = '60'; h.click('continueHeading');
+  assert.equal(h.state.orbit, null);
+  assert.equal(h.state.forcedTurnSide, 'left');
+  assert.equal(h.state.targetHeading, 60);
+  h.click('orbitRight'); h.click('resumeNormal');
+  assert.equal(h.state.orbit, null, 'resume at exact entry can roll out immediately');
+});
+
+test('real single-aircraft physics fires a deferred report without commanding a turn, including Advance', () => {
+  for (const advance of [false, true]) {
+    const h = makeHarness(); h.click('startExercise');
+    const radio = h.enableRadio();
+    h.state.plane.heading = 350; h.state.initialTurnSide = 'right';
+    const before = { ...h.state.plane };
+    const targetBefore = h.state.targetHeading;
+    assert.equal(radio.workspace.requestHeadingPassing({ heading: 360 }).ok, true);
+    assert.deepEqual({ ...h.state.plane }, before);
+    assert.equal(h.state.targetHeading, targetBefore);
+    if (advance) h.click('advanceFlight'); else h.tick(14);
+    h.fireDelay(300);
+    assert.match(radio.captions.at(-1), advance ? /^PASSED 000/ : /^PASSING 000/);
+    assert.equal(h.elements.dfState.textContent, 'SIGNAL LIVE');
+    assert.ok(h.state.commands.some(command => command.detail.includes('PASSED 000')));
+  }
+});
+
+test('manual controller override changes the real flight before its replacement readback starts', () => {
+  const h = makeHarness();
+  h.click('startExercise');
+  const radio = h.enableRadio();
+  h.state.plane.heading = 350;
+  h.elements.headingInput.value = '60'; h.click('turnHeadingRight'); h.tick(2); h.fireDelay(300);
+  assert.match(radio.captions.at(-1), /TURNING RIGHT 060/);
+  const before = { ...h.state.plane };
+  h.elements.headingInput.value = '10'; h.click('turnHeadingLeft');
+  assert.equal(h.state.forcedTurnSide, 'left');
+  assert.equal(h.state.targetHeading, 10);
+  assert.deepEqual({ ...h.state.plane }, before, 'no point-turn or position teleport on command');
+  h.tick(1);
+  assert.equal(h.state.plane.heading, Core.normalize(before.heading - h.state.cfg.rate * STEP_SECONDS));
+  h.fireDelay(300);
+  assert.match(radio.captions.at(-1), /TURNING LEFT 010/);
+});
+
+test('manual single speed replaces a pending reply immediately without acknowledging invalid edits', () => {
+  const h = makeHarness();
+  h.click('startExercise');
+  const radio = h.enableRadio();
+  radio.workspace.controllerStart();
+  for (const speed of [240, 300]) {
+    h.elements.liveSpeed.value = String(speed);
+    h.input('liveSpeed'); h.change('liveSpeed');
+  }
+  assert.equal(h.state.cfg.speed, 300, 'accepted speed changes take effect before playback');
+  assert.equal(radio.workspace.status().pending, 1, 'only the current speed should be read back');
+  radio.workspace.controllerEnd(); h.fireDelay(300);
+  assert.deepEqual(radio.captions, ['SPEED 300 KT · FALCON 11']);
+  for (const speed of [300, 59, 601, 'invalid']) {
+    h.elements.liveSpeed.value = String(speed);
+    h.input('liveSpeed'); h.change('liveSpeed');
+  }
+  assert.equal(h.state.cfg.speed, 300);
+  assert.equal(radio.workspace.status().pending, 0);
+  assert.deepEqual(radio.captions, ['SPEED 300 KT · FALCON 11']);
+});
 
 test('the homing stopwatch mirrors the existing clock, stops, resumes and clears on reset', () => {
   for (const procedure of ['normal', 'us']) {
@@ -265,7 +382,12 @@ function setExercise(harness, scenario, procedure) {
   harness.click('transmit');
   numericBearing(elements.bearing);
   harness.fireTimeout(harness.state.dfExpiry);
-  assert.equal(elements.bearing.textContent, '---', 'D/F must clear when the transmission window ends');
+  const held = elements.bearing.textContent;
+  assert.equal(elements.dfState.textContent, 'SIGNAL HELD');
+  harness.tick(4);
+  assert.equal(elements.bearing.textContent, held, 'D/F freezes while the aircraft keeps flying');
+  harness.advanceRadioTime(2000);
+  assert.equal(elements.bearing.textContent, '---', 'D/F clears after the two-second hold');
   harness.click('transmit');
 }
 

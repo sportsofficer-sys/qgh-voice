@@ -7,6 +7,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const Voice = require('../voice-control.js');
+const Radio = require('../radio-session.js');
 const workspaceSource = fs.readFileSync(path.join(__dirname, '..', 'voice-workspace.js'), 'utf8');
 
 class FakeClassList {
@@ -220,6 +221,7 @@ function createWorkspaceEnvironment(documentRef, additions) {
   let nextTimer = 1;
   const sandbox = {
     QGHVoiceControl: Voice,
+    QGHRadioSession: Radio,
     document: documentRef,
     Event: FakeEvent,
     KeyboardEvent: FakeEvent,
@@ -255,6 +257,7 @@ function createSingleHarness() {
   aircraft.options = [customProfile];
   const controls = {
     aircraft,
+    callsign: add(documentRef, setup, 'input', { id: 'callsign', value: 'RAVEN 21' }),
     runway: add(documentRef, setup, 'input', { id: 'runway', type: 'number', min: '0', max: '359', value: '150' }),
     voiceCommandAck: add(documentRef, consoleScreen, 'output', { id: 'voiceCommandAck', hidden: true }),
     requestHeading: add(documentRef, consoleScreen, 'button', { id: 'requestHeading' }),
@@ -265,6 +268,10 @@ function createSingleHarness() {
     turnHeadingLeft: add(documentRef, consoleScreen, 'button', { id: 'turnHeadingLeft', textContent: 'TURN LEFT' }),
     turnHeadingRight: add(documentRef, consoleScreen, 'button', { id: 'turnHeadingRight', textContent: 'TURN RIGHT' }),
     continueHeading: add(documentRef, consoleScreen, 'button', { id: 'continueHeading', textContent: 'CONTINUE HEADING' }),
+    orbitLeft: add(documentRef, consoleScreen, 'button', { id: 'orbitLeft', textContent: 'ORBIT LEFT' }),
+    orbitRight: add(documentRef, consoleScreen, 'button', { id: 'orbitRight', textContent: 'ORBIT RIGHT' }),
+    continueOrbit: add(documentRef, consoleScreen, 'button', { id: 'continueOrbit', textContent: 'CONTINUE ORBIT', disabled: true }),
+    resumeNormal: add(documentRef, consoleScreen, 'button', { id: 'resumeNormal', textContent: 'RESUME NORMAL', disabled: true }),
     turnLeft: add(documentRef, consoleScreen, 'button', { id: 'turnLeft', textContent: 'TURN LEFT NOW', hidden: true }),
     turnRight: add(documentRef, consoleScreen, 'button', { id: 'turnRight', textContent: 'TURN RIGHT NOW', hidden: true }),
     turnStop: add(documentRef, consoleScreen, 'button', { id: 'turnStop', hidden: true }),
@@ -285,7 +292,7 @@ function createSingleHarness() {
   };
   setActive(screens, setup);
   const environment = createWorkspaceEnvironment(documentRef);
-  return { workspace: environment.workspace, timers: environment.timers, screens, setup, consoleScreen, analysis, controls };
+  return { workspace: environment.workspace, sandbox: environment.sandbox, timers: environment.timers, screens, setup, consoleScreen, analysis, controls };
 }
 
 function createTacticalHarness() {
@@ -316,13 +323,18 @@ function createTacticalHarness() {
     headingReply: add(documentRef, consoleScreen, 'b', { id: 'tHeadingReply', textContent: 'HEADING —' }),
     headingInput: add(documentRef, consoleScreen, 'input', { id: 'tHeadingInput', type: 'number', min: '0', max: '359', value: '150' }),
     turnHeadingLeft: add(documentRef, consoleScreen, 'button', { id: 'tTurnLeft' }),
-    turnHeadingRight: add(documentRef, consoleScreen, 'button', { id: 'tTurnRight' })
+    turnHeadingRight: add(documentRef, consoleScreen, 'button', { id: 'tTurnRight' }),
+    continueHeading: add(documentRef, consoleScreen, 'button', { id: 'tContinueHeading', textContent: 'CONTINUE HEADING' }),
+    orbitLeft: add(documentRef, consoleScreen, 'button', { id: 'tOrbitLeft', textContent: 'ORBIT LEFT' }),
+    orbitRight: add(documentRef, consoleScreen, 'button', { id: 'tOrbitRight', textContent: 'ORBIT RIGHT' }),
+    continueOrbit: add(documentRef, consoleScreen, 'button', { id: 'tContinueOrbit', textContent: 'CONTINUE ORBIT', disabled: true }),
+    resumeNormal: add(documentRef, consoleScreen, 'button', { id: 'tResumeNormal', textContent: 'RESUME NORMAL', disabled: true })
   };
   const ravenLeader = add(documentRef, controls.formationLeader, 'option', { value: 'B', textContent: 'RAVEN 21' });
   controls.formationLeader.options = [ravenLeader];
   setActive(screens, consoleScreen);
   const environment = createWorkspaceEnvironment(documentRef);
-  return { workspace: environment.workspace, timers: environment.timers, screens, setup, consoleScreen, analysis, controls };
+  return { workspace: environment.workspace, sandbox: environment.sandbox, timers: environment.timers, screens, setup, consoleScreen, analysis, controls };
 }
 
 function showAppliedReply(harness) {
@@ -331,6 +343,191 @@ function showAppliedReply(harness) {
   stage();
   return harness.controls.voiceCommandAck.textContent;
 }
+
+// Model control availability and the synchronous adapter outcome only. Orbit
+// movement and its completion boundary are covered by the real-core tests.
+function attachOrbitControlState(harness, tactical = false, immediateResume = false) {
+  const aircraft = tactical
+    ? { A: { source: 'A', callsign: 'FALCON 11', orbitSide: null }, B: { source: 'B', callsign: 'RAVEN 21', orbitSide: null } }
+    : { single: { source: 'single', callsign: 'RAVEN 21', orbitSide: null } };
+  let selected = tactical ? 'A' : 'single';
+  const actions = [];
+  const replies = [];
+  const update = () => {
+    harness.controls.continueOrbit.disabled = !aircraft[selected].orbitSide;
+    harness.controls.resumeNormal.disabled = !aircraft[selected].orbitSide;
+  };
+  if (tactical) {
+    harness.controls.falcon.select.onClick = () => { selected = 'A'; update(); };
+    harness.controls.raven.select.onClick = () => { selected = 'B'; update(); };
+  }
+  for (const side of ['left', 'right']) {
+    harness.controls[side === 'left' ? 'orbitLeft' : 'orbitRight'].onClick = () => {
+      actions.push({ aircraft: selected, action: 'start', side });
+      aircraft[selected].orbitSide = side;
+      update();
+    };
+  }
+  harness.controls.continueOrbit.onClick = () => {
+    actions.push({ aircraft: selected, action: 'continue' });
+  };
+  harness.controls.resumeNormal.onClick = () => {
+    actions.push({ aircraft: selected, action: 'resume' });
+    if (immediateResume) aircraft[selected].orbitSide = null;
+    update();
+  };
+  harness.sandbox.QGHRadioAdapter = { snapshot: id => aircraft[id || selected] };
+  harness.sandbox.QGHRadioWorkspace = { acknowledge: command => replies.push(command) };
+  update();
+  return { aircraft, actions, replies };
+}
+
+test('orbit voice calls use and highlight single-aircraft controls with an optional callsign', () => {
+  const h = createSingleHarness();
+  setActive(h.screens, h.consoleScreen);
+  const state = attachOrbitControlState(h);
+  assert.equal(h.workspace.dispatchTranscript('orbit left').ok, true);
+  assert.equal(h.controls.orbitLeft.clickCount, 1);
+  assert.equal(h.controls.orbitLeft.classList.contains('voice-command-effect'), true);
+  assert.match(showAppliedReply(h), /APPLIED · ORBITING LEFT/);
+  assert.equal(h.workspace.dispatchTranscript('Raven twenty one orbit right').ok, true);
+  assert.equal(h.controls.orbitRight.clickCount, 1);
+  assert.equal(h.controls.orbitRight.classList.contains('voice-command-effect'), true);
+  assert.match(showAppliedReply(h), /RAVEN 21 · ORBITING RIGHT/);
+  for (const phrase of ['continue orbit', 'continue']) assert.equal(h.workspace.dispatchTranscript(phrase).ok, true, phrase);
+  assert.equal(h.controls.continueOrbit.clickCount, 2);
+  assert.equal(h.controls.continueOrbit.classList.contains('voice-command-effect'), true);
+  assert.match(showAppliedReply(h), /CONTINUING ORBIT/);
+  assert.equal(state.aircraft.single.orbitSide, 'right');
+  assert.equal(h.controls.headingInput.value, '150');
+  assert.equal(h.controls.turnHeadingLeft.clickCount, 0);
+  assert.equal(h.controls.turnHeadingRight.clickCount, 0);
+  assert.equal(h.controls.continueHeading.clickCount, 0);
+  assert.deepEqual(state.replies.map(reply => reply.intent), ['start-orbit', 'start-orbit', 'continue-orbit', 'continue-orbit']);
+});
+
+test('tactical orbit voice calls require a known callsign and select it before applying the control', () => {
+  const h = createTacticalHarness();
+  const state = attachOrbitControlState(h, true);
+  for (const phrase of ['orbit left', 'continue orbit', 'continue', 'resume normal', 'Eagle thirty one orbit right']) {
+    assert.equal(h.workspace.dispatchTranscript(phrase).ok, false, phrase);
+  }
+  assert.equal(h.controls.falcon.select.clickCount, 0);
+  assert.equal(h.controls.raven.select.clickCount, 0);
+  assert.equal(state.actions.length, 0);
+  assert.equal(state.replies.length, 0);
+  assert.equal(h.workspace.dispatchTranscript('Raven twenty one orbit left').ok, true);
+  assert.equal(h.controls.raven.select.clickCount, 1);
+  assert.equal(h.controls.orbitLeft.classList.contains('voice-command-effect'), true);
+  assert.match(showAppliedReply(h), /RAVEN 21 · ORBITING LEFT/);
+  assert.equal(h.workspace.dispatchTranscript('Falcon eleven orbit right').ok, true);
+  assert.equal(h.controls.falcon.select.clickCount, 1);
+  assert.equal(h.workspace.dispatchTranscript('Raven twenty one continue orbit').ok, true);
+  assert.equal(h.controls.continueOrbit.classList.contains('voice-command-effect'), true);
+  assert.equal(h.workspace.dispatchTranscript('Raven twenty one resume normal').ok, true);
+  assert.equal(h.controls.resumeNormal.classList.contains('voice-command-effect'), true);
+  assert.match(showAppliedReply(h), /RAVEN 21 · WILL RESUME NORMAL AFTER THIS ORBIT/);
+  assert.deepEqual(state.actions, [
+    { aircraft: 'B', action: 'start', side: 'left' },
+    { aircraft: 'A', action: 'start', side: 'right' },
+    { aircraft: 'B', action: 'continue' },
+    { aircraft: 'B', action: 'resume' }
+  ]);
+  assert.deepEqual(state.replies.map(reply => reply.aircraft), ['B', 'A', 'B', 'B']);
+  assert.equal(h.controls.turnHeadingLeft.clickCount, 0);
+  assert.equal(h.controls.turnHeadingRight.clickCount, 0);
+});
+
+test('resume voice feedback reflects the synchronous immediate or deferred control outcome', () => {
+  for (const tactical of [false, true]) {
+    for (const immediate of [false, true]) {
+      const h = tactical ? createTacticalHarness() : createSingleHarness();
+      setActive(h.screens, h.consoleScreen);
+      attachOrbitControlState(h, tactical, immediate);
+      const prefix = tactical ? 'Raven twenty one ' : '';
+      assert.equal(h.workspace.dispatchTranscript(prefix + 'orbit left').ok, true);
+      assert.equal(h.workspace.dispatchTranscript(prefix + 'resume normal').ok, true);
+      assert.equal(h.controls.resumeNormal.clickCount, 1);
+      assert.equal(h.controls.resumeNormal.classList.contains('voice-command-effect'), true);
+      const reply = showAppliedReply(h);
+      assert.match(reply, immediate ? /RESUMING NORMAL$/ : /WILL RESUME NORMAL AFTER THIS ORBIT$/);
+      if (immediate) assert.doesNotMatch(reply, /AFTER THIS ORBIT/);
+      if (tactical) assert.match(reply, /RAVEN 21/);
+      assert.doesNotMatch(reply, /\d{3}°/, 'resume feedback does not reveal a hidden U/S heading');
+    }
+  }
+});
+
+test('disabled orbit continuation or resume is rejected without clicking or highlighting its control', () => {
+  for (const tactical of [false, true]) {
+    const h = tactical ? createTacticalHarness() : createSingleHarness();
+    setActive(h.screens, h.consoleScreen);
+    const state = attachOrbitControlState(h, tactical);
+    const prefix = tactical ? 'Raven twenty one ' : '';
+    for (const phrase of ['continue orbit', 'continue', 'resume normal']) {
+      const outcome = h.workspace.dispatchTranscript(prefix + phrase);
+      assert.equal(outcome.ok, false, phrase);
+      assert.match(outcome.message, /NOT AVAILABLE/);
+      assert.match(showAppliedReply(h), /^REJECTED ·/);
+    }
+    assert.equal(h.controls.continueOrbit.clickCount, 0);
+    assert.equal(h.controls.resumeNormal.clickCount, 0);
+    assert.equal(h.controls.continueOrbit.classList.contains('voice-command-effect'), false);
+    assert.equal(h.controls.resumeNormal.classList.contains('voice-command-effect'), false);
+    assert.equal(state.replies.length, 0);
+  }
+});
+
+test('numbered continue retains the heading-control route and bare continue requires an orbit control', () => {
+  for (const tactical of [false, true]) {
+    const h = tactical ? createTacticalHarness() : createSingleHarness();
+    setActive(h.screens, h.consoleScreen);
+    const state = attachOrbitControlState(h, tactical);
+    const prefix = tactical ? 'Raven twenty one ' : '';
+    h.controls.continueHeading.dataset.turnSide = 'right';
+    assert.equal(h.workspace.dispatchTranscript(prefix + 'continue zero six zero').ok, true);
+    assert.equal(h.controls.headingInput.value, '60');
+    assert.equal(h.controls.continueHeading.clickCount, 1);
+    assert.equal(h.controls.continueHeading.classList.contains('voice-command-effect'), true);
+    assert.equal(h.controls.continueOrbit.clickCount, 0);
+    assert.equal(state.replies.at(-1).intent, 'continue-turn-heading');
+    h.sandbox.document.elementsById.delete(tactical ? 'tContinueOrbit' : 'continueOrbit');
+    assert.equal(h.workspace.dispatchTranscript(prefix + 'continue').ok, false);
+    assert.equal(h.controls.continueHeading.clickCount, 1, 'bare continue must not fall back to the numbered heading control');
+    assert.equal(h.controls.continueOrbit.clickCount, 0);
+  }
+});
+
+test('passing report voice variants arm the addressed report, highlight without clicking or turning, and reject malformed calls', () => {
+  for (const tactical of [false, true]) {
+    const h = tactical ? createTacticalHarness() : createSingleHarness();
+    setActive(h.screens, h.consoleScreen);
+    const requests = []; const replies = [];
+    h.sandbox.QGHRadioWorkspace = {
+      requestHeadingPassing(command) { requests.push(command); return { ok: true, message: `WILL REPORT PASSING ${String(command.heading).padStart(3, '0')}°M` }; },
+      acknowledge: command => replies.push(command)
+    };
+    const prefix = tactical ? 'Raven twenty one ' : '';
+    for (const phrase of ['report heading passing325', 'report passing heading 325', 'report passing three two five']) {
+      // Natural recognition supplies a word boundary before the numeric heading.
+      const spoken = phrase.replace('passing325', 'passing 325');
+      assert.equal(h.workspace.dispatchTranscript(prefix + spoken).ok, true);
+      assert.equal(requests.at(-1).heading, 325);
+      assert.equal(requests.at(-1).aircraft, tactical ? 'B' : 'single');
+      assert.equal(h.controls.requestHeading.clickCount, 0, 'do not report the current heading immediately');
+      assert.equal(h.controls.requestHeading.classList.contains('voice-command-effect'), true);
+      assert.match(showAppliedReply(h), /WILL REPORT PASSING 325/);
+    }
+    assert.equal(h.controls.turnHeadingRight.clickCount, 0);
+    assert.equal(h.controls.turnHeadingLeft.clickCount, 0);
+    for (const invalid of ['report heading passing', 'report heading passing 400', 'cancel report heading passing 325', 'report passing 325 and turn left 090']) {
+      assert.equal(h.workspace.dispatchTranscript(prefix + invalid).ok, false);
+    }
+    if (tactical) assert.equal(h.workspace.dispatchTranscript('report passing325'.replace('passing325', 'passing 325')).ok, false);
+    assert.equal(requests.length, 3);
+    assert.equal(replies.length, 3);
+  }
+});
 
 function command(intent, detail) {
   return Object.assign({ accepted: true, intent }, detail || {});
@@ -429,6 +626,31 @@ test('voice heading and range acknowledgements snapshot the returned data, not t
   assert.equal(workspace.dispatchTranscript('report heading').ok, false);
   assert.match(showAppliedReply(harness), /^REJECTED ·/);
   assert.doesNotMatch(controls.voiceCommandAck.textContent, /300|305/);
+});
+
+test('single callsigns route Normal and U/S commands while unknown callsigns cannot execute', () => {
+  const harness = createSingleHarness();
+  const { workspace, screens, consoleScreen, controls } = harness;
+  setActive(screens, consoleScreen);
+  for (const phrase of ['Raven turn right 230', 'Raven two one turn right heading 230', 'Raven twenty one turn right 230']) {
+    assert.equal(workspace.dispatchTranscript(phrase).ok, true, phrase);
+    assert.equal(controls.headingInput.value, '230');
+    assert.equal(showAppliedReply(harness), 'APPLIED · RAVEN 21 · TURNING RIGHT 230°M');
+  }
+  const before = controls.turnHeadingRight.clickCount;
+  assert.equal(workspace.dispatchTranscript('Falcon turn right heading 180').ok, false);
+  assert.equal(workspace.dispatchTranscript('Raven twenty two turn right 180').ok, false);
+  assert.equal(controls.turnHeadingRight.clickCount, before);
+  assert.equal(workspace.dispatchTranscript('turn right 180').ok, true, 'existing unaddressed single calls remain valid');
+  controls.turnHeadingLeft.hidden = controls.turnHeadingRight.hidden = true;
+  controls.turnLeft.hidden = controls.turnRight.hidden = controls.turnStop.hidden = false;
+  assert.equal(workspace.dispatchTranscript('Raven turn left now').ok, true);
+  assert.equal(controls.turnLeft.clickCount, 1);
+  assert.equal(workspace.dispatchTranscript('Raven stop turn now').ok, true);
+  assert.equal(controls.turnStop.clickCount, 1);
+  assert.equal(workspace.dispatchTranscript('Raven transmit for df').ok, true);
+  assert.equal(controls.transmit.clickCount, 1);
+  assert.equal(workspace.dispatchTranscript('Raven turn right 230').ok, false, 'U/S does not gain heading controls');
 });
 
 test('voice turn replies distinguish target headings and retain the active continuation direction', () => {
@@ -590,6 +812,27 @@ test('voice DOM router resolves live tactical aircraft rows for selection and D/
 function tick() {
   return new Promise(resolve => setImmediate(resolve));
 }
+
+test('RT information receives a reply without changing flight controls; single callsign stays optional', () => {
+  const single = createSingleHarness();
+  setActive(single.screens, single.consoleScreen);
+  assert.equal(single.workspace.dispatchTranscript('surface wind two three zero degrees ten knots').ok, true);
+  assert.match(showAppliedReply(single), /RECEIVED.*ROGER/);
+  assert.equal(single.controls.headingInput.value, '150');
+  assert.equal(single.controls.turnHeadingRight.clickCount, 0);
+  assert.equal(single.controls.turnHeadingRight.classList.contains('voice-command-effect'), false);
+  assert.equal(single.workspace.dispatchTranscript('Raven twenty one commence descent now').ok, true);
+  assert.match(showAppliedReply(single), /NOT SIMULATED/);
+  single.controls.turnLeft.hidden = single.controls.turnRight.hidden = false;
+  single.controls.turnStop.hidden = false;
+  assert.equal(single.workspace.dispatchTranscript('turn right now').ok, true);
+  assert.equal(single.workspace.dispatchTranscript('stop turn now').ok, true);
+  const tactical = createTacticalHarness();
+  assert.equal(tactical.workspace.dispatchTranscript('surface wind two three zero ten knots').ok, false);
+  assert.equal(tactical.workspace.dispatchTranscript('Raven twenty one surface wind two three zero ten knots').ok, true);
+  assert.match(showAppliedReply(tactical), /ROGER.*RAVEN 21/);
+  assert.equal(tactical.controls.raven.select.clickCount, 0, 'RT alone does not change selected aircraft');
+});
 
 test('Android native voice bridge uses the same safe voice dock workflow', async () => {
   const nativeBridge = {

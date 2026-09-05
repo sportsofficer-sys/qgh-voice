@@ -2,6 +2,8 @@
 
 Offline-first QGH training simulator for Windows, Android, iPhone, iPad, and modern web browsers.
 
+Latest web release: **v4.4.0 - Radio & Orbit**. [Open QGH Voice](https://sportsofficer-sys.github.io/qgh-voice/) or read the [release notes](docs/qa/v4.4.0-web-release.md). This is a web-only release; Windows and Android installers are built separately.
+
 See [USER_GUIDE.md](USER_GUIDE.md) for installation, exercise, replay, tactical, and voice-control guidance.
 
 The simulator provides Normal QGH and U/S Compass exercises, live D/F homing and QTE/QDM displays, timed turns, aircraft-specific training defaults, an optional guided familiarisation, local offline voice control, and a recorded flight-path review. It is designed to work entirely offline after installation.

@@ -10,6 +10,21 @@ const engineSource = fs.readFileSync(path.join(__dirname, '..', 'offline-voice-e
 const OfflineVoice = require('../offline-voice-engine.js');
 const Voice = require('../voice-control.js');
 
+test('offline grammar reserves passing-report word orders for single and each tactical callsign', () => {
+  const Radio = require('../radio-session.js');
+  for (const screen of ['single:console', 'tactical:console']) {
+    const callsigns = screen.startsWith('single') ? ['FALCON 11'] : ['FALCON 11', 'RAVEN 21', 'VIPER 31', 'EAGLE 41'];
+    const grammar = OfflineVoice.buildRecognitionPlan({ screen, callsigns }).grammar;
+    const prefixes = screen.startsWith('single') ? ['', 'falcon '] : ['falcon ', 'raven ', 'viper ', 'eagle '];
+    for (const prefix of prefixes) for (const body of ['report heading passing tree two fife', 'report passing heading zero niner zero', 'report passing two four zero']) {
+      assert.ok(grammar.includes(prefix + body), prefix + body);
+      const parsed = Radio.parseMessage(prefix + body, Voice, { single: screen.startsWith('single'), callsigns });
+      assert.equal(parsed.accepted, true);
+      assert.equal(parsed.intent, 'request-heading-passing');
+    }
+  }
+});
+
 function node() {
   return { connect() {}, disconnect() {} };
 }
@@ -102,6 +117,46 @@ function loadEngineRuntime(options) {
   vm.runInContext(engineSource, sandbox, { filename: 'offline-voice-engine.js' });
   return { api: sandbox.QGHOfflineVoiceEngine, state, timers };
 }
+
+test('single exercise grammar supports its callsign, legacy calls and cache refresh', () => {
+  const plan = OfflineVoice.buildRecognitionPlan({ screen: 'single:console', callsigns: ['RAVEN 21'] });
+  for (const phrase of ['turn left one four zero', 'raven turn left one four zero', 'raven two one turn left heading one four zero', 'raven twenty one stop turn now', 'raven transmit for df']) {
+    assert.ok(plan.grammar.includes(phrase), phrase);
+    assert.equal(Voice.parseCommand(phrase, { callsigns: [{ id: 'single', callsign: 'RAVEN 21' }] }).accepted, true);
+  }
+  const updated = OfflineVoice.buildRecognitionPlan({ screen: 'single:console', callsigns: ['FALCON 11'] });
+  assert.notEqual(plan, updated);
+  assert.equal(updated.grammar.includes('raven turn left one four zero'), false);
+  assert.ok(Buffer.byteLength(plan.grammarJson) < 490_000);
+});
+
+test('forwards recognizer partial text and suppresses partials while finalizing', async () => {
+  const runtime = loadEngineRuntime();
+  const partials = [];
+  const transcripts = [];
+  const session = runtime.api.create();
+  await session.start({
+    onPartial: partial => partials.push(partial),
+    onResult: transcript => transcripts.push(transcript)
+  });
+  const recognizer = runtime.state.recognizer;
+
+  recognizer.emit('partialresult', { result: { partial: '  turn left  ' } });
+  assert.deepEqual(partials, ['turn left']);
+  recognizer.emit('partialresult', { result: { partial: '' } });
+  recognizer.emit('partialresult', { result: { partial: '   ' } });
+  assert.deepEqual(partials, ['turn left', '', ''], 'silence must remain empty so it cannot claim the radio channel');
+
+  session.stop();
+  assert.equal(session.isFinalizing(), true);
+  assert.equal(recognizer.removed, false, 'the recognizer remains available for its final result');
+  recognizer.emit('partialresult', { result: { partial: 'turn right' } });
+  assert.deepEqual(partials, ['turn left', '', ''], 'release suppresses partials during the final-result drain');
+  recognizer.emit('result', { result: { text: 'turn left heading one four zero' } });
+  assert.deepEqual(transcripts, ['turn left heading one four zero']);
+  assert.equal(session.isFinalizing(), false);
+  assert.equal(recognizer.removed, true);
+});
 
 test('keeps a PTT session alive until a delayed final offline result arrives', async () => {
   const runtime = loadEngineRuntime();

@@ -456,7 +456,7 @@ test('describes a tactical command with its configured callsign instead of an in
   assert.equal(Voice.describeCommand(command), 'B · TURN RIGHT HEADING 270');
 });
 
-test('parses every documented v4.2.0 voice-command example', () => {
+test('parses every documented controller voice-command example through the live control or RT parser', () => {
   const options = {
     callsigns: [
       { id: 'A', callsign: 'FALCON 11' },
@@ -477,7 +477,7 @@ test('parses every documented v4.2.0 voice-command example', () => {
 
   assert.ok(documentedCommands.size > 0, 'expected documented voice-command examples');
   for (const command of documentedCommands) {
-    const parsed = Voice.parseCommand(command, options);
+    const parsed = require('../radio-session.js').parseMessage(command, Voice, { ...options, single: true }) || Voice.parseCommand(command, options);
     assert.equal(parsed.accepted, true, `expected documented command to parse: ${command}`);
   }
 });

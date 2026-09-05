@@ -8,7 +8,9 @@ const vm = require('node:vm');
 
 const Voice = require('../voice-control.js');
 const OfflineVoice = require('../offline-voice-engine.js');
+const Radio = require('../radio-session.js');
 const workspaceSource = fs.readFileSync(path.join(__dirname, '..', 'voice-workspace.js'), 'utf8');
+const radioWorkspaceSource = fs.readFileSync(path.join(__dirname, '..', 'radio-workspace.js'), 'utf8');
 
 class FakeEvent {
   constructor(type, options) {
@@ -52,7 +54,10 @@ class FakeElement {
   setAttribute(name, value) { this.attributes.set(name, String(value)); }
   getAttribute(name) { return this.attributes.get(name) || null; }
   append(...children) { children.forEach(child => this.appendChild(child)); }
-  appendChild(child) { child.parentElement = this; this.children.push(child); return child; }
+  appendChild(child) {
+    if (typeof child === 'string') { const text = new FakeElement('text'); text.textContent = child; child = text; }
+    child.parentElement = this; this.children.push(child); return child;
+  }
   remove() { if (this.parentElement) this.parentElement.children = this.parentElement.children.filter(child => child !== this); }
   addEventListener(type, listener) { this.listeners.set(type, [...(this.listeners.get(type) || []), listener]); }
   dispatchEvent(event) {
@@ -163,17 +168,25 @@ function makeOfflineEngine(options) {
 function createEnvironment(options) {
   const document = new FakeDocument();
   const timers = new Map();
+  const timerDeadlines = new Map();
   const listeners = new Map();
   const storage = new Map(options?.stored || []);
   let nextTimer = 1;
+  let now = 0;
   const sandbox = {
     QGHVoiceControl: options?.voiceControl || Voice,
     QGHOfflineVoiceEngine: options?.offlineVoice,
     QghNativeVoice: options?.nativeVoice,
+    QGHRadioWorkspace: options?.radio ? { status: () => ({ audioEnabled: false }), audioAvailable: () => false, ...options.radio } : undefined,
     document,
     Event: FakeEvent,
-    setTimeout(callback) { const id = nextTimer; nextTimer += 1; timers.set(id, callback); return id; },
-    clearTimeout(id) { timers.delete(id); },
+    setTimeout(callback, delay = 0) {
+      const id = nextTimer++;
+      timers.set(id, callback);
+      timerDeadlines.set(id, now + delay);
+      return id;
+    },
+    clearTimeout(id) { timers.delete(id); timerDeadlines.delete(id); },
     addEventListener(type, listener) { listeners.set(type, listener); },
     innerWidth: options?.viewportWidth,
     innerHeight: options?.viewportHeight,
@@ -187,7 +200,44 @@ function createEnvironment(options) {
   sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
   vm.runInContext(workspaceSource, sandbox);
-  return { document, timers, listeners, storage, sandbox, workspace: sandbox.QGHVoiceWorkspace };
+  return { document, timers, listeners, storage, sandbox, workspace: sandbox.QGHVoiceWorkspace,
+    now: () => now,
+    advanceTime(milliseconds) {
+      const end = now + milliseconds;
+      for (;;) {
+        const next = [...timerDeadlines].filter(([id, deadline]) => timers.has(id) && deadline <= end)
+          .sort((a, b) => a[1] - b[1])[0];
+        if (!next) break;
+        const [id, deadline] = next;
+        const callback = timers.get(id);
+        timers.delete(id);
+        timerDeadlines.delete(id);
+        now = deadline;
+        callback();
+      }
+      now = end;
+    }
+  };
+}
+
+function createRadioEnvironment(options) {
+  const env = createEnvironment(options);
+  const aircraft = { source: 'single', callsign: 'FALCON 11', procedure: 'normal',
+    heading: 230, simulationSeconds: 0, range: 10, qdm: 60, qte: 240 };
+  const transmissions = [];
+  const receiver = Radio.createReceiver({ observe: () => ({ ...aircraft }), now: env.now,
+    setTimer: env.sandbox.setTimeout, clearTimer: env.sandbox.clearTimeout });
+  env.sandbox.QGHRadioSession = Radio;
+  env.sandbox.QGHRadioAdapter = {
+    active: () => true,
+    snapshot: () => ({ ...aircraft }),
+    beginTransmit(source) { transmissions.push(source); return receiver.transmit(source); },
+    endTransmit: token => receiver.release(token),
+    observation: () => receiver.read(),
+    controllerStart: () => receiver.controllerStart()
+  };
+  vm.runInContext(radioWorkspaceSource, env.sandbox);
+  return { ...env, aircraft, transmissions, receiver, radio: env.sandbox.QGHRadioWorkspace };
 }
 
 async function flush() {
@@ -195,6 +245,131 @@ async function flush() {
   await Promise.resolve();
   await Promise.resolve();
 }
+
+test('silent continuous resume leaves manual replies and passing reports free to transmit', async () => {
+  const runtime = makeOfflineEngine({ cachedArchive: true });
+  const env = createRadioEnvironment({ offlineVoice: runtime.api });
+  await flush();
+  const continuous = env.document.querySelector('.voice-continuous').children[0];
+  continuous.checked = true;
+  continuous.dispatchEvent(new FakeEvent('change'));
+  await flush();
+  const mic = env.document.querySelector('.voice-mic');
+  mic.click();
+  await flush();
+  env.radio.requestHeadingPassing({ aircraft: 'single', heading: 240 });
+  mic.click();
+  await flush();
+  assert.equal(mic.textContent, 'STOP', 'continuous recognition has resumed');
+  assert.equal(env.radio.status().controllerHeld, false, 'listening in silence does not transmit');
+  env.aircraft.heading = 241;
+  env.radio.observeHeading('single', 241);
+  env.radio.manualCommand({ intent: 'normal-turn-heading', side: 'right', heading: 270 });
+  env.advanceTime(300);
+  assert.equal(env.receiver.read().phase, 'live');
+  env.advanceTime(10000);
+  assert.deepEqual(env.transmissions, ['single', 'single'], 'both the new manual reply and passing report transmit without controller speech');
+});
+
+for (const error of ['not-allowed', 'audio-suspended', 'unavailable']) {
+  test(`terminal ${error} releases radio without an ended callback`, async () => {
+    for (const stage of ['start', 'continuous-speech']) {
+      const runtime = makeOfflineEngine({ cachedArchive: true, ...(stage === 'start' ? { startError: error } : {}) });
+      const env = createRadioEnvironment({ offlineVoice: runtime.api });
+      await flush();
+      env.radio.requestHeadingPassing({ aircraft: 'single', heading: 240 });
+      if (stage === 'start') {
+        env.document.querySelector('.voice-mic').dispatchEvent(new FakeEvent('pointerdown', { pointerId: 1 }));
+      } else {
+        const continuous = env.document.querySelector('.voice-continuous').children[0];
+        continuous.checked = true;
+        continuous.dispatchEvent(new FakeEvent('change'));
+        await flush();
+        runtime.engine.lastStart.onPartial('Falcon');
+      }
+      assert.equal(env.radio.status().controllerHeld, true, `${stage}: PTT or speech owns the channel`);
+      env.aircraft.heading = 241;
+      env.radio.observeHeading('single', 241);
+      if (stage === 'continuous-speech') runtime.engine.lastStart.onError(error);
+      await flush();
+      assert.equal(env.radio.status().controllerHeld, false, `${stage}: terminal error releases the channel`);
+      assert.equal([...env.timers.values()].some(callback => callback.toString().includes('!state.pilotSpeaking && !state.pressHeld')), false,
+        `${stage}: obsolete controller quiet timer is cleared`);
+      env.radio.manualCommand({ intent: 'normal-turn-heading', side: 'right', heading: 270 });
+      env.advanceTime(300);
+      assert.equal(env.receiver.read().phase, 'live', `${stage}: manual reply is not locked behind the failed microphone`);
+      env.advanceTime(10000);
+      assert.deepEqual(env.transmissions, ['single', 'single'], `${stage}: crossing obligation survives and transmits after the manual reply`);
+      assert.equal(runtime.engine.startCalls.length, 1, `${stage}: terminal error does not restart recognition`);
+    }
+  });
+}
+
+test('PTT radio release waits for delayed finalization and pilot audio invalidates late recognition', async () => {
+  const calls = [];
+  const runtime = makeOfflineEngine({ cachedArchive: true, deferStop: true });
+  const env = createEnvironment({ offlineVoice: runtime.api,
+    radio: { controllerStart: () => calls.push('start'), controllerEnd: () => calls.push('end'), reset() {}, acknowledge() {} } });
+  await flush();
+  const mic = env.document.querySelector('.voice-mic');
+  mic.dispatchEvent(new FakeEvent('pointerdown', { pointerId: 1 })); await flush();
+  const capture = runtime.engine.lastStart;
+  capture.onResult('report heading');
+  mic.dispatchEvent(new FakeEvent('pointerup', { pointerId: 1 }));
+  assert.equal(calls.filter(call => call === 'end').length, 0);
+  capture.onResult('request distance');
+  assert.match(env.document.querySelector('.voice-last-call').children[1].textContent, /HEARD · request distance/);
+  runtime.engine.triggerEnd();
+  assert.equal(calls.filter(call => call === 'end').length, 1);
+  env.workspace.setPilotSpeaking(true);
+  capture.onResult('turn left heading 140');
+  assert.match(env.document.querySelector('.voice-last-call').children[1].textContent, /HEARD · request distance/, 'old speech cannot self-execute during pilot playback');
+});
+
+test('continuous radio waits for a quiet boundary and stopping it prevents microphone restart after pilot speech', async () => {
+  const calls = [];
+  const runtime = makeOfflineEngine({ cachedArchive: true });
+  const env = createEnvironment({ offlineVoice: runtime.api,
+    radio: { controllerStart: () => calls.push('start'), controllerEnd: () => calls.push('end'), reset() {}, acknowledge() {} } });
+  await flush();
+  const continuous = env.document.querySelector('.voice-continuous').children[0];
+  continuous.checked = true; continuous.dispatchEvent(new FakeEvent('change')); await flush();
+  runtime.engine.lastStart.onResult('surface wind two three zero');
+  assert.equal(calls.includes('end'), false);
+  runtime.engine.lastStart.onPartial('ten knots');
+  const quiet = [...env.timers.values()].filter(callback => callback.toString().includes('!state.pilotSpeaking && !state.pressHeld'));
+  assert.equal(quiet.length, 1, 'only the most recent speech boundary survives');
+  quiet[0]();
+  assert.equal(calls.at(-1), 'end');
+  env.workspace.setPilotSpeaking(true);
+  continuous.checked = false; continuous.dispatchEvent(new FakeEvent('change'));
+  const starts = runtime.engine.startCalls.length;
+  env.workspace.setPilotSpeaking(false);
+  [...env.timers.values()].forEach(callback => callback()); await flush();
+  assert.equal(runtime.engine.startCalls.length, starts);
+});
+
+test('headphones keep continuous recognition live and controller speech interrupts the pilot', async () => {
+  const calls = [];
+  const runtime = makeOfflineEngine({ cachedArchive: true });
+  let env;
+  env = createEnvironment({ offlineVoice: runtime.api, radio: {
+    allowsBargeIn: () => true,
+    controllerStart() { calls.push('interrupt'); env.workspace.setPilotSpeaking(false); },
+    controllerEnd() {}, reset() {}, acknowledge() {}
+  } });
+  await flush();
+  const continuous = env.document.querySelector('.voice-continuous').children[0];
+  continuous.checked = true; continuous.dispatchEvent(new FakeEvent('change')); await flush();
+  const capture = runtime.engine.lastStart;
+  const cancellations = runtime.engine.cancelCalls;
+  env.workspace.setPilotSpeaking(true);
+  assert.equal(runtime.engine.cancelCalls, cancellations, 'headphones do not cancel active recognition');
+  capture.onPartial('turn left');
+  assert.deepEqual(calls, ['interrupt']);
+  capture.onResult('turn left heading 010');
+  assert.match(env.document.querySelector('.voice-last-call').children[1].textContent, /HEARD · turn left heading 010/);
+});
 
 test('PTT releases outside without capture and ignores unrelated or duplicate releases', async () => {
   const runtime = makeOfflineEngine({ cachedArchive: true, deferStop: true });

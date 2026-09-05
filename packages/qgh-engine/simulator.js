@@ -29,6 +29,7 @@
     forcedTurnSide: null,
     initialTurnSide: null,
     manualTurnSide: null,
+    orbit: null,
     manualTurnRecord: null,
     pendingLeg: null,
     flightTimer: null,
@@ -60,6 +61,31 @@
   const qte = () => normalize(Math.atan2(state.plane.x, -state.plane.y) * 180 / Math.PI);
   const qdm = () => normalize(qte() + 180);
   const bearingLabel = () => state.bearingMode === 'qdm' ? 'QDM · HOMING' : 'QTE · TRUE BEARING';
+  const receiver = window.QGHRadioSession.createReceiver({ observe: () => radioSnapshot(), onChange: renderDF, setTimer: setTimeout, clearTimer: clearTimeout });
+
+  function radioSnapshot() {
+    if (!state.plane || !state.cfg) return null;
+    const overhead = rangeNm() <= OVERHEAD_ZONE_NM;
+    return { source: 'single', callsign: state.cfg.callsign, procedure: state.procedure,
+      heading: state.plane.heading, simulationSeconds: Math.max(0, state.path.length - 1) * PHYSICS_STEP_SECONDS,
+      range: rangeNm(), orbitSide: state.orbit?.side, turnSide: $('continueHeading')?.dataset.turnSide,
+      overhead, qdm: overhead ? null : qdm(), qte: overhead ? null : qte() };
+  }
+
+  function beginRadioTransmit() {
+    clearTimeout(state.dfExpiry);
+    state.dfExpiry = null;
+    state.dfLive = true;
+    const token = receiver.transmit('single');
+    renderDF();
+    return token;
+  }
+
+  function releaseRadioTransmit(token) {
+    receiver.release(token);
+    renderDF();
+    window.QGHRadioWorkspace?.channelAvailable();
+  }
 
   function turnDescriptor(side, from, to) {
     const degrees = side === 'right' ? normalize(to - from) : normalize(from - to);
@@ -213,6 +239,8 @@
   }
 
   function clearDF() {
+    window.QGHRadioWorkspace?.resetExercise();
+    receiver.reset();
     clearTimeout(state.dfExpiry);
     state.dfExpiry = null;
     state.dfLive = false;
@@ -224,34 +252,43 @@
   }
 
   function renderDF() {
-    if (!state.dfLive || !state.plane) {
-      $('bearingType').textContent = bearingLabel();
+    const observation = receiver.read();
+    $('bearingType').textContent = bearingLabel();
+    if (observation.phase === 'idle') {
+      state.dfLive = false;
+      $('bearing').textContent = '---';
+      $('dfState').textContent = 'NO SIGNAL';
+      $('signal').className = 'signal';
+      $('signal').innerHTML = '<i></i>NO TRANSMISSION';
       return;
     }
-    if (rangeNm() <= OVERHEAD_ZONE_NM) {
+    const holding = observation.phase === 'hold';
+    $('signal').className = holding ? 'signal' : 'signal live';
+    $('signal').replaceChildren();
+    $('signal').append(document.createElement('i'), `${observation.callsign} · ${holding ? 'SIGNAL HELD' : 'SIGNAL LIVE'}`);
+    $('dfState').textContent = holding ? 'SIGNAL HELD' : 'SIGNAL LIVE';
+    if (observation.overhead) {
       $('bearing').textContent = '---';
       $('bearingType').textContent = 'D/F · OVERHEAD INDICATION';
-      $('dfState').textContent = 'OVERHEAD';
+      $('dfState').textContent = holding ? 'OVERHEAD · HELD' : 'OVERHEAD';
       return;
     }
-    const bearing = state.bearingMode === 'qdm' ? qdm() : qte();
+    const bearing = state.bearingMode === 'qdm' ? observation.qdm : observation.qte;
     $('bearing').textContent = `${padHeading(bearing)}°`;
     $('bearingType').textContent = bearingLabel();
-    $('dfState').textContent = 'SIGNAL LIVE';
   }
 
   function transmit() {
     if (!state.plane) return;
-    state.dfLive = true;
     const atOverhead = rangeNm() <= OVERHEAD_ZONE_NM;
     logCommand('TRANSMIT FOR D/F', atOverhead
       ? 'Overhead / no-bearing indication.'
       : `QDM ${padHeading(qdm())}°M · QTE ${padHeading(qte())}°T · ${rangeNm().toFixed(1)} NM.`);
-    $('signal').className = 'signal live';
-    $('signal').innerHTML = '<i></i>SIGNAL LIVE';
-    renderDF();
-    clearTimeout(state.dfExpiry);
-    state.dfExpiry = setTimeout(() => clearDF(), DF_WINDOW_MS);
+    if (!window.QGHVoiceWorkspace?.isDispatchingRadioCommand()) {
+      window.QGHRadioWorkspace?.interrupt();
+      const token = beginRadioTransmit();
+      state.dfExpiry = setTimeout(() => releaseRadioTransmit(token), DF_WINDOW_MS);
+    }
     showToast('D/F TRANSMISSION RECEIVED');
   }
 
@@ -260,6 +297,7 @@
     $('headingReply').textContent = `HEADING ${padHeading(state.plane.heading)}°M`;
     logCommand('REQUEST AIRCRAFT HEADING', `Aircraft reports ${padHeading(state.plane.heading)}°M.`);
     showToast('AIRCRAFT HEADING RECEIVED');
+    window.QGHRadioWorkspace?.manualCommand({ intent: 'report-heading' });
   }
 
   function requestDistance() {
@@ -267,6 +305,7 @@
     $('distanceReply').textContent = `RANGE ${rangeNm().toFixed(1)} NM`;
     logCommand('REQUEST DISTANCE', `Aircraft reports ${rangeNm().toFixed(1)} NM from overhead.`);
     showToast('RANGE RECEIVED');
+    window.QGHRadioWorkspace?.manualCommand({ intent: 'request-distance' });
   }
 
   function record() {
@@ -327,12 +366,24 @@
     if (!state.plane || !state.cfg) return;
     const previous = { x: state.plane.x, y: state.plane.y };
     const deltaHeading = turnDeltaForStep(duration);
-    const motion = advanceArc(state.plane, state.plane.heading, state.cfg.speed, deltaHeading / duration, duration);
+    const motion = state.orbit ? Core.advanceOrbitMotion(state.plane, state.cfg.speed, state.cfg.rate, duration, state.orbit)
+      : advanceArc(state.plane, state.plane.heading, state.cfg.speed, deltaHeading / duration, duration);
     state.plane = { x: motion.x, y: motion.y, heading: motion.heading };
+    if (motion.exited) {
+      state.orbit = null;
+      state.manualTurnSide = state.initialTurnSide = state.forcedTurnSide = null;
+      state.targetHeading = motion.heading;
+      updateUsTurnControls();
+    }
     markOverheadIfPassed(previous, state.plane);
     checkPendingLeg(motion.distanceNm);
     if (state.dfLive) renderDF();
     record();
+    window.QGHRadioWorkspace?.observeHeading('single', state.plane.heading);
+    if (motion.completedLaps || motion.exited) {
+      logCommand(motion.exited ? 'ORBIT RESUMED' : 'ORBIT COMPLETE', motion.exited ? 'Pre-orbit heading resumed.' : '360° completed; continuing orbit.');
+      window.QGHRadioWorkspace?.notifyOrbitComplete('single', Boolean(motion.exited));
+    }
     updateNormalContinueControl();
   }
 
@@ -370,13 +421,15 @@
   function updateNormalContinueControl() {
     const control = $('continueHeading');
     if (!control) return;
-    control.disabled = state.procedure !== 'normal' || !state.forcedTurnSide;
-    control.dataset.turnSide = state.forcedTurnSide || '';
+    control.disabled = state.procedure !== 'normal' || !(state.forcedTurnSide || state.orbit);
+    control.dataset.turnSide = state.orbit?.side || state.forcedTurnSide || '';
+    updateOrbitControls();
   }
 
   function issueHeading(side, continuation = false) {
     const heading = inputDegrees('headingInput');
     const turn = turnDescriptor(side, state.plane.heading, heading);
+    state.orbit = null;
     state.initialTurnSide = null;
     state.manualTurnSide = null;
     state.targetHeading = heading;
@@ -388,14 +441,55 @@
     updateNormalContinueControl();
     startFlightLoop();
     showToast(`${label} ACCEPTED`);
+    window.QGHRadioWorkspace?.manualCommand({ intent: 'normal-turn-heading', side, heading });
   }
 
   function continueHeading() {
-    if (!state.plane || state.procedure !== 'normal' || !state.forcedTurnSide) {
+    if (!state.plane || state.procedure !== 'normal' || !(state.forcedTurnSide || state.orbit)) {
       showToast('NO HEADING TURN TO CONTINUE');
       return;
     }
-    issueHeading(state.forcedTurnSide, true);
+    issueHeading(state.orbit?.side || state.forcedTurnSide, true);
+  }
+
+  function updateOrbitControls() {
+    if ($('resumeNormal')) $('resumeNormal').disabled = !state.orbit || Boolean(state.orbit.exitRequested);
+    if ($('continueOrbit')) $('continueOrbit').disabled = !state.orbit;
+    for (const side of ['left', 'right']) $('orbit' + (side === 'left' ? 'Left' : 'Right'))?.setAttribute('aria-pressed', String(state.orbit?.side === side));
+  }
+
+  function startOrbit(side) {
+    if (!state.plane || !state.cfg) return;
+    if (state.orbit?.side === side) state.orbit.exitRequested = false;
+    else state.orbit = Core.createOrbit(side, state.plane.heading);
+    state.manualTurnSide = side;
+    state.initialTurnSide = state.forcedTurnSide = state.targetHeading = null;
+    state.manualTurnRecord = state.pendingLeg = null;
+    updateUsTurnControls(); updateNormalContinueControl();
+    logCommand('ORBIT ' + side.toUpperCase(), `Continuous orbit · radius ${turnRadiusNm(state.cfg.speed, state.cfg.rate).toFixed(2)} NM.`);
+    startFlightLoop(); showToast('ORBIT ' + side.toUpperCase());
+    window.QGHRadioWorkspace?.manualCommand({ intent: 'start-orbit', side });
+  }
+
+  function continueOrbit() {
+    if (!state.orbit) return;
+    state.orbit.exitRequested = false;
+    updateOrbitControls();
+    logCommand('CONTINUE ORBIT', 'Continue in the current orbit; no heading change.');
+    window.QGHRadioWorkspace?.manualCommand({ intent: 'continue-orbit' });
+  }
+
+  function resumeNormal() {
+    if (!state.orbit) return;
+    const atEntry = Core.resumeOrbit(state.orbit);
+    if (atEntry) {
+      state.targetHeading = state.orbit.entryHeading;
+      state.orbit = null;
+      state.manualTurnSide = state.initialTurnSide = state.forcedTurnSide = null;
+    }
+    updateUsTurnControls(); updateNormalContinueControl();
+    logCommand('RESUME NORMAL', atEntry ? 'Pre-orbit heading resumed.' : 'Finish this orbit, then resume the pre-orbit heading.');
+    window.QGHRadioWorkspace?.manualCommand({ intent: 'resume-normal' });
   }
 
   function updateUsTurnControls() {
@@ -417,11 +511,13 @@
     logCommand(`TURN ${side.toUpperCase()} NOW`, `Timed turn at ${state.cfg.rate.toFixed(1)}°/sec · nominal radius ${turnRadiusNm(state.cfg.speed, state.cfg.rate).toFixed(2)} NM.`);
     startFlightLoop();
     showToast(`TURN ${side.toUpperCase()} NOW`);
+    window.QGHRadioWorkspace?.manualCommand({ intent: 'us-turn', side });
   }
 
   function stopTurn() {
     if (!state.manualTurnSide && !state.initialTurnSide) return;
     const record = state.manualTurnRecord;
+    state.orbit = null;
     state.manualTurnSide = null;
     state.initialTurnSide = null;
     state.targetHeading = state.plane.heading;
@@ -435,6 +531,7 @@
     logCommand('STOP TURN NOW', `Aircraft levels on ${padHeading(state.plane.heading)}°M.`);
     startFlightLoop();
     showToast('TURN STOPPED');
+    window.QGHRadioWorkspace?.manualCommand({ intent: 'us-turn-stop' });
   }
 
   function setConsoleProcedure() {
@@ -612,12 +709,18 @@
 
   function startExercise() {
     try {
+      const callsign = $('callsign').value.trim().replace(/\s+/g, ' ').toUpperCase();
+      if (!/^[A-Z][A-Z0-9 ]{0,19}$/.test(callsign)) {
+        $('callsign').focus();
+        throw new Error('Enter a callsign of 1–20 letters, digits or spaces, starting with a letter.');
+      }
       clearReplay();
       clearLiveSpeedChange();
       stopFlightLoop();
       clearDF();
       stopClock();
       state.cfg = {
+        callsign,
         runway: inputDegrees('runway'),
         inbound: inputDegrees('inbound'),
         outbound: inputDegrees('outbound'),
@@ -647,6 +750,7 @@
       state.forcedTurnSide = null;
       state.initialTurnSide = initialTurn === 'straight' ? null : initialTurn;
       state.manualTurnSide = null;
+      state.orbit = null;
       state.manualTurnRecord = null;
       state.pendingLeg = null;
       state.path = [];
@@ -659,7 +763,10 @@
       $('liveSpeed').value = state.cfg.speed;
       $('liveSpeed').dataset.lastLogged = String(state.cfg.speed);
       resetConsole();
-      logCommand('SETUP', `${state.cfg.type.toUpperCase()} · random QTE ${padHeading(initialBearing)}°T · ${state.cfg.distance.toFixed(1)} NM · ${state.cfg.speed} KT · initial ${initialTurn.toUpperCase()} flight.`);
+      $('callsign').value = callsign;
+      $('console').dataset.callsign = callsign;
+      $('badge').textContent = `${callsign} · ${state.procedure === 'us' ? 'U/S COMPASS' : 'NORMAL QGH'}`;
+      logCommand('SETUP', `${callsign} · ${state.cfg.type.toUpperCase()} · random QTE ${padHeading(initialBearing)}°T · ${state.cfg.distance.toFixed(1)} NM · ${state.cfg.speed} KT · initial ${initialTurn.toUpperCase()} flight.`);
       showScreen('console');
       scrollToScreenTop();
       startFlightLoop();
@@ -706,7 +813,9 @@
     if (!state.cfg || !state.plane) return;
     const speed = Number($('liveSpeed').value);
     if (!Number.isFinite(speed) || speed < 60 || speed > 600) return;
+    const changed = state.cfg.speed !== speed;
     state.cfg.speed = speed;
+    if (changed) window.QGHRadioWorkspace?.manualCommand({ intent: 'set-field', field: 'speed', value: speed });
     clearLiveSpeedChange();
     state.speedChangeTimer = setTimeout(commitLiveSpeedChange, 450);
   }
@@ -735,6 +844,10 @@
     $('turnLeft').addEventListener('click', () => startTurn('left'));
     $('turnRight').addEventListener('click', () => startTurn('right'));
     $('turnStop').addEventListener('click', stopTurn);
+    $('orbitLeft')?.addEventListener('click', () => startOrbit('left'));
+    $('orbitRight')?.addEventListener('click', () => startOrbit('right'));
+    $('continueOrbit')?.addEventListener('click', continueOrbit);
+    $('resumeNormal')?.addEventListener('click', resumeNormal);
     $('liveSpeed').addEventListener('input', updateLiveSpeed);
     $('liveSpeed').addEventListener('change', () => {
       updateLiveSpeed();
@@ -765,6 +878,16 @@
       button.addEventListener('click', () => chooseReplaySpeed(Number(button.dataset.replaySpeed)));
     });
   }
+
+  window.QGHRadioAdapter = Object.freeze({
+    snapshot: radioSnapshot,
+    active: () => $('console').classList.contains('active'),
+    beginTransmit: beginRadioTransmit,
+    endTransmit: releaseRadioTransmit,
+    observation: () => receiver.read(),
+    reportEvent: (source, text) => logCommand('HEADING PASSING REPORT', text),
+    controllerStart: () => { clearTimeout(state.dfExpiry); receiver.controllerStart(); renderDF(); }
+  });
 
   bindEvents();
   chooseProcedure('normal');

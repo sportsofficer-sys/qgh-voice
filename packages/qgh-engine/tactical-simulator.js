@@ -69,6 +69,35 @@
 
   const $ = id => document.getElementById(id);
   const padHeading = value => Tactical.padHeading(value);
+  const receiver = window.QGHRadioSession.createReceiver({ observe: id => radioSnapshot(id), onChange: renderDF, setTimer: setTimeout, clearTimer: clearTimeout });
+
+  function radioSnapshot(id = state.activeAircraftId) {
+    const aircraft = aircraftById(id);
+    if (!aircraft) return null;
+    const bearing = Tactical.bearingFor(aircraft);
+    return { source: id, callsign: aircraft.callsign, procedure: state.procedure,
+      heading: aircraft.plane.heading, simulationSeconds: state.exercise.simulationSeconds,
+      range: bearing.range, orbitSide: aircraft.orbit?.side,
+      turnSide: aircraft.forcedTurnSide || aircraft.manualTurnSide || aircraft.initialTurnSide,
+      overhead: bearing.overhead, qdm: bearing.overhead ? null : bearing.qdm, qte: bearing.overhead ? null : bearing.qte };
+  }
+
+  function beginRadioTransmit(id) {
+    if (!aircraftById(id)) return null;
+    clearTimeout(state.dfExpiry);
+    state.dfExpiry = null;
+    state.dfLive = true;
+    state.dfAircraftId = id;
+    const token = receiver.transmit(id);
+    renderDF();
+    return token;
+  }
+
+  function releaseRadioTransmit(token) {
+    receiver.release(token);
+    renderDF();
+    window.QGHRadioWorkspace?.channelAvailable();
+  }
 
   function exerciseRandom() {
     if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
@@ -243,6 +272,8 @@
   }
 
   function clearDF() {
+    window.QGHRadioWorkspace?.resetExercise();
+    receiver.reset();
     clearTimeout(state.dfExpiry);
     state.dfExpiry = null;
     state.dfLive = false;
@@ -252,31 +283,33 @@
 
   function renderDF() {
     const selected = currentAircraft();
-    const transmitted = state.dfLive ? aircraftById(state.dfAircraftId) : null;
-    const aircraft = transmitted || selected;
+    const observation = receiver.read();
+    const aircraft = observation.phase === 'idle' ? selected : observation;
     $('tActiveCallsign').textContent = aircraft ? aircraft.callsign : 'SELECT AN AIRCRAFT';
     $('tBearingType').textContent = bearingLabel();
 
-    if (!state.dfLive || !transmitted) {
+    if (observation.phase === 'idle') {
+      state.dfLive = false;
       $('tBearing').textContent = '---';
       $('tDfState').textContent = 'NO SIGNAL';
       setSignal(false, 'NO TRANSMISSION');
       return;
     }
 
-    const bearing = Tactical.bearingFor(transmitted);
+    const bearing = observation;
+    const holding = observation.phase === 'hold';
     if (bearing.overhead) {
       $('tBearing').textContent = '---';
       $('tBearingType').textContent = 'D/F · OVERHEAD INDICATION';
-      $('tDfState').textContent = 'OVERHEAD';
-      setSignal(true, transmitted.callsign + ' SIGNAL LIVE');
+      $('tDfState').textContent = holding ? 'OVERHEAD · HELD' : 'OVERHEAD';
+      setSignal(!holding, observation.callsign + (holding ? ' SIGNAL HELD' : ' SIGNAL LIVE'));
       return;
     }
 
     const value = state.bearingMode === 'qte' ? bearing.qte : bearing.qdm;
     $('tBearing').textContent = padHeading(value) + '°';
-    $('tDfState').textContent = 'SIGNAL LIVE';
-    setSignal(true, transmitted.callsign + ' SIGNAL LIVE');
+    $('tDfState').textContent = holding ? 'SIGNAL HELD' : 'SIGNAL LIVE';
+    setSignal(!holding, observation.callsign + (holding ? ' SIGNAL HELD' : ' SIGNAL LIVE'));
   }
 
   function clearSpeedChange() {
@@ -308,7 +341,9 @@
     }
     try {
       const speed = inputNumberElement($('tLiveSpeed'), 60, 600, 'Ground speed');
+      const changed = aircraft.cfg.speed !== speed;
       Tactical.setSpeed(state.exercise, aircraft.id, speed);
+      if (changed) window.QGHRadioWorkspace?.manualCommand({ intent: 'set-aircraft-field', aircraft: aircraft.id, field: 'speed', value: speed });
       clearTimeout(state.speedChangeTimer);
       state.pendingSpeedChange = { id: aircraft.id, speed };
       state.speedChangeTimer = setTimeout(commitLiveSpeedChange, 450);
@@ -332,8 +367,12 @@
     select.addEventListener('click', () => selectAircraft(id));
     const name = document.createElement('strong');
     const level = document.createElement('small');
+    level.className = 'tactical-rail-level';
     const status = document.createElement('small');
-    select.append(name, level, status);
+    status.className = 'tactical-rail-detail';
+    const role = document.createElement('small');
+    role.className = 'tactical-rail-role';
+    select.append(name, level, status, role);
 
     const transmit = document.createElement('button');
     transmit.type = 'button';
@@ -342,7 +381,7 @@
     transmit.addEventListener('click', () => transmitForDF(id));
 
     item.append(select, transmit);
-    return { item, select, transmit, name, level, status };
+    return { item, select, transmit, name, level, status, role };
   }
 
   function renderRail() {
@@ -383,6 +422,8 @@
       record.name.textContent = aircraft.callsign;
       record.level.textContent = levelLabel(aircraft);
       record.status.textContent = formationStatus(aircraft) + ' · ' + phaseLabel(aircraft) + ' · ' + Tactical.rangeFor(aircraft).toFixed(1) + ' NM';
+      const role = formationRole(aircraft);
+      record.role.textContent = role === 'LEAD' ? 'LEADER' : role === 'FORMATION' ? 'FOLLOWING' : 'INDEPENDENT';
     });
   }
 
@@ -397,8 +438,31 @@
   function updateNormalContinueControl() {
     const aircraft = currentAircraft();
     const control = $('tContinueHeading');
-    control.disabled = state.procedure !== 'normal' || !aircraft?.forcedTurnSide;
-    control.dataset.turnSide = aircraft?.forcedTurnSide || '';
+    control.disabled = state.procedure !== 'normal' || !(aircraft?.forcedTurnSide || aircraft?.orbit);
+    control.dataset.turnSide = aircraft?.orbit?.side || aircraft?.forcedTurnSide || '';
+    updateOrbitControls();
+  }
+
+  function updateOrbitControls() {
+    const orbit = currentAircraft()?.orbit;
+    if ($('tResumeNormal')) $('tResumeNormal').disabled = !orbit || Boolean(orbit.exitRequested);
+    if ($('tContinueOrbit')) $('tContinueOrbit').disabled = !orbit;
+    for (const side of ['left', 'right']) $('tOrbit' + (side === 'left' ? 'Left' : 'Right'))?.setAttribute('aria-pressed', String(orbit?.side === side));
+  }
+
+  function orbitCommand(action, side) {
+    if (!state.exercise || !currentAircraft()) return;
+    try {
+      const result = action === 'start' ? Tactical.startOrbit(state.exercise, state.activeAircraftId, side)
+        : action === 'continue' ? Tactical.continueOrbit(state.exercise, state.activeAircraftId)
+        : Tactical.resumeOrbit(state.exercise, state.activeAircraftId);
+      if (!result) { showToast('NO ORBIT IN PROGRESS'); return; }
+      if (result.events?.length) logEvents(result.events);
+      const type = action === 'start' ? 'ORBIT ' + side.toUpperCase() : action === 'continue' ? 'CONTINUE ORBIT' : 'RESUME NORMAL';
+      logCommand(result.aircraft.id, type, action === 'resume' ? 'Resume the pre-orbit heading after this circle.' : 'Continuous orbit at selected speed and rate of turn.');
+      renderRail(); renderSelectedAircraft(); startFlightLoop(); showToast(type);
+      window.QGHRadioWorkspace?.manualCommand({ intent: action === 'start' ? 'start-orbit' : action === 'continue' ? 'continue-orbit' : 'resume-normal', aircraft: result.aircraft.id, ...(side ? { side } : {}) });
+    } catch (error) { showToast(error.message || 'Orbit unavailable.'); }
   }
 
   function renderSelectedAircraft() {
@@ -432,16 +496,16 @@
     const aircraft = aircraftById(id);
     if (!aircraft) return;
     selectAircraft(id);
-    state.dfLive = true;
-    state.dfAircraftId = id;
     const bearing = Tactical.bearingFor(aircraft);
     const detail = bearing.overhead
       ? 'Overhead / no-bearing indication.'
       : 'QDM ' + padHeading(bearing.qdm) + '°M · QTE ' + padHeading(bearing.qte) + '°T · ' + bearing.range.toFixed(1) + ' NM.';
     logCommand(id, 'TRANSMIT FOR D/F', detail);
-    renderDF();
-    clearTimeout(state.dfExpiry);
-    state.dfExpiry = setTimeout(clearDF, DF_WINDOW_MS);
+    if (!window.QGHVoiceWorkspace?.isDispatchingRadioCommand()) {
+      window.QGHRadioWorkspace?.interrupt();
+      const token = beginRadioTransmit(id);
+      state.dfExpiry = setTimeout(() => releaseRadioTransmit(token), DF_WINDOW_MS);
+    }
     showToast(aircraft.callsign + ' D/F TRANSMISSION RECEIVED');
   }
 
@@ -740,9 +804,21 @@
     }
   }
 
+  function stepFlight(duration) {
+    const events = Tactical.step(state.exercise, duration);
+    state.exercise.aircraft.forEach(aircraft => window.QGHRadioWorkspace?.observeHeading(aircraft.id, aircraft.plane.heading));
+    const resumed = new Set(events.filter(event => event.type === 'ORBIT RESUMED').map(event => event.aircraftId));
+    for (const event of events) {
+      if (event.type === 'ORBIT RESUMED' || (event.type === 'ORBIT COMPLETE' && !resumed.has(event.aircraftId))) {
+        window.QGHRadioWorkspace?.notifyOrbitComplete(event.aircraftId, event.type === 'ORBIT RESUMED');
+      }
+    }
+    return events;
+  }
+
   function physicsStep(duration) {
     if (!state.exercise) return;
-    const events = Tactical.step(state.exercise, duration);
+    const events = stepFlight(duration);
     if (events.length) logEvents(events);
     if (state.dfLive) renderDF();
     renderRail();
@@ -762,6 +838,7 @@
       renderRail();
       renderSelectedAircraft();
       showToast(result.aircraft.callsign + ' TURN ' + side.toUpperCase() + ' ACCEPTED');
+      window.QGHRadioWorkspace?.manualCommand({ intent: 'normal-turn-heading', aircraft: result.aircraft.id, side, heading });
     } catch (error) {
       showToast(error.message || 'Heading command unavailable.');
     }
@@ -783,6 +860,7 @@
       renderRail();
       renderSelectedAircraft();
       showToast(result.aircraft.callsign + ' CONTINUE ' + turn.side.toUpperCase() + ' ACCEPTED');
+      window.QGHRadioWorkspace?.manualCommand({ intent: 'normal-turn-heading', aircraft: result.aircraft.id, side: turn.side, heading });
     } catch (error) {
       showToast(error.message || 'Continue heading unavailable.');
     }
@@ -803,6 +881,7 @@
       renderSelectedAircraft();
       updateUsTurnControls();
       showToast(result.aircraft.callsign + ' TURN ' + side.toUpperCase() + ' NOW');
+      window.QGHRadioWorkspace?.manualCommand({ intent: 'us-turn', aircraft: result.aircraft.id, side });
     } catch (error) {
       showToast(error.message || 'Timed turn unavailable.');
     }
@@ -824,6 +903,7 @@
       renderRail();
       updateUsTurnControls();
       showToast(result.aircraft.callsign + ' TURN STOPPED');
+      window.QGHRadioWorkspace?.manualCommand({ intent: 'us-turn-stop', aircraft: result.aircraft.id });
     } catch (error) {
       showToast(error.message || 'Stop turn unavailable.');
     }
@@ -835,6 +915,7 @@
     $('tHeadingReply').textContent = 'HEADING ' + padHeading(aircraft.plane.heading) + '°M';
     logCommand(aircraft.id, 'REPORT HEADING', 'Aircraft reports ' + padHeading(aircraft.plane.heading) + '°M.');
     showToast(aircraft.callsign + ' HEADING RECEIVED');
+    window.QGHRadioWorkspace?.manualCommand({ intent: 'report-heading', aircraft: aircraft.id });
   }
 
   function requestDistance() {
@@ -844,6 +925,7 @@
     $('tDistanceReply').textContent = 'RANGE ' + range.toFixed(1) + ' NM';
     logCommand(aircraft.id, 'REQUEST DISTANCE', 'Aircraft reports ' + range.toFixed(1) + ' NM from overhead.');
     showToast(aircraft.callsign + ' RANGE RECEIVED');
+    window.QGHRadioWorkspace?.manualCommand({ intent: 'request-distance', aircraft: aircraft.id });
   }
 
   function advanceFlight() {
@@ -853,7 +935,10 @@
       heading: aircraft.plane.heading,
       range: Tactical.rangeFor(aircraft)
     }));
-    const events = Tactical.advance(state.exercise, ADVANCE_FLIGHT_SECONDS);
+    const events = [];
+    for (let index = 0; index < ADVANCE_FLIGHT_SECONDS / Tactical.STEP_SECONDS; index += 1) {
+      events.push(...stepFlight(Tactical.STEP_SECONDS));
+    }
     logEvents(events);
     const detail = state.exercise.aircraft.map(aircraft => {
       const start = before.find(item => item.id === aircraft.id);
@@ -863,6 +948,7 @@
     if (state.dfLive) renderDF();
     renderRail();
     updateUsTurnControls();
+    updateNormalContinueControl();
     showToast('FLIGHT ADVANCED 1 MINUTE');
   }
 
@@ -1175,6 +1261,10 @@
     $('tUsLeft').addEventListener('click', () => startTurn('left'));
     $('tUsRight').addEventListener('click', () => startTurn('right'));
     $('tUsStop').addEventListener('click', stopTurn);
+    $('tOrbitLeft')?.addEventListener('click', () => orbitCommand('start', 'left'));
+    $('tOrbitRight')?.addEventListener('click', () => orbitCommand('start', 'right'));
+    $('tContinueOrbit')?.addEventListener('click', () => orbitCommand('continue'));
+    $('tResumeNormal')?.addEventListener('click', () => orbitCommand('resume'));
     $('tLiveSpeed').addEventListener('input', () => updateLiveSpeed(false));
     $('tLiveSpeed').addEventListener('change', () => {
       updateLiveSpeed(true);
@@ -1211,6 +1301,16 @@
       button.addEventListener('click', () => chooseReplaySpeed(Number(button.dataset.tacticalReplaySpeed)));
     });
   }
+
+  window.QGHRadioAdapter = Object.freeze({
+    snapshot: radioSnapshot,
+    active: () => $('tConsole').classList.contains('active'),
+    beginTransmit: beginRadioTransmit,
+    endTransmit: releaseRadioTransmit,
+    observation: () => receiver.read(),
+    reportEvent: (source, text) => logCommand(source, 'HEADING PASSING REPORT', text),
+    controllerStart: () => { clearTimeout(state.dfExpiry); receiver.controllerStart(); renderDF(); }
+  });
 
   bindEvents();
   chooseProcedure('normal');
