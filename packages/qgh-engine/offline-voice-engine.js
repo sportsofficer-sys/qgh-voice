@@ -142,12 +142,17 @@
     return screen === 'single:console' || screen === 'tactical:console';
   }
 
-  function headingAliases(rawCallsign, allCallsigns) {
+  function headingAliases(rawCallsign, allCallsigns, compactMode) {
     const designator = callsignDesignator(rawCallsign);
     const designatorCount = allCallsigns.filter(candidate => callsignDesignator(candidate) === designator).length;
     // A unique designator is the concise RT form the parser accepts. When two aircraft share
     // one designator, grammar phrases must carry a complete callsign so routing stays exact.
-    return designatorCount === 1 ? [designator] : callsignVariants(rawCallsign);
+    if (designatorCount === 1) return [designator];
+    const preserveLeadingZeros = /\s0\d{1,2}$/.test(String(rawCallsign?.callsign || rawCallsign || ''));
+    const variants = callsignVariants(rawCallsign, {
+      includeDigitWords: compactMode === 'digits' || Boolean(compactMode && preserveLeadingZeros)
+    });
+    return compactMode ? variants.slice(-1) : variants;
   }
 
   function addSingleExerciseHeadings(phrases) {
@@ -163,25 +168,31 @@
 
   function addTacticalExerciseHeadings(phrases, callsigns) {
     const aliases = callsigns.flatMap(rawCallsign => headingAliases(rawCallsign, callsigns));
-    // Standard controller phrasing without the extra word "heading" is supported on every
-    // tactical grammar. Add the expanded variant only where it still leaves sufficient room
-    // for a four-aircraft, 20-character callsign exercise on Android.
-    const includeHeadingWord = aliases.length * 5 * 361 + staticGrammarPhrases().length < MAX_ANDROID_GRAMMAR_PHRASES;
     aliases.forEach(callsign => {
-      for (let heading = 0; heading <= 360; heading += 1) {
-        const spoken = phraseForHeading(heading);
-        addPhrases(phrases, [
-          `${callsign} turn left ${spoken}`, `${callsign} turn right ${spoken}`,
-          `${callsign} continue ${spoken}`
-        ]);
-        if (includeHeadingWord) {
-          addPhrases(phrases, [
-            `${callsign} turn left heading ${spoken}`, `${callsign} turn right heading ${spoken}`
-          ]);
-        }
-      }
       addPhrases(phrases, [`${callsign} turn left now`, `${callsign} turn right now`, `${callsign} stop turn now`]);
     });
+    // Keep the two Normal turn phrasings together. If expanded callsign aliases exceed
+    // Android's limits, use one complete spoken callsign per shared designator instead.
+    // Digit words provide a shorter fallback for long cardinal suffixes such as 999.
+    for (const compactMode of [null, 'cardinal', 'digits']) {
+      const candidate = new Set(phrases);
+      const headingCallsigns = callsigns.flatMap(rawCallsign => headingAliases(rawCallsign, callsigns, compactMode));
+      headingCallsigns.forEach(callsign => {
+        for (let heading = 0; heading <= 360; heading += 1) {
+          const spoken = phraseForHeading(heading);
+          addPhrases(candidate, [
+            `${callsign} turn left ${spoken}`, `${callsign} turn right ${spoken}`,
+            `${callsign} turn left heading ${spoken}`, `${callsign} turn right heading ${spoken}`,
+            `${callsign} continue ${spoken}`
+          ]);
+        }
+        addPhrases(candidate, [`${callsign} turn left now`, `${callsign} turn right now`, `${callsign} stop turn now`]);
+      });
+      if (withinAndroidGrammarLimits([...candidate])) {
+        addPhrases(phrases, [...candidate]);
+        return;
+      }
+    }
   }
 
   function withinAndroidGrammarLimits(grammar) {
@@ -213,13 +224,6 @@
 
     const phrases = new Set(staticGrammarPhrases());
 
-    // Heading calls are relevant only during an exercise. Tactical callsigns never leak
-    // into a single-aircraft, setup, entry, or review grammar.
-    if (isExerciseScreen(screen)) {
-      if (scope === 'tactical') addTacticalExerciseHeadings(phrases, callsigns);
-      else addSingleExerciseHeadings(phrases);
-    }
-
     if (scope === 'tactical' && isExerciseScreen(screen)) callsigns.forEach(rawCallsign => {
       callsignVariants(rawCallsign, { includeDigitWords: true }).forEach(callsign => {
         const transmitPhrases = [
@@ -240,6 +244,12 @@
 
     // [unk] makes an out-of-grammar phrase an explicit non-command, never a nearest match.
     phrases.add('[unk]');
+    // Add headings after the other commands so the tactical alias budget accounts for
+    // the entire grammar. They are relevant only during an exercise.
+    if (isExerciseScreen(screen)) {
+      if (scope === 'tactical') addTacticalExerciseHeadings(phrases, callsigns);
+      else addSingleExerciseHeadings(phrases);
+    }
     const grammar = [...phrases];
     // Android rejects oversize JSON grammars by replacing them with [unk]. A conservative
     // fallback keeps core on-device commands available instead of silently disabling voice.

@@ -117,7 +117,10 @@
             </div>
             <b id="tDfState" aria-live="polite">NO SIGNAL</b>
           </div>
-          <div class="voice-ack-slot"><output id="tVoiceCommandAck" class="voice-command-ack" aria-live="off" hidden></output></div>
+          <div class="voice-ack-slot">
+            <output id="tVoiceCommandAck" class="voice-command-ack" aria-live="off" hidden></output>
+            <span id="tHomingClock" class="homing-clock" role="timer" aria-label="Exercise clock" aria-live="off" hidden>00:00</span>
+          </div>
           <div class="tactical-display">
             <div class="tactical-readout">
               <small id="tBearingType">QDM · HOMING</small>

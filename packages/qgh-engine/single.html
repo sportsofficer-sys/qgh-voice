@@ -102,7 +102,10 @@
           </div>
           <b id="dfState" aria-live="polite">NO SIGNAL</b>
         </div>
-        <div class="voice-ack-slot"><output id="voiceCommandAck" class="voice-command-ack" aria-live="off" hidden></output></div>
+        <div class="voice-ack-slot">
+          <output id="voiceCommandAck" class="voice-command-ack" aria-live="off" hidden></output>
+          <span id="homingClock" class="homing-clock" role="timer" aria-label="Exercise clock" aria-live="off" hidden>00:00</span>
+        </div>
         <div class="display">
           <div class="readout">
             <small id="bearingType">QDM · HOMING</small>

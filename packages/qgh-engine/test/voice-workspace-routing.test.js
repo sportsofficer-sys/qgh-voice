@@ -257,12 +257,17 @@ function createSingleHarness() {
     aircraft,
     runway: add(documentRef, setup, 'input', { id: 'runway', type: 'number', min: '0', max: '359', value: '150' }),
     voiceCommandAck: add(documentRef, consoleScreen, 'output', { id: 'voiceCommandAck', hidden: true }),
+    requestHeading: add(documentRef, consoleScreen, 'button', { id: 'requestHeading' }),
+    headingReply: add(documentRef, consoleScreen, 'b', { id: 'headingReply', textContent: 'HEADING —' }),
+    requestDistance: add(documentRef, consoleScreen, 'button', { id: 'requestDistance' }),
+    distanceReply: add(documentRef, consoleScreen, 'b', { id: 'distanceReply', textContent: 'RANGE —' }),
     headingInput: add(documentRef, consoleScreen, 'input', { id: 'headingInput', type: 'number', min: '0', max: '359', value: '150' }),
     turnHeadingLeft: add(documentRef, consoleScreen, 'button', { id: 'turnHeadingLeft', textContent: 'TURN LEFT' }),
     turnHeadingRight: add(documentRef, consoleScreen, 'button', { id: 'turnHeadingRight', textContent: 'TURN RIGHT' }),
     continueHeading: add(documentRef, consoleScreen, 'button', { id: 'continueHeading', textContent: 'CONTINUE HEADING' }),
     turnLeft: add(documentRef, consoleScreen, 'button', { id: 'turnLeft', textContent: 'TURN LEFT NOW', hidden: true }),
     turnRight: add(documentRef, consoleScreen, 'button', { id: 'turnRight', textContent: 'TURN RIGHT NOW', hidden: true }),
+    turnStop: add(documentRef, consoleScreen, 'button', { id: 'turnStop', hidden: true }),
     transmit: add(documentRef, consoleScreen, 'button', { id: 'transmit', textContent: 'TRANSMIT FOR D/F' }),
     restartExercise: add(documentRef, consoleScreen, 'button', { id: 'restartExercise', textContent: 'RESTART EXERCISE' }),
     replay: add(documentRef, analysis, 'button', {
@@ -306,12 +311,25 @@ function createTacticalHarness() {
     falcon: createAircraft('A', 'FALCON 11'),
     raven: createAircraft('B', 'RAVEN 21'),
     formationLeader: add(documentRef, setup, 'select', { id: 'tFormationLeader' }),
-    voiceCommandAck: add(documentRef, consoleScreen, 'output', { id: 'tVoiceCommandAck', hidden: true })
+    voiceCommandAck: add(documentRef, consoleScreen, 'output', { id: 'tVoiceCommandAck', hidden: true }),
+    requestHeading: add(documentRef, consoleScreen, 'button', { id: 'tRequestHeading' }),
+    headingReply: add(documentRef, consoleScreen, 'b', { id: 'tHeadingReply', textContent: 'HEADING —' }),
+    headingInput: add(documentRef, consoleScreen, 'input', { id: 'tHeadingInput', type: 'number', min: '0', max: '359', value: '150' }),
+    turnHeadingLeft: add(documentRef, consoleScreen, 'button', { id: 'tTurnLeft' }),
+    turnHeadingRight: add(documentRef, consoleScreen, 'button', { id: 'tTurnRight' })
   };
   const ravenLeader = add(documentRef, controls.formationLeader, 'option', { value: 'B', textContent: 'RAVEN 21' });
   controls.formationLeader.options = [ravenLeader];
   setActive(screens, consoleScreen);
-  return { workspace: bootWorkspace(documentRef), screens, setup, consoleScreen, analysis, controls };
+  const environment = createWorkspaceEnvironment(documentRef);
+  return { workspace: environment.workspace, timers: environment.timers, screens, setup, consoleScreen, analysis, controls };
+}
+
+function showAppliedReply(harness) {
+  const stage = [...harness.timers.values()].find(callback => callback.toString().includes('const message = `${phase}'));
+  assert.ok(stage, 'the acknowledgement has a pending result transition');
+  stage();
+  return harness.controls.voiceCommandAck.textContent;
 }
 
 function command(intent, detail) {
@@ -387,6 +405,80 @@ test('accepted voice calls visibly acknowledge above the active homing display a
   assert.equal(tactical.controls.raven.transmit.classList.contains('voice-command-effect'), true);
   assert.equal(tactical.controls.voiceCommandAck.hidden, false);
   assert.match(tactical.controls.voiceCommandAck.textContent, /RAVEN 21.*TRANSMIT/);
+});
+
+test('voice heading and range acknowledgements snapshot the returned data, not the request or a later report', () => {
+  const harness = createSingleHarness();
+  const { workspace, screens, consoleScreen, controls } = harness;
+  setActive(screens, consoleScreen);
+  controls.headingReply.textContent = 'HEADING 120°M';
+  controls.requestHeading.onClick = () => { controls.headingReply.textContent = 'HEADING 300°M'; };
+  assert.equal(workspace.dispatchTranscript('report heading').ok, true);
+  assert.match(controls.voiceCommandAck.textContent, /HEARD · REPORT HEADING/);
+  assert.equal(controls.requestHeading.classList.contains('voice-command-effect'), true);
+  controls.headingReply.textContent = 'HEADING 305°M';
+  assert.equal(showAppliedReply(harness), 'APPLIED · HEADING 300°M');
+  assert.equal(controls.voiceCommandAck.getAttribute('aria-label'), controls.voiceCommandAck.textContent);
+  assert.equal(controls.voiceCommandAck.title, controls.voiceCommandAck.textContent);
+
+  controls.requestDistance.onClick = () => { controls.distanceReply.textContent = 'RANGE 12.4 NM'; };
+  assert.equal(workspace.dispatchTranscript('report distance').ok, true);
+  assert.equal(showAppliedReply(harness), 'APPLIED · RANGE 12.4 NM');
+
+  controls.requestHeading.disabled = true;
+  assert.equal(workspace.dispatchTranscript('report heading').ok, false);
+  assert.match(showAppliedReply(harness), /^REJECTED ·/);
+  assert.doesNotMatch(controls.voiceCommandAck.textContent, /300|305/);
+});
+
+test('voice turn replies distinguish target headings and retain the active continuation direction', () => {
+  const harness = createSingleHarness();
+  const { workspace, screens, consoleScreen, controls } = harness;
+  setActive(screens, consoleScreen);
+  assert.equal(workspace.dispatchTranscript('turn right two three zero').ok, true);
+  assert.equal(showAppliedReply(harness), 'APPLIED · TURNING RIGHT 230°M');
+  assert.equal(controls.headingInput.value, '230');
+  assert.equal(controls.turnHeadingRight.classList.contains('voice-command-effect'), true);
+  controls.continueHeading.dataset.turnSide = 'right';
+  assert.equal(workspace.dispatchTranscript('continue zero six zero').ok, true);
+  assert.equal(showAppliedReply(harness), 'APPLIED · TURNING RIGHT 060°M');
+  assert.equal(workspace.dispatchTranscript('turn left three six zero').ok, true);
+  assert.equal(showAppliedReply(harness), 'APPLIED · TURNING LEFT 000°M');
+});
+
+test('tactical voice readbacks retain the addressed callsign and reported data across selection changes', () => {
+  const harness = createTacticalHarness();
+  const { workspace, controls } = harness;
+  let selected;
+  controls.raven.select.onClick = () => { selected = 'raven'; };
+  controls.requestHeading.onClick = () => {
+    assert.equal(selected, 'raven');
+    controls.headingReply.textContent = 'HEADING 300°M';
+  };
+  assert.equal(workspace.dispatchTranscript('raven report heading').ok, true);
+  selected = 'falcon';
+  controls.headingReply.textContent = 'HEADING —';
+  assert.equal(showAppliedReply(harness), 'APPLIED · RAVEN 21 · HEADING 300°M');
+  assert.equal(workspace.dispatchTranscript('raven turn right two three zero').ok, true);
+  assert.equal(selected, 'raven');
+  assert.equal(showAppliedReply(harness), 'APPLIED · RAVEN 21 · TURNING RIGHT 230°M');
+  assert.equal(controls.turnHeadingRight.classList.contains('voice-command-effect'), true);
+});
+
+test('U/S voice turn readbacks never disclose heading and a heading request stays rejected', () => {
+  const harness = createSingleHarness();
+  const { workspace, screens, consoleScreen, controls } = harness;
+  setActive(screens, consoleScreen);
+  controls.turnHeadingLeft.hidden = controls.turnHeadingRight.hidden = controls.requestHeading.hidden = true;
+  controls.turnLeft.hidden = controls.turnRight.hidden = controls.turnStop.hidden = false;
+  controls.headingReply.textContent = 'HEADING 300°M';
+  assert.equal(workspace.dispatchTranscript('turn right now').ok, true);
+  assert.equal(showAppliedReply(harness), 'APPLIED · TURNING RIGHT');
+  assert.equal(workspace.dispatchTranscript('stop turn now').ok, true);
+  assert.equal(showAppliedReply(harness), 'APPLIED · TURN STOPPED');
+  assert.equal(workspace.dispatchTranscript('report heading').ok, false);
+  assert.match(showAppliedReply(harness), /^REJECTED ·/);
+  assert.doesNotMatch(controls.voiceCommandAck.textContent, /300/);
 });
 
 test('voice router requires an explicit confirmation before restart and accepts spoken confirmation', () => {

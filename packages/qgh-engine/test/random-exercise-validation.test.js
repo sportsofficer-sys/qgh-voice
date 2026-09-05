@@ -122,11 +122,12 @@ function makeHarness() {
     'normal', 'us', 'startExercise', 'consoleTitle', 'badge', 'mobileControlsToggle', 'controls', 'transmit',
     'terminate', 'advanceFlight', 'infoRow', 'requestHeading', 'headingReply', 'requestDistance', 'distanceReply', 'normalCtl',
     'turnHeadingLeft', 'headingInput', 'turnHeadingRight', 'continueHeading', 'usCtl', 'turnLeft', 'turnRight', 'turnStop', 'liveSpeed',
-    'clock', 'clockStart', 'clockStop', 'clockReset', 'restartExercise', 'dfState', 'bearingType', 'bearing', 'signal',
+    'clock', 'homingClock', 'clockStart', 'clockStop', 'clockReset', 'restartExercise', 'dfState', 'bearingType', 'bearing', 'signal',
     'qdm', 'qte', 'sumRunway', 'sumOutbound', 'sumInbound', 'sumProcedure', 'sumInitial', 'sumTerminal', 'sumSpeed',
     'sumTx', 'sumOverheadTurn', 'sumBaseTurn', 'plot', 'replayElapsed', 'returnConsole', 'replay', 'newExercise', 'logs', 'toast'
   ];
   const elements = Object.fromEntries(ids.map(id => [id, new FakeElement(id, defaults[id]) ]));
+  elements.homingClock.hidden = true;
   const replayButtons = [1, 2, 3, 10].map(speed => {
     const button = new FakeElement(`replay-${speed}`);
     button.dataset.replaySpeed = String(speed);
@@ -215,6 +216,38 @@ function makeHarness() {
     }
   };
 }
+
+test('the homing stopwatch mirrors the existing clock, stops, resumes and clears on reset', () => {
+  for (const procedure of ['normal', 'us']) {
+    const harness = makeHarness();
+    const { elements, state } = harness;
+    harness.click(procedure === 'normal' ? 'normal' : 'us');
+    harness.click('startExercise');
+    assert.equal(elements.homingClock.hidden, true);
+    harness.click('clockStart');
+    assert.equal(elements.homingClock.hidden, false);
+    assert.equal(elements.homingClock.textContent, '00:00');
+    harness.tick(2);
+    assert.equal(elements.homingClock.textContent, '00:02');
+    assert.equal(elements.homingClock.textContent, elements.clock.textContent);
+    harness.click('clockStart');
+    harness.tick(1);
+    assert.equal(elements.homingClock.textContent, '00:03', 'a second Start must not duplicate the timer');
+    harness.click('clockStop');
+    harness.tick(2);
+    assert.equal(elements.homingClock.textContent, '00:03');
+    assert.equal(elements.homingClock.hidden, false);
+    assert.match(elements.homingClock.getAttribute('aria-label'), /stopped/);
+    harness.click('clockStart');
+    state.clockSeconds = 59;
+    harness.tick(1);
+    assert.equal(elements.homingClock.textContent, '01:00');
+    harness.click('clockReset');
+    assert.equal(elements.homingClock.hidden, true);
+    assert.equal(elements.homingClock.textContent, '00:00');
+    assert.equal(state.clockRunning, false);
+  }
+});
 
 function setExercise(harness, scenario, procedure) {
   const { elements } = harness;

@@ -168,12 +168,20 @@
   }
 
   function updateClock() {
-    $('clock').textContent = formatTime(state.clockSeconds);
+    const time = formatTime(state.clockSeconds);
+    $('clock').textContent = time;
+    const readout = $('homingClock');
+    if (readout) {
+      readout.textContent = time;
+      readout.setAttribute('aria-label', `Exercise clock, ${state.clockRunning ? 'running' : 'stopped'}: ${time}`);
+    }
   }
 
   function startClock() {
     if (state.clockRunning) return;
     state.clockRunning = true;
+    if ($('homingClock')) $('homingClock').hidden = false;
+    updateClock();
     state.clockTimer = setInterval(() => {
       state.clockSeconds += 1;
       updateClock();
@@ -184,11 +192,13 @@
     state.clockRunning = false;
     clearInterval(state.clockTimer);
     state.clockTimer = null;
+    updateClock();
   }
 
   function resetClock() {
     stopClock();
     state.clockSeconds = 0;
+    if ($('homingClock')) $('homingClock').hidden = true;
     updateClock();
   }
 

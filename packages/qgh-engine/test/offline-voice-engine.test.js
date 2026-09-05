@@ -184,6 +184,63 @@ test('keeps a four-aircraft tactical grammar within Android limits and parser-co
   assert.equal(sharedDesignatorGrammar.includes('select aircraft profile mirage two thousand'), false);
 });
 
+test('offline Normal turn grammar preserves both heading phrases across single and tactical exercises', () => {
+  const scenarios = [
+    { screen: 'single-console', callsigns: [], targets: [''] },
+    {
+      screen: 'tactical-console',
+      callsigns: ['FALCON 11', 'RAVEN 21', 'VIPER 31', 'EAGLE 41'],
+      targets: ['falcon', 'raven', 'viper', 'eagle']
+    },
+    {
+      screen: 'tactical-console',
+      callsigns: ['ABCDEFGHIJKLMNOP 101', 'ABCDEFGHIJKLMNOP 102', 'ABCDEFGHIJKLMNOP 103', 'ABCDEFGHIJKLMNOP 104'],
+      targets: ['abcdefghijklmnop one hundred one', 'abcdefghijklmnop one hundred two', 'abcdefghijklmnop one hundred three', 'abcdefghijklmnop one hundred four']
+    },
+    {
+      screen: 'tactical-console',
+      callsigns: ['ABCDEFGHIJKLMNOP 999', 'ABCDEFGHIJKLMNOP 998', 'ABCDEFGHIJKLMNOP 997', 'ABCDEFGHIJKLMNOP 996'],
+      targets: ['abcdefghijklmnop niner niner niner', 'abcdefghijklmnop niner niner eight', 'abcdefghijklmnop niner niner seven', 'abcdefghijklmnop niner niner six']
+    },
+    {
+      screen: 'tactical-console',
+      callsigns: ['ABCDEFGHIJKLMNOP 001', 'ABCDEFGHIJKLMNOP 002', 'ABCDEFGHIJKLMNOP 003', 'ABCDEFGHIJKLMNOP 004'],
+      targets: ['abcdefghijklmnop zero zero one', 'abcdefghijklmnop zero zero two', 'abcdefghijklmnop zero zero tree', 'abcdefghijklmnop zero zero four']
+    }
+  ];
+
+  for (const scenario of scenarios) {
+    const grammar = OfflineVoice.buildRecognitionPlan(scenario).grammar;
+    const phrases = new Set(grammar);
+    assert.ok(grammar.length < 12_000, scenario.callsigns.join(', '));
+    assert.ok(Buffer.byteLength(JSON.stringify(grammar)) < 490_000, scenario.callsigns.join(', '));
+    for (const [index, target] of scenario.targets.entries()) {
+      const prefix = target ? `${target} ` : '';
+      for (const [heading, spoken] of [
+        [0, 'zero zero zero'], [5, 'zero zero fife'], [140, 'one four zero'],
+        [270, 'two seven zero'], [359, 'tree fife niner'], [360, 'tree six zero']
+      ]) {
+        for (const side of ['left', 'right']) {
+          for (const headingWord of ['', 'heading ']) {
+            const phrase = `${prefix}turn ${side} ${headingWord}${spoken}`;
+            assert.ok(phrases.has(phrase), `missing offline phrase: ${phrase}`);
+            const command = Voice.parseCommand(phrase, scenario);
+            assert.equal(command.intent, 'normal-turn-heading', phrase);
+            assert.equal(command.heading, heading, phrase);
+            assert.equal(command.side, side, phrase);
+            assert.equal(command.aircraft, scenario.callsigns[index], phrase);
+          }
+        }
+      }
+      for (const side of ['left', 'right']) {
+        const phrase = `${prefix}turn ${side} now`;
+        assert.ok(phrases.has(phrase), `missing U/S timed turn: ${phrase}`);
+        assert.equal(Voice.parseCommand(phrase, scenario).intent, 'us-turn', phrase);
+      }
+    }
+  }
+});
+
 test('primes the audio context before requesting microphone access', async () => {
   const runtime = loadEngineRuntime();
   const session = runtime.api.create();

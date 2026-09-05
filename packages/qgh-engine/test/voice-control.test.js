@@ -81,6 +81,35 @@ test('maps Normal QGH and U/S Compass turns, including a clear spoken variant', 
   });
 });
 
+test('Normal turn commands have the same target and readback with or without the word heading', () => {
+  const options = { callsigns: [{ id: 'A', callsign: 'FALCON 11' }, { id: 'B', callsign: 'RAVEN 21' }] };
+  const targets = ['', 'Falcon', 'Falcon Eleven', 'Falcon one one', 'Raven 21', 'Raven two one'];
+  const headings = [['140', 140], ['one four zero', 140], ['zero zero five', 5], ['tree fife niner', 359]];
+
+  for (const target of targets) {
+    for (const side of ['left', 'right']) {
+      for (const [spoken, heading] of headings) {
+        const prefix = target ? `${target} ` : '';
+        const concise = Voice.parseCommand(`${prefix}turn ${side} ${spoken}`, options);
+        const expanded = Voice.parseCommand(`${prefix}turn ${side} heading ${spoken}`, options);
+        for (const command of [concise, expanded]) {
+          assert.equal(command.accepted, true, command.transcript);
+          assert.equal(command.intent, 'normal-turn-heading', command.transcript);
+          assert.equal(command.side, side, command.transcript);
+          assert.equal(command.heading, heading, command.transcript);
+          assert.equal(command.aircraft, target ? target.startsWith('Falcon') ? 'A' : 'B' : undefined);
+          assert.equal(Voice.requiresVoiceConfirmation(command), false, command.transcript);
+        }
+        assert.equal(Voice.describeCommand(concise), Voice.describeCommand(expanded));
+      }
+      const timedTurn = Voice.parseCommand(`${target ? `${target} ` : ''}turn ${side} now`, options);
+      assert.equal(timedTurn.intent, 'us-turn');
+      assert.equal(timedTurn.side, side);
+      assert.equal(timedTurn.heading, undefined, 'timed U/S turns must not acquire an assigned heading');
+    }
+  }
+});
+
 test('interprets flexible local RT phrasing only when the essential command slots are present', () => {
   const options = { callsigns: [{ id: 'A', callsign: 'FALCON 11' }, { id: 'B', callsign: 'RAVEN 21' }] };
 

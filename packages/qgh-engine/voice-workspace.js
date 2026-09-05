@@ -157,6 +157,30 @@
       : String(fallback || command?.intent || 'COMMAND').replace(/-/g, ' ').toUpperCase();
   }
 
+  function appliedExerciseReply(command) {
+    const tactical = pageKind() === 'tactical';
+    if (!activeScreen(tactical ? 'tConsole' : 'console')) return '';
+    let reply = '';
+    if (command.intent === 'report-heading') {
+      const reported = $(tactical ? 'tHeadingReply' : 'headingReply')?.textContent || '';
+      if (/^HEADING \d{3}°M$/.test(reported)) reply = reported;
+    } else if (command.intent === 'request-distance') {
+      const reported = $(tactical ? 'tDistanceReply' : 'distanceReply')?.textContent || '';
+      if (/^RANGE \d+(?:\.\d+)? NM$/.test(reported)) reply = reported;
+    } else if (command.intent === 'normal-turn-heading' || command.intent === 'continue-turn-heading') {
+      const heading = String(((command.heading % 360) + 360) % 360).padStart(3, '0');
+      const side = command.intent === 'normal-turn-heading'
+        ? command.side : $(tactical ? 'tContinueHeading' : 'continueHeading')?.dataset.turnSide;
+      reply = side === 'left' || side === 'right'
+        ? `TURNING ${side.toUpperCase()} ${heading}°M` : `CONTINUING TO ${heading}°M`;
+    } else if (command.intent === 'us-turn') {
+      reply = `TURNING ${command.side.toUpperCase()}`;
+    } else if (command.intent === 'us-turn-stop') {
+      reply = 'TURN STOPPED';
+    }
+    return reply && tactical && command.aircraft ? `${tacticalCallsign(command.aircraft)} · ${reply}` : reply;
+  }
+
   function presentVoiceResult(command, outcome, transcript) {
     state.feedbackSequence += 1;
     state.processing = false;
@@ -167,10 +191,14 @@
     const phase = pending ? 'CONFIRM REQUIRED' : cancelled ? 'CANCELLED' : applied ? 'APPLIED' : command?.accepted ? 'REJECTED' : 'NOT RECOGNISED';
     state.currentOutcome = phase;
     const description = command?.accepted ? describeWorkspaceVoiceCommand(command, outcome.message) : String(transcript || '').trim();
-    state.lastCall = { heard: String(transcript || '').trim(), interpreted: description, result: phase, reason: outcome.message };
+    // Snapshot the synchronous control reply now, before the display transition:
+    // the aircraft may keep turning or the selected tactical aircraft may change.
+    const appliedReply = applied ? appliedExerciseReply(command) : '';
+    const resultDetail = appliedReply || outcome.message;
+    state.lastCall = { heard: String(transcript || '').trim(), interpreted: description, result: phase, reason: resultDetail };
     setStatus(phase, applied ? 'success' : pending ? 'active' : 'error');
-    if (state.lastCallDetail) state.lastCallDetail.textContent = `HEARD · ${state.lastCall.heard}\nINTERPRETED · ${description || '—'}\n${phase} · ${outcome.message}`;
-    setVoiceFeedback(transcript, `${phase} · ${outcome.message}`, applied ? 'success' : pending ? 'neutral' : 'error');
+    if (state.lastCallDetail) state.lastCallDetail.textContent = `HEARD · ${state.lastCall.heard}\nINTERPRETED · ${description || '—'}\n${phase} · ${resultDetail}`;
+    setVoiceFeedback(transcript, `${phase} · ${resultDetail}`, applied ? 'success' : pending ? 'neutral' : 'error');
     root.clearTimeout(state.acknowledgementStageTimer);
     root.clearTimeout(state.commandAcknowledgementTimer);
     if (state.announcement) state.announcement.textContent = '';
@@ -191,7 +219,7 @@
     paint(`HEARD · ${description || '—'}`);
     // Execution is immediate. Only the visual transition waits, never the command.
     state.acknowledgementStageTimer = root.setTimeout(() => {
-      const message = `${phase} · ${applied || pending ? description : outcome.message}`;
+      const message = `${phase} · ${applied ? appliedReply || description : pending ? description : outcome.message}`;
       paint(message);
       if (state.announcement) state.announcement.textContent = message;
     }, 250);
