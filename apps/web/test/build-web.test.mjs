@@ -92,6 +92,7 @@ test('web build creates an allowlisted PWA package', () => {
   const environment = readFileSync(resolve(outputRoot, 'web-environment.js'), 'utf8');
   const distribution = readFileSync(resolve(outputRoot, 'web-distribution.js'), 'utf8');
   const headers = readFileSync(resolve(outputRoot, '_headers'), 'utf8');
+  const { version } = JSON.parse(readFileSync(resolve(outputRoot, 'app-version.json'), 'utf8'));
   assert.match(entry, /manifest\.webmanifest/);
   assert.match(entry, /QGH_WEB_DISTRIBUTION/);
   assert.match(guide, /manifest\.webmanifest/);
@@ -100,10 +101,13 @@ test('web build creates an allowlisted PWA package', () => {
   assert.match(single, /offline-voice-engine\.js/);
   assert.match(single, /guided-familiarisation\.js/);
   assert.match(single, /pwa-register\.js/);
+  assert.match(single, new RegExp(`voice-workspace\\.js\\?v=${version.replaceAll('.', '\\.')}`));
+  assert.match(single, new RegExp(`voice\\.css\\?v=${version.replaceAll('.', '\\.')}`));
   assert.match(tactical, /manifest\.webmanifest/);
   assert.match(tactical, /worker-src 'self'/);
   assert.match(tactical, /web-environment\.js/);
   assert.match(tactical, /pwa-register\.js/);
+  assert.match(tactical, new RegExp(`voice-workspace\\.js\\?v=${version.replaceAll('.', '\\.')}`));
   assert.match(serviceWorker, /const APP_SHELL_PATHS = new Set/);
   assert.match(serviceWorker, /function shellCacheKey\(request\)/);
   assert.match(serviceWorker, /VOICE_MODEL_URL/);

@@ -100,7 +100,10 @@ function assertReplaced(html, target, replacement, pageName) {
 }
 
 function addPwaMarkup(pageName, source, version) {
-  let html = source;
+  // The simulator's shared pages intentionally use versioned asset URLs. Rewrite
+  // their query strings for each PWA build so a browser cannot retain a previous
+  // voice or simulator script after the service worker has updated.
+  let html = source.replace(/\?v=[0-9][a-zA-Z0-9.+-]*/g, `?v=${version}`);
 
   if (!html.includes("worker-src 'self'")) {
     html = assertReplaced(
