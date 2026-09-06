@@ -38,6 +38,9 @@
     const normalized = String(value || '').trim().replace(/\s+/g, ' ').toUpperCase();
     if (!normalized) throw new Error('Each aircraft needs a callsign.');
     if (normalized.length > 20) throw new Error('Callsigns must be 20 characters or fewer.');
+    if (/^\d+$/.test(normalized) && !/^[1-9]\d{2}$/.test(normalized)) {
+      throw new Error('Numeric callsigns must be from 100 to 999.');
+    }
     return normalized;
   }
 
@@ -222,6 +225,7 @@
       initialTurnSide: initialTurn === 'straight' ? null : initialTurn,
       manualTurnSide: null,
       manualTurnRecord: null,
+      orbit: null,
       pendingLeg: null,
       procedureTurns: { overhead: null, base: null },
       formationSpeed: null,
@@ -298,6 +302,7 @@
       follower.initialTurnSide = null;
       follower.manualTurnSide = null;
       follower.manualTurnRecord = null;
+      follower.orbit = null;
       follower.pendingLeg = null;
       follower.path = [{ ...follower.plane }];
     });
@@ -335,6 +340,7 @@
     aircraft.initialTurnSide = null;
     aircraft.manualTurnSide = null;
     aircraft.manualTurnRecord = null;
+    aircraft.orbit = null;
     aircraft.pendingLeg = null;
     breakEvent.type = 'STOP FOLLOWING LEADER';
     breakEvent.detail = 'Released from ' + leader.callsign + ' formation; continuing ' + padHeading(heading) + '°M at ' + Math.round(speed) + ' KT.';
@@ -419,9 +425,18 @@
 
   function stepAircraft(exercise, aircraft, duration) {
     const previous = { x: aircraft.plane.x, y: aircraft.plane.y };
-    const deltaHeading = turnDeltaForStep(aircraft, duration);
-    const motion = advanceArc(aircraft.plane, aircraft.plane.heading, aircraft.cfg.speed, deltaHeading / duration, duration);
+    const orbit = aircraft.orbit;
+    const deltaHeading = orbit ? 0 : turnDeltaForStep(aircraft, duration);
+    const motion = orbit
+      ? Core.advanceOrbitMotion(aircraft.plane, aircraft.cfg.speed, aircraft.cfg.rate, duration, orbit)
+      : advanceArc(aircraft.plane, aircraft.plane.heading, aircraft.cfg.speed, deltaHeading / duration, duration);
     aircraft.plane = { x: motion.x, y: motion.y, heading: motion.heading };
+    if (orbit) {
+      for (let lap = orbit.laps - motion.completedLaps + 1; lap <= orbit.laps; lap += 1) {
+        event(exercise, aircraft, 'ORBIT COMPLETE', 'Completed orbit ' + lap + '.');
+      }
+      if (motion.exited) finishOrbit(exercise, aircraft);
+    }
     markOverheadIfPassed(exercise, aircraft, previous, aircraft.plane);
     checkPendingLeg(exercise, aircraft, motion.distanceNm);
     aircraft.path.push({ ...aircraft.plane });
@@ -444,6 +459,7 @@
     aircraft.initialTurnSide = null;
     aircraft.manualTurnSide = null;
     aircraft.manualTurnRecord = null;
+    aircraft.orbit = null;
     aircraft.pendingLeg = null;
     aircraft.procedureTurns = { ...leader.procedureTurns };
     aircraft.path.push({ ...aircraft.plane });
@@ -482,6 +498,7 @@
     const target = degrees(heading, 'Assigned heading');
     detachFormationFollower(exercise, aircraft, 'individual heading command');
     const turn = turnDescriptor(side, aircraft.plane.heading, target);
+    aircraft.orbit = null;
     aircraft.initialTurnSide = null;
     aircraft.manualTurnSide = null;
     aircraft.targetHeading = target;
@@ -501,6 +518,7 @@
   function continueHeading(exercise, id, heading) {
     if (exercise.procedure !== 'normal') throw new Error('Heading assignment is available only in Normal QGH.');
     const aircraft = getAircraft(exercise, id);
+    if (aircraft.orbit) return issueHeading(exercise, id, aircraft.orbit.side, heading);
     if (!TURN_SIDES.has(aircraft.forcedTurnSide) || aircraft.manualTurnSide || aircraft.initialTurnSide) return null;
     return issueHeading(exercise, id, aircraft.forcedTurnSide, heading);
   }
@@ -512,6 +530,7 @@
     const aircraft = getAircraft(exercise, id);
     detachFormationFollower(exercise, aircraft, 'individual timed turn');
     if (aircraft.manualTurnSide || aircraft.initialTurnSide) return null;
+    aircraft.orbit = null;
     aircraft.initialTurnSide = null;
     aircraft.targetHeading = null;
     aircraft.forcedTurnSide = null;
@@ -533,6 +552,7 @@
     const aircraft = getAircraft(exercise, id);
     if (!aircraft.manualTurnSide && !aircraft.initialTurnSide) return null;
     const record = aircraft.manualTurnRecord;
+    aircraft.orbit = null;
     aircraft.manualTurnSide = null;
     aircraft.initialTurnSide = null;
     aircraft.targetHeading = aircraft.plane.heading;
@@ -544,6 +564,51 @@
     }
     aircraft.manualTurnRecord = null;
     return { aircraft, turn: established };
+  }
+
+  function startOrbit(exercise, id, side) {
+    if (!PROCEDURES.has(exercise?.procedure)) throw new Error('Orbit needs an active Normal QGH or U/S Compass exercise.');
+    if (!TURN_SIDES.has(side)) throw new Error('Orbit direction must be left or right.');
+    const aircraft = getAircraft(exercise, id);
+    if (aircraft.orbit?.side === side) return continueOrbit(exercise, id);
+    const orbit = Core.createOrbit(side, aircraft.plane.heading);
+    const startIndex = exercise.events.length;
+    detachFormationFollower(exercise, aircraft, 'individual orbit command');
+    aircraft.orbit = orbit;
+    aircraft.initialTurnSide = null;
+    aircraft.manualTurnSide = side;
+    aircraft.manualTurnRecord = null;
+    aircraft.targetHeading = null;
+    aircraft.forcedTurnSide = null;
+    aircraft.pendingLeg = null;
+    return { aircraft, radius: turnRadiusNm(aircraft.cfg.speed, aircraft.cfg.rate), events: exercise.events.slice(startIndex) };
+  }
+
+  function continueOrbit(exercise, id) {
+    const aircraft = getAircraft(exercise, id);
+    if (!aircraft.orbit) return null;
+    aircraft.orbit.exitRequested = false;
+    return { aircraft, radius: turnRadiusNm(aircraft.cfg.speed, aircraft.cfg.rate), events: [] };
+  }
+
+  function finishOrbit(exercise, aircraft) {
+    aircraft.targetHeading = aircraft.orbit.entryHeading;
+    aircraft.orbit = null;
+    aircraft.manualTurnSide = null;
+    aircraft.initialTurnSide = null;
+    aircraft.forcedTurnSide = null;
+    aircraft.manualTurnRecord = null;
+    aircraft.pendingLeg = null;
+    return event(exercise, aircraft, 'ORBIT RESUMED', 'Resuming normal flight on the heading held before the orbit.');
+  }
+
+  function resumeOrbit(exercise, id) {
+    const aircraft = getAircraft(exercise, id);
+    if (!aircraft.orbit) return null;
+    const startIndex = exercise.events.length;
+    const immediate = Core.resumeOrbit(aircraft.orbit);
+    if (immediate) finishOrbit(exercise, aircraft);
+    return { aircraft, immediate, radius: turnRadiusNm(aircraft.cfg.speed, aircraft.cfg.rate), events: exercise.events.slice(startIndex) };
   }
 
   function setSpeed(exercise, id, speed) {
@@ -564,6 +629,9 @@
     stopFollowingLeader,
     issueHeading,
     continueHeading,
+    startOrbit,
+    continueOrbit,
+    resumeOrbit,
     startTurn,
     stopTurn,
     setSpeed,

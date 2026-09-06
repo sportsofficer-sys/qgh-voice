@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#007d7d">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
-  <title>QGH Simulator User Guide</title>
+  <title>Reds QGH Simulator · User Guide</title>
   <link rel="stylesheet" href="entry.css?v=4.2.0">
 </head>
 <body>
@@ -17,7 +17,7 @@
 
     <article class="guide-card" aria-labelledby="guideTitle">
       <header class="guide-intro">
-        <span>USER GUIDE · VERSION 4.2.0</span>
+        <span>USER GUIDE · 4.4.2 NUMERIC CALLSIGNS</span>
         <h2 id="guideTitle">QGH Simulator</h2>
         <p>Training use only. Verify all operational procedures against current authorised publications and local instructions.</p>
       </header>
@@ -27,6 +27,7 @@
         <ol>
           <li>Choose <b>Single Aircraft QGH</b> or <b>Tactical QGH</b>. The optional first-run Guided Familiarisation can be skipped or reopened from <b>GUIDED TOUR</b>.</li>
           <li>Enter runway orientation, outbound track, inbound / final track, aircraft profile, range, speed and turn rate.</li>
+          <li>For a single aircraft, enter its callsign. You may include or omit that callsign in single-aircraft voice calls. Tactical calls must identify the aircraft.</li>
           <li>Select <b>Normal QGH</b> or <b>U/S Compass</b>, then start the exercise.</li>
           <li>Use D/F transmit, turn, speed, clock and advance controls. Termination opens the recorded flight-path review.</li>
         </ol>
@@ -47,6 +48,7 @@
             <p>“Turn left heading two seven zero”</p>
             <p>“Continue zero six zero” only while a same-direction turn is active.</p>
             <p>“Report heading” · “Request distance”</p>
+            <p>“Report heading passing three two five” · “Report passing heading zero nine zero”</p>
             <p>“Start clock” · “Stop clock” · “Reset clock”</p>
             <p>“Advance flight one minute”</p>
           </section>
@@ -56,12 +58,13 @@
             <p>“Turn left now”</p>
             <p>“Turn right now”</p>
             <p>“Stop turn now”</p>
-            <p>“Report heading” · “Request distance”</p>
+            <p>“Request distance” (heading reports are unavailable with a U/S compass)</p>
             <p>“Start clock” · “Advance flight one minute”</p>
           </section>
           <section>
             <h4>TACTICAL QGH</h4>
             <p>Say the complete callsign first: “Raven Twenty One turn right heading zero six zero”. A unique designator such as Raven is also accepted; use the full callsign if two aircraft share it.</p>
+            <p>A callsign may also be a number from 100 to 999. For callsign 387, say <b>TREE EIGHT SEVEN</b> before the instruction.</p>
             <p>“Raven Twenty One continue zero six zero” while Raven Twenty One is already turning that way</p>
             <p>“Raven Twenty One transmit for D/F”</p>
             <p>“Raven Twenty One turn right now” · “Raven Twenty One stop turn now”</p>
@@ -71,12 +74,43 @@
         <p class="guide-note">Use aviation digits for headings: zero, one, two, tree, four, fife, six, seven, eight, niner. Plain phrase variations are accepted when the aircraft, action and required heading are clear. Give one call at a time. “Terminate exercise” opens the safety confirmation; say “Confirm termination” or “Keep exercise.”</p>
       </section>
 
+      <section class="guide-section" aria-labelledby="guideRadio">
+        <h3 id="guideRadio">PILOT REPLIES, PRIORITY AND MUTE</h3>
+        <p>Flight commands take effect as soon as they are accepted. The aircraft keeps moving and turning while the pilot speaks; a reply never pauses flight or delays the next accepted instruction. Red text above the homing display shows the accepted action or report, and the affected control is highlighted.</p>
+        <ol>
+          <li><b>Interrupt a reply:</b> hold PTT to stop the pilot audio, give your new instruction, then release. Manual exercise controls remain usable during speech and recognition failure.</li>
+          <li><b>Replace a turn:</b> “Turn right 060” followed by “Turn left heading 010” immediately changes the commanded turn direction and target. The new pilot reply is <q>Roger, turning left, zero one zero, [callsign].</q> The aircraft follows the configured turn rate; its heading does not jump to 010.</li>
+          <li><b>Default — no headphones:</b> pilot replies are muted. Red feedback, aircraft D/F and continuous voice control still work. No manoeuvre depends on hearing the pilot.</li>
+          <li><b>Headphone readbacks:</b> connect and wear headphones, open VOICE, then select <b>HEADPHONES · PILOT READBACKS</b>. Read the warning, play the headphone test, confirm that you heard it through your headphones, and choose <b>ENABLE PILOT REPLIES</b>. The test temporarily disables recognition so its words cannot issue commands. Aircraft continue flying.</li>
+          <li><b>Four bundled male voices:</b> the web app includes an offline pilot-voice pack in its initial download. Single aircraft uses Michael; tactical aircraft A–D use Michael, Fenrir, Puck and George respectively. Voices remain assigned to their aircraft when you change selection. Unfamiliar callsigns may be spelled. No device voice or online speech service is substituted.</li>
+          <li><b>Pilot speech pace:</b> the same packaged voices and target of approximately 100 words per minute apply on laptops and phones. Short phrases and pauses can vary. Replies combine pre-generated audio clips locally; there is no per-command neural inference or cloud request. This affects headphone audio only, not aircraft motion, controller recognition or muted transmission timing. Commands execute first without waiting for audio.</li>
+          <li><b>Controller priority:</b> with Continuous Listening on, recognition remains active during headphone pilot speech. Detected controller speech cancels the old reply; an accepted new command executes immediately and receives a fresh reply. The old reply does not resume. PTT takes priority immediately. Give a complete new call; an interruption alone does not change flight.</li>
+          <li><b>Mute at any time:</b> open VOICE and choose <b>MUTE PILOT REPLIES</b> or switch the readback option off, before removing headphones. Muting stops sound without cancelling a manoeuvre, red feedback or simulated aircraft D/F. Pilot replies start muted on every page/session and when the page is hidden.</li>
+          <li><b>Device changes:</b> a reported audio-device change mutes pilot replies and requires a fresh headphone test. Browsers cannot reliably prove that headphones are connected or receiving the sound; some route changes are not reported. Your confirmation is not automatic detection. Speaker audio may enter the microphone and execute unintended commands, so never enable readbacks on speakers.</li>
+          <li><b>Offline preparation:</b> keep the app open online until the initial offline download completes. Speech recognition retains its separate <b>SET UP OFFLINE VOICE</b> step. If a download, memory or audio error occurs, pilot replies stay silent; manual controls, red acknowledgements and aircraft D/F remain available. Browser storage can be cleared by you or the device, requiring another download.</li>
+        </ol>
+        <p>Aircraft D/F updates during its simulated transmission. At release, the last indication is held for two seconds, then clears. A new transmission replaces the held indication. Ground indication is off. Muted replies still generate timed aircraft transmissions and red acknowledgements.</p>
+        <p>Normal heading reports use the measured heading, not the assigned target. U/S Compass replies acknowledge turning or stopping without revealing a heading. Tactical replies retain the addressed callsign even if you select another aircraft before playback.</p>
+        <p><b>Orbits — both procedures:</b> use <q>Orbit left</q>, <q>Orbit right</q>, <q>Left hand orbit</q> or <q>Right hand orbit</q>, or the ORBIT buttons. An orbit starts from the aircraft’s current position and heading, at the selected speed and turn rate. The pilot reports each completed 360° circle and continues circling, with red feedback and D/F during the report. No heading is read out in U/S Compass.</p>
+        <p><q>Continue</q> or <q>Continue orbit</q> keeps the existing orbit and cancels a pending resume instruction. <q>Resume normal</q> (also a button) finishes the current circle, then flies straight on the actual heading at which the orbit began. At the exact start of a circle, it can resume immediately. A new turn-to-heading call—including <q>Continue zero six zero</q> in Normal QGH—overrides the orbit immediately at the selected rate. In U/S Compass, <q>Stop turn now</q> rolls out on the current heading instead. Tactical calls need the aircraft callsign; a separate orbit command to a follower releases that aircraft from formation. A leader’s orbit retains its attached followers.</p>
+        <p>An unchanged speed and turn rate produce a closed circular path. Changing speed during the orbit changes its radius; the simulator does not teleport the aircraft back to the old position. Completion is detected at the next quarter-second flight sample; busy-channel reports wait until the channel is available.</p>
+        <p><b>Report a heading when passing:</b> in Normal QGH, say <q>Report heading passing three two five</q>, <q>Report passing heading three two five</q> or <q>Report passing three two five</q>. Any heading 000–360 is accepted (360 means 000). This arms a one-time report; it does not change the aircraft’s turn or heading. The pilot reports <q>Passing three two five</q> when the aircraft crosses that heading, with red feedback and aircraft D/F. In Tactical QGH, put the aircraft’s callsign first. Each aircraft has one pending report; a newer valid request replaces it. Changing aircraft selection, stopping the microphone or giving another turn does not cancel the report. Restarting or terminating the exercise clears it. Heading reports remain unavailable with a U/S compass.</p>
+        <p>Reports wait while the radio is busy. If the crossing occurred more than two simulated seconds earlier—including during <b>Advance flight 1 min</b>—the pilot says <q>Passed</q> instead of <q>Passing</q>. D/F always shows that aircraft’s position during its actual transmission, then holds the last reading for two seconds. Muted pilot audio still gives the red report and D/F.</p>
+        <h4>INFORMATIONAL RT AND LIMITS</h4>
+        <p>Recognised informational calls such as “Surface wind two three zero degrees ten knots”, “Runway in use two three”, and “Overhead turn will be right longer way for outbound track zero six five” receive ROGER and aircraft D/F, without changing flight controls. ROGER means receipt, not execution.</p>
+        <p>The <a href="rt-reference.md" download>QGH / DF RT reference</a> preserves the supplied phraseology for study. It is not a list of fully implemented commands. Descent, landing, visual reports, aircraft system checks and speechless PTT-click procedures are not simulated by this radio update. Recognised unsupported requests display NOT SIMULATED rather than claiming compliance. Unclear messages and unknown callsigns do not produce a guessed manoeuvre.</p>
+        <p>Give one clear call at a time. A recognised final segment executes immediately: a condition, correction or negation spoken later cannot retroactively prevent that earlier action. Make a subsequent explicit instruction to amend it; do not combine weather, conditional instructions and turns in one call.</p>
+        <h4>OFFLINE AUDIO</h4>
+        <p>Web v4.4.2 includes its four-voice pilot pack in the initial offline download. Controller recognition has a separate initial voice-setup step. Pilot replies are composed from packaged audio clips, with no device-voice or remote fallback. If audio is unavailable, captions and timed aircraft D/F continue without sound. Previously released Windows and Android packages have their earlier audio implementation; matching 4.4.2 native packages are not part of this web release. Verify recognition and replies in airplane mode on the actual device before training.</p>
+      </section>
+
       <section class="guide-section" aria-labelledby="guideTactical">
         <div class="guide-section-head">
           <h3 id="guideTactical">TACTICAL QGH</h3>
           <span>02–04 AIRCRAFT</span>
         </div>
         <p>Configure aircraft callsigns, profiles, levels, speed, turn rate and range with the visible setup controls. Levels default in 1,000 ft separation. For formation flight, select formation, leader and members before starting.</p>
+        <p>On phones, aircraft tabs use a compact two-column grid so up to four callsigns and their leader/following status are visible together. Tap a callsign to select it, or its colour-coded TX button to request D/F. Full selected-aircraft details remain in the controls.</p>
         <div class="guide-command-grid guide-command-grid-two">
           <section>
             <h4>CALLSIGN DISCIPLINE</h4>
@@ -95,14 +129,22 @@
         </div>
       </section>
 
-      <section class="guide-section guide-section-last" aria-labelledby="guideNotes">
+      <section class="guide-section" aria-labelledby="guideNotes">
         <h3 id="guideNotes">NOTES</h3>
         <ul>
           <li>Normal QGH uses assigned-heading turns. U/S Compass uses only left now, right now and stop turn now.</li>
-          <li>D/F bearing is displayed only during a transmission window; QDM is homing and QTE is true bearing.</li>
+          <li>D/F is live during aircraft transmission, then frozen for a two-second hold. QDM is homing and QTE is true bearing; neither is the aircraft heading.</li>
           <li>Speed and rate of turn affect manoeuvrability and turn radius. Tactical formation wingmen retain leader speed until separated.</li>
           <li>The review records the continuous flight path, reference radials, commands and replay cursor. Use the replay-speed control to review efficiently.</li>
         </ul>
+      </section>
+      <section class="guide-section guide-section-last" aria-labelledby="guidePrivacy">
+        <h3 id="guidePrivacy">PRIVACY · NATIVE APPS</h3>
+        <p>Effective 5 September 2026. QGH Simulator is provided by Flt Lt Balaram Reddy for training, not operational air traffic control.</p>
+        <p>Microphone access is optional and used only for local controller-command recognition after you enable PTT or Continuous Listening. The app does not upload or save microphone recordings. Recognised commands and exercise tracks are held for the current exercise and review, not sent to a server. Manual controls work without microphone permission.</p>
+        <p>The native apps contain no advertising, analytics or account system. The Android app does not request Internet permission. Recognition models are stored locally. Optional pilot speech passes generated reply text to your device's installed speech service, selecting only a voice reported as not requiring a network connection. The device's speech service is provided separately by its vendor; QGH does not select a cloud voice.</p>
+        <p>Windows may retain local preferences and model caches; Android retains the extracted model but not exercise history. Restart an exercise to replace its in-memory data. Close the app to clear that session. Android's App info → Storage → Clear storage removes its local app data. Windows app data is under %APPDATA%\qgh-simulator; remove it only with the app closed if you want to erase its preferences and caches. Revoke microphone access in your device's privacy settings at any time.</p>
+        <p>For privacy questions, open the project support page in your browser: github.com/reds-aviation/qgh-voice/issues. Do not post personal information, audio recordings or sensitive training information publicly. Browser/PWA hosting is separate: its hosting provider receives ordinary web requests when you access or update the website.</p>
       </section>
     </article>
   </main>

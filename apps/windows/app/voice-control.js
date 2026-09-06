@@ -100,6 +100,8 @@
       .replace(/(\d)\s*[.,]\s*(\d)/g, '$1 point $2')
       .replace(/\bq\s*[\/-]?\s*d\s*[\/-]?\s*m\b/g, 'qdm')
       .replace(/\bq\s*[\/-]?\s*t\s*[\/-]?\s*e\b/g, 'qte')
+      .replace(/\b(?:direction|direct)\s+finding\b/g, 'df')
+      .replace(/\bd\s+and\s+f\b/g, 'df')
       .replace(/\bd\s*[\/-]?\s*f\b/g, 'df')
       .replace(/\bu\s*[\/-]?\s*s\b/g, 'us')
       .replace(/[–—−-]/g, ' ')
@@ -278,9 +280,34 @@
 
   function callsignFor(value) {
     const normalized = normalizeTranscript(value);
-    if (!normalized || normalized.length > 20) return null;
+    // Spoken cardinal suffixes can be longer than the final callsign they represent
+    // (for example, "Raven one hundred one" -> "RAVEN 101"). Bound the canonical
+    // result below, rather than rejecting an otherwise valid local RT callsign early.
+    if (!normalized || normalized.length > 80) return null;
     const tokens = normalized.split(' ');
-    if (tokens.length < 2 || tokens.some(token => !/^[a-z0-9]+$/.test(token))) return null;
+    if (tokens.some(token => !/^[a-z0-9]+$/.test(token))) return null;
+
+    // Indian Air Force training callsigns may be a standalone number from 100 to
+    // 999. Accept typed digits, digit-by-digit RT and cardinal speech while keeping
+    // shorter numbers unavailable as aircraft targets.
+    const numericOnly = tokens.every(token => (
+      /^\d+$/.test(token)
+      || digitFor(token) !== null
+      || Object.prototype.hasOwnProperty.call(SMALL_NUMBERS, token)
+      || Object.prototype.hasOwnProperty.call(TENS, token)
+      || token === 'hundred'
+    ));
+    if (numericOnly) {
+      const digits = tokens.map(digitFor);
+      const numeric = digits.every(digit => digit !== null)
+        ? Number(digits.join(''))
+        : parseNumber(tokens.join(' '));
+      return Number.isInteger(numeric) && numeric >= 100 && numeric <= 999
+        ? String(numeric)
+        : null;
+    }
+
+    if (tokens.length < 2) return null;
 
     const numericStart = tokens.findIndex(token => (
       digitFor(token) !== null
@@ -522,11 +549,12 @@
     const bearingMode = transcript.match(/^(?:select|set|show) (qdm|qte)(?: mode)?$/);
     if (bearingMode) return accept(transcript, 'set-bearing-mode', { mode: bearingMode[1] });
 
-    const transmission = transcript.match(/^transmit(?: for)? (df|qdm|qte)(?: aircraft)?(?: (.+))?$/);
+    const transmission = transcript.match(/^(?:transmit|send)(?: for)? (df|qdm|qte)(?: aircraft)?(?: (.+))?$/);
     if (transmission) {
       const detail = transmission[1] === 'df' ? {} : { mode: transmission[1] };
-      if (!transmission[2]) return accept(transcript, 'transmit-df', detail);
-      const target = resolveAircraft(transmission[2], options);
+      const trailing = String(transmission[2] || '').trim();
+      if (!trailing || /^(?:please|now)(?: (?:please|now))?$/.test(trailing)) return accept(transcript, 'transmit-df', detail);
+      const target = resolveAircraft(trailing, options);
       return target.aircraft
         ? accept(transcript, 'transmit-df', { ...detail, aircraft: target.aircraft })
         : reject(transcript, target.reason);
@@ -768,15 +796,24 @@
   function exactAircraftMention(tokens, options) {
     const candidates = callsignCandidates(options);
     const exact = [];
+    const firstActionIndex = tokens.findIndex(token => TARGET_ACTION_TOKENS.has(token) || token === 'left' || token === 'right');
     for (let start = 0; start < tokens.length; start += 1) {
       for (let length = 1; length <= 6 && start + length <= tokens.length; length += 1) {
         const phrase = tokens.slice(start, start + length).join(' ');
         const normalized = normalizedCallsign(phrase);
         const matches = candidates.filter(candidate => candidate.spoken === normalized);
+        const numericTarget = matches.length === 1 && /^\d{3}$/.test(matches[0].spoken);
+        const numericIsLeadingAddressee = !numericTarget || (
+          firstActionIndex > start + length - 1
+          && tokens.slice(0, start).every(token => token === 'aircraft')
+        );
         // Do not treat a configured numeric suffix as complete when the speaker continues
         // with another number. For example, "Raven Twelve Three" must not be routed to
         // configured "Raven Twelve" when "Raven 123" is not an aircraft in the exercise.
-        if (matches.length === 1 && !isNumericCallsignContinuation(tokens[start + length])) {
+        // A standalone numeric callsign is valid only in the leading addressee slot here;
+        // heading, speed, level and range values must never be mistaken for an aircraft.
+        if (matches.length === 1 && numericIsLeadingAddressee
+          && !isNumericCallsignContinuation(tokens[start + length])) {
           exact.push({ aircraft: matches[0].value, start, end: start + length });
         }
       }
@@ -807,10 +844,26 @@
   }
 
   function hasUnresolvedCallsignAttempt(tokens, options) {
-    const designators = new Set(callsignCandidates(options)
+    const candidates = callsignCandidates(options);
+    const designators = new Set(candidates
       .map(candidate => candidate.spoken.split(' ').find(token => /^[a-z]{3,}$/.test(token)))
       .filter(Boolean));
-    return tokens.some(token => designators.has(token));
+    if (tokens.some(token => designators.has(token))) return true;
+
+    // When numeric callsigns are configured, an unmatched number before an RT
+    // action is an attempted addressee, not permission to use the selected aircraft.
+    // This keeps "124 transmit" from becoming an untargeted tactical D/F call.
+    if (!candidates.some(candidate => /^\d{3}$/.test(candidate.spoken))) return false;
+    const actionIndex = tokens.findIndex(token => TARGET_ACTION_TOKENS.has(token) || token === 'left' || token === 'right');
+    if (actionIndex <= 0) return false;
+    const attempted = tokens.slice(0, actionIndex).filter(token => token !== 'aircraft');
+    return attempted.length > 0 && attempted.every(token => (
+      /^\d+$/.test(token)
+      || digitFor(token) !== null
+      || Object.prototype.hasOwnProperty.call(SMALL_NUMBERS, token)
+      || Object.prototype.hasOwnProperty.call(TENS, token)
+      || token === 'hundred'
+    ));
   }
 
   function valueAfter(tokens, anchors, field) {
@@ -1079,9 +1132,10 @@
     return Boolean(command?.requiresConfirmation || CONFIRMATION_INTENTS.has(command?.intent));
   }
 
-  function describeCommand(command) {
+  function describeCommand(command, options) {
     if (!command?.accepted) return 'COMMAND NOT RECOGNISED';
-    const target = command.aircraft ? `${String(command.aircraft).toUpperCase()} · ` : '';
+    const targetLabel = options?.targetLabel ?? command.aircraft;
+    const target = command.aircraft ? `${String(targetLabel).toUpperCase()} · ` : '';
     if (command.intent === 'normal-turn-heading') return `${target}TURN ${String(command.side || '').toUpperCase()} HEADING ${String(command.heading).padStart(3, '0')}`;
     if (command.intent === 'us-turn') return `${target}TURN ${String(command.side || '').toUpperCase()} NOW`;
     if (command.intent === 'set-field' || command.intent === 'set-aircraft-field') return `${target}${String(command.field || '').toUpperCase()} ${command.value}`;

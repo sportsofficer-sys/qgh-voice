@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#007d7d">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
-  <title>Tactical QGH Simulator</title>
+  <title>Reds QGH Simulator · Tactical</title>
   <link rel="stylesheet" href="tactical.css?v=4.2.0">
   <link rel="stylesheet" href="voice.css?v=4.2.0">
   <link rel="stylesheet" href="guided-familiarisation.css?v=4.2.0">
@@ -13,9 +13,13 @@
   <script defer src="offline-voice-engine.js?v=4.2.0"></script>
   <script defer src="voice-control.js?v=4.2.0"></script>
   <script defer src="simulator-core.js?v=4.2.0"></script>
+  <script defer src="radio-session.js?v=4.2.0"></script>
   <script defer src="tactical-core.js?v=4.2.0"></script>
   <script defer src="tactical-workspace.js?v=4.2.0"></script>
   <script defer src="tactical-simulator.js?v=4.2.0"></script>
+  <script defer src="pilot-voice-engine.js?v=4.4.2"></script>
+  <script defer src="radio-workspace.js?v=4.2.0"></script>
+  <script defer src="headphone-consent.js?v=4.4.2"></script>
   <script defer src="voice-workspace.js?v=4.2.0"></script>
   <script defer src="guided-familiarisation.js?v=4.2.0"></script>
 </head>
@@ -117,6 +121,10 @@
             </div>
             <b id="tDfState" aria-live="polite">NO SIGNAL</b>
           </div>
+          <div class="voice-ack-slot">
+            <output id="tVoiceCommandAck" class="voice-command-ack" aria-live="off" hidden></output>
+            <span id="tHomingClock" class="homing-clock" role="timer" aria-label="Exercise clock" aria-live="off" hidden>00:00</span>
+          </div>
           <div class="tactical-display">
             <div class="tactical-readout">
               <small id="tBearingType">QDM · HOMING</small>
@@ -151,6 +159,12 @@
             <button id="tUsRight" type="button">TURN RIGHT NOW</button>
             <button id="tUsStop" type="button" disabled>STOP TURN NOW</button>
           </div>
+          <div class="tactical-us-turns" aria-label="Orbit controls">
+            <button id="tOrbitLeft" type="button">ORBIT LEFT</button>
+            <button id="tOrbitRight" type="button">ORBIT RIGHT</button>
+            <button id="tResumeNormal" type="button" disabled>RESUME NORMAL</button>
+          </div>
+          <button class="voice-command-only" id="tContinueOrbit" type="button" tabindex="-1" aria-hidden="true" disabled>CONTINUE ORBIT</button>
           <div class="tactical-speed-row">
             <label for="tLiveSpeed">GROUND SPEED</label>
             <div class="tactical-unit" data-unit="KT"><input id="tLiveSpeed" type="number" inputmode="numeric" min="60" max="600" step="5" value="240"></div>
@@ -193,9 +207,11 @@
           </div>
           <div class="tactical-formation-review" id="tReviewFormation">VERTICAL SEPARATION · 1,000 FT</div>
           <div class="tactical-plot">
-          <canvas id="tTacticalPlot" width="960" height="720" tabindex="0" aria-label="Tactical flight path review chart. Enable zoom to inspect the replay with keyboard controls."></canvas>
+          <canvas id="tTacticalPlot" width="960" height="720" tabindex="0" aria-describedby="tReviewZoomHelp" aria-label="Tactical flight path review chart. Enable zoom to inspect the replay with keyboard controls."></canvas>
             <output class="tactical-replay-elapsed" id="tReplayElapsed" aria-label="Track replay elapsed time">TRACK 00:00</output>
           </div>
+          <p class="tactical-review-zoom-help" id="tReviewZoomHelp">Turn zoom on to pinch or scroll; drag to pan. Keyboard: + / −, arrows; 0 to fit.</p>
+          <output id="tReviewVoiceAck" class="voice-command-ack" aria-live="off" hidden></output>
           <div class="tactical-review-actions tactical-review-toolbar" aria-label="Tactical replay controls">
             <button id="tReturnConsole" type="button">RETURN TO CONSOLE</button>
             <button id="tReplay" type="button" aria-pressed="false">REPLAY TRACK</button>
@@ -209,7 +225,7 @@
               </div>
             </div>
             <div class="tactical-review-view-tools" role="group" aria-label="Tactical track view controls">
-              <button id="tZoomToggle" type="button" aria-pressed="false" title="Enable pan and zoom for the flight-path view">ZOOM OFF</button>
+              <button id="tZoomToggle" type="button" aria-pressed="false" aria-describedby="tReviewZoomHelp" title="Enable pan and zoom for the flight-path view">ZOOM OFF</button>
               <button id="tFitReview" type="button" title="Fit every flight path in view">FIT</button>
             </div>
             <button class="tactical-new-exercise" id="tNewExercise" type="button">NEW EXERCISE</button>

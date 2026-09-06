@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#007d7d">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
-  <title>Single Aircraft QGH Simulator</title>
+  <title>Reds QGH Simulator · Single Aircraft</title>
   <link rel="stylesheet" href="workspace.css?v=4.2.0">
   <link rel="stylesheet" href="voice.css?v=4.2.0">
   <link rel="stylesheet" href="guided-familiarisation.css?v=4.2.0">
@@ -13,8 +13,12 @@
   <script defer src="offline-voice-engine.js?v=4.2.0"></script>
   <script defer src="voice-control.js?v=4.2.0"></script>
   <script defer src="simulator-core.js?v=4.2.0"></script>
+  <script defer src="radio-session.js?v=4.2.0"></script>
   <script defer src="workspace.js?v=4.2.0"></script>
   <script defer src="simulator.js?v=4.2.0"></script>
+  <script defer src="pilot-voice-engine.js?v=4.4.2"></script>
+  <script defer src="radio-workspace.js?v=4.2.0"></script>
+  <script defer src="headphone-consent.js?v=4.4.2"></script>
   <script defer src="voice-workspace.js?v=4.2.0"></script>
   <script defer src="guided-familiarisation.js?v=4.2.0"></script>
 </head>
@@ -76,6 +80,11 @@
             <label for="rate">RATE OF TURN</label>
             <div class="unit" data-unit="°/SEC"><input id="rate" type="number" inputmode="decimal" min=".5" max="8" step=".1" value="3"></div>
           </div>
+          <div class="field">
+            <label for="callsign">AIRCRAFT CALLSIGN</label>
+            <input id="callsign" type="text" value="FALCON 11" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="callsignHint">
+              <small id="callsignHint">Use a text callsign or a number from 100 to 999. Callsign is optional in single-aircraft voice calls.</small>
+          </div>
           <div class="field wide">
             <label>PROCEDURE</label>
             <div class="choice" role="group" aria-label="Procedure selection">
@@ -101,6 +110,10 @@
             <h3>Direction finding display</h3>
           </div>
           <b id="dfState" aria-live="polite">NO SIGNAL</b>
+        </div>
+        <div class="voice-ack-slot">
+          <output id="voiceCommandAck" class="voice-command-ack" aria-live="off" hidden></output>
+          <span id="homingClock" class="homing-clock" role="timer" aria-label="Exercise clock" aria-live="off" hidden>00:00</span>
         </div>
         <div class="display">
           <div class="readout">
@@ -139,6 +152,12 @@
           <button id="turnRight" type="button">TURN RIGHT NOW</button>
           <button id="turnStop" type="button" disabled>STOP TURN NOW</button>
         </div>
+        <div class="us-turns" aria-label="Orbit controls">
+          <button id="orbitLeft" type="button">ORBIT LEFT</button>
+          <button id="orbitRight" type="button">ORBIT RIGHT</button>
+          <button id="resumeNormal" type="button" disabled>RESUME NORMAL</button>
+        </div>
+        <button class="voice-command-only" id="continueOrbit" type="button" tabindex="-1" aria-hidden="true" disabled>CONTINUE ORBIT</button>
         <div class="speed-row">
           <label for="liveSpeed">GROUND SPEED</label>
           <div class="unit" data-unit="KT"><input id="liveSpeed" type="number" inputmode="numeric" min="60" max="600" step="5" value="240" aria-label="Ground speed in knots"></div>
@@ -180,9 +199,11 @@
             <div><span>BASE TURN</span><b id="sumBaseTurn">—</b></div>
           </div>
           <div class="plot">
-          <canvas id="plot" width="900" height="720" tabindex="0" aria-label="Flight path review chart. Enable zoom to inspect the replay with keyboard controls."></canvas>
+          <canvas id="plot" width="900" height="720" tabindex="0" aria-describedby="reviewZoomHelp" aria-label="Flight path review chart. Enable zoom to inspect the replay with keyboard controls."></canvas>
             <output class="replay-elapsed" id="replayElapsed" aria-label="Track replay elapsed time">TRACK 00:00</output>
           </div>
+          <p class="review-zoom-help" id="reviewZoomHelp">Turn zoom on to pinch or scroll; drag to pan. Keyboard: + / −, arrows; 0 to fit.</p>
+          <output id="reviewVoiceAck" class="voice-command-ack" aria-live="off" hidden></output>
           <div class="actions review-toolbar" aria-label="Replay controls">
             <button id="returnConsole" type="button">RETURN TO CONSOLE</button>
             <button id="replay" type="button" aria-pressed="false">REPLAY TRACK</button>
@@ -196,7 +217,7 @@
               </div>
             </div>
             <div class="review-view-tools" role="group" aria-label="Track view controls">
-              <button id="zoomToggle" type="button" aria-pressed="false" title="Enable pan and zoom for the flight-path view">ZOOM OFF</button>
+              <button id="zoomToggle" type="button" aria-pressed="false" aria-describedby="reviewZoomHelp" title="Enable pan and zoom for the flight-path view">ZOOM OFF</button>
               <button id="fitReview" type="button" title="Fit the complete flight path in view">FIT</button>
             </div>
             <button class="new-exercise" id="newExercise" type="button">NEW EXERCISE</button>
