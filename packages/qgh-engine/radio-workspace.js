@@ -11,7 +11,7 @@
   const speechDocumentId = root.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   // Audible readbacks are an explicit headphones opt-in, never a speaker default.
   let audioEnabled = false;
-  let pilotRate = 1;
+  let pilotWpm = 100;
   let controllerHeld = false;
   let generation = 0;
   let pending = [];
@@ -209,7 +209,7 @@
       };
       startTimer = root.setTimeout(fallback, 60000);
       try {
-        const result = bundledSpeech.speak({ id: active.bundledId, text: item.reply.speech, source: item.source, rateMultiplier: pilotRate,
+        const result = bundledSpeech.speak({ id: active.bundledId, text: item.reply.speech, source: item.source, targetWpm: pilotWpm,
           onstart: guarded(onAudioStart), onend: guarded(onAudioEnd), onerror: guarded(fallback) });
         if (result?.catch) result.catch(guarded(fallback));
       } catch { fallback(); }
@@ -221,7 +221,7 @@
       active.nativeId = `qgh-pilot-${speechDocumentId}-${ticket}`;
       active.nativeCallbacks = { start: onAudioStart, end: onAudioEnd, error: fallback };
       armAudioWatchdogs();
-      try { nativeSpeech.speak(active.nativeId, item.reply.speech, pilotRate); }
+      try { nativeSpeech.speak(active.nativeId, item.reply.speech, pilotWpm / 150); }
       catch { fallback(); }
       return;
     }
@@ -238,10 +238,10 @@
       active.utterance = utterance;
       utterance.voice = voice;
       utterance.lang = voice.lang;
-      // Device voices use their ordinary rate at 1×; the bundled pack follows
-      // the same 150 WPM baseline. This affects audio only, never flight/D-F.
+      // Device voices approximate the selected WPM against their normal 150 WPM
+      // baseline; the bundled pack uses exact clip-duration correction. This affects audio only, never flight/D-F.
       // This affects headphone readbacks only, never simulation or muted DF timing.
-      utterance.rate = pilotRate;
+      utterance.rate = pilotWpm / 150;
       utterance.onstart = onAudioStart;
       utterance.onend = onAudioEnd;
       utterance.onerror = fallback;
@@ -328,7 +328,7 @@
   }
 
   function setPilotRate(value) {
-    pilotRate = [1, 2, 3].includes(Number(value)) ? Number(value) : 1;
+    pilotWpm = [100, 130, 170].includes(Number(value)) ? Number(value) : 100;
   }
 
   root.QGHRadioWorkspace = Object.freeze({ acknowledge, controllerStart, controllerEnd, interrupt, reset, resetExercise, requestHeadingPassing, observeHeading, notifyOrbitComplete, channelAvailable: schedule,
@@ -337,6 +337,6 @@
     },
     setAudioEnabled, setPilotRate, receiveNativeSpeechEvent, audioAvailable: () => bundledSpeech ? bundledSpeech.capability() === 'ready' : nativeSpeech ? nativeAudioAvailable() : Boolean(localVoice()),
     allowsBargeIn: () => audioEnabled,
-    status: () => ({ audioEnabled, pilotRate, controllerHeld, phase: active ? 'pilot' : controllerHeld ? 'controller' : pending.length ? 'pending' : 'idle', pending: pending.length })
+    status: () => ({ audioEnabled, pilotWpm, controllerHeld, phase: active ? 'pilot' : controllerHeld ? 'controller' : pending.length ? 'pending' : 'idle', pending: pending.length })
   });
 })(typeof globalThis === 'undefined' ? this : globalThis);

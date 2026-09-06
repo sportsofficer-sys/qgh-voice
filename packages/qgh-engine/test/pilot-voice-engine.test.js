@@ -123,24 +123,24 @@ test('onstart reports pace-corrected audio duration after playback begins', asyn
   });
   const token = worker.messages.at(-1).token;
   worker.emit({ type: 'audio', token, samples: new Float32Array(30000), sampleRate: 24000 });
-  assert.deepEqual(events, [.8]);
-  assert.equal(runtime.state.audio.at(-1).playbackRate.value, 1.25 / .8);
+  assert.deepEqual(events, [1.2]);
+  assert.equal(runtime.state.audio.at(-1).playbackRate.value, 1.25 / 1.2);
   assert.equal(runtime.state.timers.size, 0, 'generation watchdog clears before playback');
   runtime.state.audio.at(-1).onended();
-  assert.deepEqual(events, [.8, 'end']);
+  assert.deepEqual(events, [1.2, 'end']);
 });
 
-test('assembled short readbacks are accelerated to the stated 150 WPM target', async () => {
+test('assembled short readbacks follow the selected operational WPM target', async () => {
   const runtime = loadRuntime();
   const worker = await ready(runtime);
   let duration;
-  runtime.api.speak({ text: 'Roger turning left now Falcon one one', onstart: value => { duration = value.durationSeconds; } });
+  runtime.api.speak({ text: 'Roger turning left now Falcon one one', targetWpm: 170, onstart: value => { duration = value.durationSeconds; } });
   const token = worker.messages.at(-1).token;
   // 6.18 seconds is the observed uncorrected duration of this seven-word
   // assembled U/S reply in the packaged bank.
   worker.emit({ type: 'audio', token, samples: new Float32Array(Math.round(6.18 * 24000)), sampleRate: 24000 });
-  assert.equal(duration, 2.8);
-  assert.equal(runtime.state.audio.at(-1).playbackRate.value, 6.18 / 2.8);
+  assert.equal(duration, 7 * 60 / 170);
+  assert.equal(runtime.state.audio.at(-1).playbackRate.value, 6.18 / duration);
 });
 
 test('a replacement transmission rejects stale audio and stale errors', async () => {

@@ -118,13 +118,13 @@ test('bundled pilot audio uses addressed aircraft and never device voices, even 
 
 test('selected pilot pace is passed to bundled and native offline audio without changing radio behaviour', () => {
   const bundled = harness(local, true, undefined, true);
-  bundled.radio.setPilotRate(3);
+  bundled.radio.setPilotRate(170);
   bundled.radio.acknowledge(turn); bundled.advance(300);
-  assert.equal(bundled.bundledCalls[0].rateMultiplier, 3);
+  assert.equal(bundled.bundledCalls[0].targetWpm, 170);
   const native = harness([], true, 'ready');
-  native.radio.setPilotRate(2);
+  native.radio.setPilotRate(130);
   native.radio.acknowledge(turn); native.advance(300);
-  assert.equal(native.nativeUtterances[0].rate, 2);
+  assert.equal(native.nativeUtterances[0].rate, 130 / 150);
 });
 
 test('muting bundled speech preserves visual transmission and never falls through to system TTS', () => {
@@ -190,7 +190,7 @@ test('native local pilot audio drives the same transmission and frozen two-secon
   h.radio.controllerEnd(); h.advance(300);
   const speech = h.nativeUtterances[0];
   assert.match(speech.text, /two three zero, FALCON 11/);
-  assert.equal(speech.rate, 1);
+  assert.equal(speech.rate, 100 / 150);
   assert.equal(h.utterances.length, 0);
   assert.equal(h.gates.at(-1), true);
   h.nativeEvent(speech.id, 'start');
@@ -367,7 +367,7 @@ test('pilot transmission waits for channel release and retains addressed identit
   h.radio.controllerEnd(); h.advance(300);
   const speech = h.utterances[0];
   assert.match(speech.text, /two three zero, FALCON 11/);
-  assert.equal(speech.rate, 1, 'headphone replies use the selected 1× pace by default');
+  assert.equal(speech.rate, 100 / 150, 'headphone replies use the selected 100 WPM pace by default');
   assert.equal(h.gates.at(-1), true);
   speech.onstart();
   assert.equal(h.receiver.read().source, 'A');

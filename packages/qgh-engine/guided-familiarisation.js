@@ -147,7 +147,7 @@
     const voice = {
       selector: '.voice-dock',
       title: 'PREPARE VOICE CONTROL',
-      text: 'Open VOICE to prepare offline recognition. Hold PTT for one complete controller call, then release; Continuous Listening is optional. Pilot sound starts muted. For replies, wear headphones, select HEADPHONES · PILOT READBACKS, complete the audio test and confirm. Never use pilot replies on speakers. Open VOICE to mute before disconnecting headphones. Pilot voices target 150 words per minute; your new call interrupts the old reply without delaying the aircraft.',
+      text: 'Open VOICE to prepare offline recognition. Hold PTT for one complete controller call, then release; Continuous Listening is optional. Pilot sound starts muted. For replies, wear headphones, select HEADPHONES · PILOT READBACKS, choose 100, 130 or 170 words per minute, complete the audio test and confirm. Never use pilot replies on speakers. Open VOICE to mute before disconnecting headphones. Your new call interrupts the old reply without delaying the aircraft.',
       pattern: ['PTT DISCIPLINE', 'ONE AIRCRAFT · ONE ACTION · ONE CLEAR TARGET']
     };
     const normal = {

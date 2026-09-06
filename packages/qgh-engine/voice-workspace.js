@@ -1833,14 +1833,14 @@
       updatePilotNote = () => {
         const radioStatus = root.QGHRadioWorkspace.status();
         const enabled = radioStatus.audioEnabled;
-        const rate = radioStatus.pilotRate || 1;
+        const rate = radioStatus.pilotWpm || 100;
         const inSetup = isPilotSetupStage();
         pilotAudio.checked = enabled;
         pilotLabel.hidden = !inSetup;
         mutePilot.hidden = !enabled;
         pilotNote.textContent = root.QGHPilotVoiceEngine
           ? inSetup
-            ? `${enabled ? 'Headphones confirmed by you.' : 'Muted. Connect headphones and complete the audio check to enable.'} Pilot speed ${rate}× · ${rate * 150} words/minute. PTT and continuous controller speech take priority.`
+            ? `${enabled ? 'Headphones confirmed by you.' : 'Muted. Connect headphones and complete the audio check to enable.'} Pilot speed ${rate} words/minute. PTT and continuous controller speech take priority.`
             : `${enabled ? 'Pilot replies are on. You can mute them here.' : 'Pilot replies are muted.'} Headphone setup is available before starting the next exercise.`
           : root.QGHRadioWorkspace.audioAvailable()
             ? 'Off by default: muted. Enable only with headphones. In continuous mode, your speech interrupts pilot audio. PTT always takes priority.'

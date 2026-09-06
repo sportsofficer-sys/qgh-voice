@@ -73,15 +73,15 @@ test('changing voice invalidates the test and only the latest test can succeed',
 
 test('pilot readback pace is selected only while the pre-flight confirmation is open', async () => {
   const h = harness();
-  assert.equal(h.consent.status().rate, 1);
-  assert.equal(h.consent.setRate(2), false);
+  assert.equal(h.consent.status().rate, 100);
+  assert.equal(h.consent.setRate(130), false);
   h.consent.open();
   const pending = h.consent.test();
-  assert.equal(h.consent.setRate(3), true);
-  assert.equal(h.consent.status().rate, 3);
+  assert.equal(h.consent.setRate(170), true);
+  assert.equal(h.consent.status().rate, 170);
   assert.equal(h.consent.status().tested, false);
-  assert.equal(h.rates.at(-1), 3);
+  assert.equal(h.rates.at(-1), 170);
   h.complete(true); await pending;
   assert.equal(h.consent.confirm(true), false, 'changing speed requires a fresh audio test');
-  assert.equal(h.consent.setRate(4), false);
+  assert.equal(h.consent.setRate(180), false);
 });

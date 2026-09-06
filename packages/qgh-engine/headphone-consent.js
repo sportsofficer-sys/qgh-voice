@@ -4,7 +4,7 @@
   // This records a person's confirmation, not hardware detection. Nothing is
   // restored from storage: a previous visit cannot prove today's audio route.
   function create(options) {
-    const state = { open: false, testing: false, tested: false, confirmed: false, rate: 1, message: '' };
+    const state = { open: false, testing: false, tested: false, confirmed: false, rate: 100, message: '' };
     let generation = 0;
     const publish = () => options.onChange?.({ ...state });
     function invalidateTest() {
@@ -28,11 +28,11 @@
       invalidateTest,
       deviceChanged() { mute('Audio devices changed. Pilot replies muted — check your headphones again.'); },
       setRate(rate) {
-        if (!state.open || ![1, 2, 3].includes(Number(rate))) return false;
+        if (!state.open || ![100, 130, 170].includes(Number(rate))) return false;
         state.rate = Number(rate);
         options.setRate?.(state.rate);
         invalidateTest();
-        state.message = `Pilot readback speed ${state.rate}× selected. Test the audio before enabling replies.`;
+        state.message = `Pilot readback speed ${state.rate} WPM selected. Test the audio before enabling replies.`;
         publish();
         return true;
       },
@@ -108,7 +108,7 @@
       engine.prepare({ onProgress: message => { if (ticket === testingTicket && status) status.textContent = typeof message === 'string' ? message : 'Preparing offline voices…'; } })
         .then(() => {
           if (ticket !== testingTicket) return;
-          return engine.speak({ id: `headphone-test-${ticket}`, source: 'single', rateMultiplier: controller.status().rate,
+          return engine.speak({ id: `headphone-test-${ticket}`, source: 'single', targetWpm: controller.status().rate,
             text: 'Roger, turning right two three zero, Falcon one one.',
             onend: () => {
               if (ticket !== testingTicket) return;
@@ -127,7 +127,7 @@
       if (dialog) {
         status.textContent = state.message;
         testButton.disabled = state.testing;
-        testButton.textContent = state.testing ? 'PREPARING / TESTING…' : `TEST HEADPHONE AUDIO · ${state.rate}×`;
+        testButton.textContent = state.testing ? 'PREPARING / TESTING…' : `TEST HEADPHONE AUDIO · ${state.rate} WPM`;
         rateButtons.forEach(button => {
           button.setAttribute('aria-pressed', String(Number(button.dataset.rate) === state.rate));
           button.disabled = state.testing;
@@ -157,11 +157,11 @@
       const rateGroup = element('div', '', 'headphone-rate-group');
       rateGroup.setAttribute('role', 'group');
       rateGroup.setAttribute('aria-label', 'Pilot readback speed');
-      for (const rate of [1, 2, 3]) {
-        const rateButton = element('button', `${rate}× · ${rate * 150} WPM`, 'headphone-rate');
+      for (const rate of [100, 130, 170]) {
+        const rateButton = element('button', `${rate} WPM`, 'headphone-rate');
         rateButton.type = 'button';
         rateButton.dataset.rate = String(rate);
-        rateButton.setAttribute('aria-pressed', String(rate === 1));
+        rateButton.setAttribute('aria-pressed', String(rate === 100));
         rateButton.addEventListener('click', () => controller.setRate(rate));
         rateButtons.push(rateButton);
         rateGroup.append(rateButton);

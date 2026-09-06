@@ -19,8 +19,9 @@
   // The pre-rendered bank contains reusable phrases and individual number clips.
   // A short readback can therefore contain more natural clip duration than its
   // nominal word count allows.  Correct its *actual* duration at playback so
-  // pilot replies meet the published 150 WPM target on every browser.
-  const PILOT_TARGET_WPM = 150;
+  // Pilot replies use one of three selected operational training paces.
+  const PILOT_DEFAULT_WPM = 100;
+  const PILOT_SUPPORTED_WPM = Object.freeze([100, 130, 170]);
   const MAX_PACE_CORRECTION = 6.75;
   let state = 'unprepared';
   let worker = null;
@@ -75,12 +76,12 @@
       .trim().split(/\s+/).filter(Boolean).length;
   }
 
-  function paceFor(text, sampleCount, sampleRate, rateMultiplier) {
+  function paceFor(text, sampleCount, sampleRate, targetWpm) {
     const words = spokenWordCount(text);
     const duration = sampleCount / sampleRate;
     if (!words || !Number.isFinite(duration) || duration <= 0) return 1;
-    const multiplier = [1, 2, 3].includes(Number(rateMultiplier)) ? Number(rateMultiplier) : 1;
-    const targetDuration = words * 60 / (PILOT_TARGET_WPM * multiplier);
+    const wpm = PILOT_SUPPORTED_WPM.includes(Number(targetWpm)) ? Number(targetWpm) : PILOT_DEFAULT_WPM;
+    const targetDuration = words * 60 / wpm;
     return Math.max(1, Math.min(MAX_PACE_CORRECTION, duration / targetDuration));
   }
 
@@ -153,7 +154,7 @@
       buffer.copyToChannel(samples, 0);
       audio = context.createBufferSource();
       audio.buffer = buffer;
-      const pace = paceFor(pending.text, samples.length, message.sampleRate, pending.rateMultiplier);
+      const pace = paceFor(pending.text, samples.length, message.sampleRate, pending.targetWpm);
       // The correction only shortens an over-long assembled reply. It never
       // slows a naturally brisk clip, and does not affect flight or D/F timing.
       audio.playbackRate.value = pace;
