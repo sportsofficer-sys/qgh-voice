@@ -19,9 +19,9 @@
   // The pre-rendered bank contains reusable phrases and individual number clips.
   // A short readback can therefore contain more natural clip duration than its
   // nominal word count allows.  Correct its *actual* duration at playback so
-  // pilot replies meet the published 100 WPM target on every browser.
-  const PILOT_TARGET_WPM = 100;
-  const MAX_PACE_CORRECTION = 1.75;
+  // pilot replies meet the published 150 WPM target on every browser.
+  const PILOT_TARGET_WPM = 150;
+  const MAX_PACE_CORRECTION = 2.25;
   let state = 'unprepared';
   let worker = null;
   let context = null;

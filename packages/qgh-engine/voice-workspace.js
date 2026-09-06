@@ -1822,7 +1822,7 @@
         pilotAudio.checked = enabled;
         mutePilot.hidden = !enabled;
         pilotNote.textContent = root.QGHPilotVoiceEngine
-          ? `${enabled ? 'Headphones confirmed by you.' : 'Muted. Connect headphones and complete the audio check to enable.'} Bundled male voices · target 100 words/minute. PTT and continuous controller speech take priority.`
+          ? `${enabled ? 'Headphones confirmed by you.' : 'Muted. Connect headphones and complete the audio check to enable.'} Bundled male voices · target 150 words/minute. PTT and continuous controller speech take priority.`
           : root.QGHRadioWorkspace.audioAvailable()
             ? 'Off by default: muted. Enable only with headphones. In continuous mode, your speech interrupts pilot audio. PTT always takes priority.'
             : 'No local English output voice available. Captions and timed pilot D/F still work offline.';

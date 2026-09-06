@@ -38,8 +38,8 @@ android {
         applicationId = "in.qgh.simulator"
         minSdk = 26
         targetSdk = 36
-        versionCode = 25
-        versionName = "4.4.6"
+        versionCode = 26
+        versionName = "4.4.7"
     }
 
     buildTypes {

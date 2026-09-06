@@ -138,7 +138,7 @@
       const eyebrow = element('p', 'PILOT AUDIO · OFFLINE', 'headphone-eyebrow');
       const heading = element('h2', 'Connect your headphones'); heading.id = 'headphoneTitle';
       const warning = element('p', 'Speaker audio can enter your microphone and be mistaken for controller commands, causing unintended actions. Wear headphones and mute pilot replies before removing or disconnecting them.', 'headphone-warning');
-      const pace = element('p', 'Four male pilot voices · target 100 words/minute', 'headphone-pace');
+      const pace = element('p', 'Four male pilot voices · target 150 words/minute', 'headphone-pace');
       const explanation = element('p', 'The test plays a sample pilot readback without changing the exercise. This is your confirmation, not automatic headphone detection. Audio-device changes are monitored where the browser supports it. Some changes may not be reported.', 'headphone-help');
       testButton = element('button', 'TEST HEADPHONE AUDIO'); testButton.type = 'button';
       testButton.addEventListener('click', () => controller.test());
