@@ -16,6 +16,12 @@
   ]);
   const PREPARE_TIMEOUT_MS = 120000;
   const GENERATION_TIMEOUT_MS = 5000;
+  // The pre-rendered bank contains reusable phrases and individual number clips.
+  // A short readback can therefore contain more natural clip duration than its
+  // nominal word count allows.  Correct its *actual* duration at playback so
+  // pilot replies meet the published 100 WPM target on every browser.
+  const PILOT_TARGET_WPM = 100;
+  const MAX_PACE_CORRECTION = 1.75;
   let state = 'unprepared';
   let worker = null;
   let context = null;
@@ -55,6 +61,26 @@
   function clearGenerationTimer() {
     if (generationTimer !== null) root.clearTimeout(generationTimer);
     generationTimer = null;
+  }
+
+  function spokenWordCount(text) {
+    // Keep numeric expansion aligned with the packaged runtime, where headings
+    // are spoken digit by digit rather than as one number word.
+    const digits = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+    return String(text || '')
+      .normalize('NFKC')
+      .replace(/(\d)\.(?=\d)/g, '$1 decimal ')
+      .replace(/\d/g, digit => ` ${digits[Number(digit)]} `)
+      .replace(/[^a-zA-Z ]/g, ' ')
+      .trim().split(/\s+/).filter(Boolean).length;
+  }
+
+  function paceFor(text, sampleCount, sampleRate) {
+    const words = spokenWordCount(text);
+    const duration = sampleCount / sampleRate;
+    if (!words || !Number.isFinite(duration) || duration <= 0) return 1;
+    const targetDuration = words * 60 / PILOT_TARGET_WPM;
+    return Math.max(1, Math.min(MAX_PACE_CORRECTION, duration / targetDuration));
   }
 
   function stopAudio() {
@@ -126,6 +152,10 @@
       buffer.copyToChannel(samples, 0);
       audio = context.createBufferSource();
       audio.buffer = buffer;
+      const pace = paceFor(pending.text, samples.length, message.sampleRate);
+      // The correction only shortens an over-long assembled reply. It never
+      // slows a naturally brisk clip, and does not affect flight or D/F timing.
+      audio.playbackRate.value = pace;
       audio.connect(context.destination);
       const playing = audio;
       playing.onended = () => {
@@ -136,7 +166,7 @@
         notify(pending.onend);
       };
       playing.start();
-      notify(pending.onstart, { durationSeconds: samples.length / message.sampleRate });
+      notify(pending.onstart, { durationSeconds: samples.length / message.sampleRate / pace });
     } catch (error) {
       active = null;
       stopAudio();

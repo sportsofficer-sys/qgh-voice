@@ -22,7 +22,7 @@ function loadRuntime(options = {}) {
     resume() { this.resumed = true; this.state = options.suspended ? 'suspended' : 'running'; return Promise.resolve(); }
     createBuffer(channels, length, sampleRate) { return { channels, length, sampleRate, copyToChannel() {} }; }
     createBufferSource() {
-      const node = { connect() {}, disconnect() { this.disconnected = true; }, start() { this.started = true; }, stop() { this.stopped = true; } };
+      const node = { playbackRate: { value: 1 }, connect() {}, disconnect() { this.disconnected = true; }, start() { this.started = true; }, stop() { this.stopped = true; } };
       state.audio.push(node);
       return node;
     }
@@ -109,7 +109,7 @@ test('cancel drops delayed synthesis and silences audio without completion callb
   assert.deepEqual(events, ['start']);
 });
 
-test('onstart reports generated audio duration in seconds after playback begins', async () => {
+test('onstart reports pace-corrected audio duration after playback begins', async () => {
   const runtime = loadRuntime();
   const worker = await ready(runtime);
   const events = [];
@@ -123,10 +123,24 @@ test('onstart reports generated audio duration in seconds after playback begins'
   });
   const token = worker.messages.at(-1).token;
   worker.emit({ type: 'audio', token, samples: new Float32Array(30000), sampleRate: 24000 });
-  assert.deepEqual(events, [1.25]);
+  assert.deepEqual(events, [1.2]);
+  assert.equal(runtime.state.audio.at(-1).playbackRate.value, 1.25 / 1.2);
   assert.equal(runtime.state.timers.size, 0, 'generation watchdog clears before playback');
   runtime.state.audio.at(-1).onended();
-  assert.deepEqual(events, [1.25, 'end']);
+  assert.deepEqual(events, [1.2, 'end']);
+});
+
+test('assembled short readbacks are accelerated to the stated 100 WPM target', async () => {
+  const runtime = loadRuntime();
+  const worker = await ready(runtime);
+  let duration;
+  runtime.api.speak({ text: 'Roger turning left now Falcon one one', onstart: value => { duration = value.durationSeconds; } });
+  const token = worker.messages.at(-1).token;
+  // 6.18 seconds is the observed uncorrected duration of this seven-word
+  // assembled U/S reply in the packaged bank.
+  worker.emit({ type: 'audio', token, samples: new Float32Array(Math.round(6.18 * 24000)), sampleRate: 24000 });
+  assert.equal(duration, 4.2);
+  assert.equal(runtime.state.audio.at(-1).playbackRate.value, 6.18 / 4.2);
 });
 
 test('a replacement transmission rejects stale audio and stale errors', async () => {
