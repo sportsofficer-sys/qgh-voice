@@ -271,7 +271,7 @@ test('a passing report is deferred, one-shot, source-stable and includes DF whil
   h.advance(1000); assert.equal(h.captions.length, 0);
   h.heading('A', 239.9); h.advance(500); assert.equal(h.captions.length, 0);
   h.select('B'); h.heading('A', 240.1); h.advance(300);
-  assert.equal(h.captions[0], 'PASSING 240°M · FALCON 11');
+  assert.equal(h.captions[0], 'HEADING PASSING 240°M · FALCON 11');
   assert.equal(h.receiver.read().source, 'A');
   assert.equal(h.receiver.read().phase, 'live');
   h.advance(8000); h.heading('A', 241); h.advance(8000);
@@ -303,13 +303,13 @@ test('automatic reports wait for pilot and manual DF transmissions and survive a
   assert.equal(h.utterances.length, 1, 'does not preempt pilot speech');
   h.radio.controllerStart(); h.radio.acknowledge({ ...turn, heading: 60 }); h.radio.controllerEnd();
   h.advance(300); h.utterances[1].onstart(); h.utterances[1].onend(); h.advance(550);
-  assert.match(h.utterances[2].text, /^Passing two four zero, RAVEN 21/);
+  assert.match(h.utterances[2].text, /^Heading passing two four zero, RAVEN 21/);
   h.utterances[2].onstart(); h.utterances[2].onend(); h.advance(3000);
   const token = h.receiver.transmit('A');
   h.radio.requestHeadingPassing({ aircraft: 'B', heading: 250 }); h.heading('B', 251); h.advance(1500);
   assert.equal(h.utterances.length, 3, 'manual DF remains the live transmitter');
   h.radio.interrupt(); h.receiver.release(token); h.radio.channelAvailable(); h.advance(300);
-  assert.match(h.utterances[3].text, /^Passing two five zero, RAVEN 21/);
+  assert.match(h.utterances[3].text, /^Heading passing two five zero, RAVEN 21/);
 });
 
 test('late reports say passed and use present DF, invalid replacement and U/S do not arm', () => {
@@ -319,7 +319,7 @@ test('late reports say passed and use present DF, invalid replacement and U/S do
   assert.equal(h.radio.requestHeadingPassing({ aircraft: 'A', heading: 400 }).ok, false);
   h.heading('A', 241); h.heading('A', 250, 20); h.move(190);
   h.radio.controllerEnd(); h.advance(300);
-  assert.equal(h.captions[0], 'PASSED 240°M · FALCON 11');
+  assert.equal(h.captions[0], 'HEADING PASSED 240°M · FALCON 11');
   assert.equal(h.receiver.read().qdm, 190);
   h.radio.resetExercise(); h.procedure('us');
   assert.equal(h.radio.requestHeadingPassing({ aircraft: 'A', heading: 260 }).ok, false);
@@ -332,10 +332,10 @@ test('replacing a fired but unsent report cancels only that aircraft’s old rep
   h.radio.requestHeadingPassing({ aircraft: 'B', heading: 250 }); h.heading('B', 251);
   h.radio.requestHeadingPassing({ aircraft: 'A', heading: 270 });
   h.radio.controllerEnd(); h.advance(300);
-  assert.equal(h.captions[0], 'PASSING 250°M · RAVEN 21');
+  assert.equal(h.captions[0], 'HEADING PASSING 250°M · RAVEN 21');
   h.advance(5000); assert.equal(h.captions.length, 1);
   h.heading('A', 271); h.advance(300);
-  assert.equal(h.captions[1], 'PASSING 270°M · FALCON 11');
+  assert.equal(h.captions[1], 'HEADING PASSING 270°M · FALCON 11');
 });
 
 test('a fresh device defaults to muted replies and headphones are an explicit opt-in', () => {
@@ -481,4 +481,16 @@ test('controller interruption discards the old reply and stale callbacks before 
     assert.equal(h.utterances.length, 2, 'interrupted reply is never restarted');
     assert.equal(h.receiver.read().phase, 'idle');
   }
+});
+
+test('a deferred ordinary heading report samples the aircraft when its pilot transmission begins', () => {
+  const h = harness(local);
+  h.heading('A', 153);
+  h.radio.controllerStart();
+  h.radio.acknowledge({ intent: 'report-heading', aircraft: 'A' });
+  h.heading('A', 183, 10);
+  h.radio.controllerEnd();
+  h.advance(300);
+  assert.match(h.utterances[0].text, /Heading one eight three, FALCON 11\./,
+    'a delayed pilot reply must not present the old acknowledgement-time heading as current');
 });

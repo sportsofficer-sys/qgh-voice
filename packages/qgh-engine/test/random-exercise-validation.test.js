@@ -288,7 +288,7 @@ test('real single-aircraft physics fires a deferred report without commanding a 
     assert.equal(h.state.targetHeading, targetBefore);
     if (advance) h.click('advanceFlight'); else h.tick(14);
     h.fireDelay(300);
-    assert.match(radio.captions.at(-1), advance ? /^PASSED 000/ : /^PASSING 000/);
+    assert.match(radio.captions.at(-1), advance ? /^HEADING PASSED 000/ : /^HEADING PASSING 000/);
     assert.equal(h.elements.dfState.textContent, 'SIGNAL LIVE');
     assert.ok(h.state.commands.some(command => command.detail.includes('PASSED 000')));
   }
@@ -397,6 +397,34 @@ test('single-aircraft setup accepts a standalone numeric callsign from 100 to 99
   h.click('startExercise');
   assert.equal(h.state.cfg.callsign, '387');
   assert.equal(h.elements.badge.textContent, '387 · NORMAL QGH');
+});
+
+test('Single U/S Compass controls allow immediate opposite-turn reversal without a flight-state jump', () => {
+  const h = makeHarness();
+  h.click('us');
+  h.click('startExercise');
+  h.state.initialTurnSide = null;
+  h.state.targetHeading = h.state.plane.heading;
+  h.click('turnLeft');
+  h.tick(8);
+  const beforeReverse = { ...h.state.plane };
+  const headingAtReverse = h.state.plane.heading;
+  assert.equal(h.elements.turnRight.disabled, false, 'the opposite U/S direction must remain available');
+  assert.equal(h.elements.turnLeft.getAttribute('aria-pressed'), 'true');
+
+  h.click('turnRight');
+  assert.equal(h.state.plane.x, beforeReverse.x, 'an immediate reversal must not point-turn or teleport the aircraft');
+  assert.equal(h.state.plane.y, beforeReverse.y, 'an immediate reversal must not point-turn or teleport the aircraft');
+  assert.equal(h.state.plane.heading, beforeReverse.heading, 'an immediate reversal must not point-turn or teleport the aircraft');
+  assert.equal(h.state.manualTurnSide, 'right');
+  assert.equal(h.elements.turnRight.getAttribute('aria-pressed'), 'true');
+  assert.equal(h.elements.turnLeft.getAttribute('aria-pressed'), 'false');
+
+  h.tick(1);
+  assert.equal(h.state.plane.heading, Core.normalize(headingAtReverse + h.state.cfg.rate * STEP_SECONDS));
+  h.click('turnStop');
+  assert.equal(h.state.manualTurnSide, null);
+  assert.equal(h.elements.turnStop.disabled, true);
 });
 
 function turnNormalTo(harness, target, longerWay = false) {

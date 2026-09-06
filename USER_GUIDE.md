@@ -1,6 +1,6 @@
 # QGH Simulator User Guide
 
-Web version 4.4.2 · Numeric Callsigns
+Web version 4.4.3 · Voice Safety & U/S Turns
 
 QGH Simulator is an offline-first training aid for practising controller-led QGH procedures. It includes Single Aircraft QGH (Normal and U/S Compass) and Tactical QGH for two to four aircraft.
 
@@ -28,6 +28,8 @@ Use **Report Heading**, **Request Distance**, and the exercise clock when requir
 ### U/S Compass
 
 Use only **Turn Left Now**, **Turn Right Now**, and **Stop Turn Now** for turns. Heading assignments are intentionally not available in this procedure.
+
+An opposite NOW call immediately reverses the timed turn; a separate Stop Turn call is not required first.
 
 ## Tactical QGH
 
@@ -74,6 +76,8 @@ Single Aircraft Normal QGH:
 - “Request distance.”
 - “Start clock.”, “Stop clock.”, or “Reset clock.”
 - “Advance flight one minute.”
+
+Give one clear action per call. Conditional, negated, wrong-unit and chained calls are rejected without changing the exercise.
 
 U/S Compass:
 
@@ -124,7 +128,7 @@ Wait for the initial pilot-pack download to finish while online before relying o
 
 ## Offline use
 
-Previously released Windows and Android applications contain the simulator and recognition model locally; this 4.4.2 release updates the web app only. The web edition works offline after its first successful load; recognition also needs its one-time, user-selected offline-model setup, and spoken pilot replies need the initial pilot-pack download to complete. No controller voice recording is sent to a QGH Simulator server or to a cloud speech service.
+This v4.4.3 candidate updates the web app first. Windows and Android packages will be rebuilt only after browser verification. The web edition works offline after its first successful load; recognition also needs its one-time, user-selected offline-model setup, and spoken pilot replies need the initial pilot-pack download to complete. No controller voice recording is sent to a QGH Simulator server or to a cloud speech service.
 
 ## Support and licence
 

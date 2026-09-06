@@ -24,6 +24,19 @@
   // They survive microphone changes and wait for an available radio channel.
   const reports = new Map();
 
+  // Ordinary reports describe aircraft state.  They must be sampled when the
+  // pilot is about to transmit, not when a controller call is first accepted
+  // and may still be queued behind a held channel.
+  const liveSampleIntents = new Set(['report-heading', 'request-distance']);
+
+  function refreshLiveSample(item) {
+    if (!item?.liveSample) return item;
+    const aircraft = adapter.snapshot(item.source);
+    if (!aircraft) return null;
+    const reply = Radio.replyFor(item.command, aircraft);
+    return reply ? { ...item, reply } : null;
+  }
+
   function localVoice() {
     try {
       return root.speechSynthesis?.getVoices().find(voice => voice.localService === true && /^en(?:-|_)/i.test(voice.lang)) || null;
@@ -142,7 +155,8 @@
         reply: Radio.replyFor({ intent: report.intent, heading: report.heading, delayed }, report) };
       if (!item.reply) { schedule(); return; }
     }
-    if (!adapter.snapshot(item.source)) { schedule(); return; }
+    item = refreshLiveSample(item);
+    if (!item || !adapter.snapshot(item.source)) { schedule(); return; }
     const ticket = ++generation;
     active = { ...item, token: null, utterance: null };
     const duration = item.intent === 'transmit-df' ? 4000 : Math.max(1500, Math.min(5000, item.reply.speech.split(/\s+/).length * 340));
@@ -249,7 +263,9 @@
     if (manoeuvres.includes(command.intent)) reports.delete(`orbit:${aircraft.source}`);
     if (manoeuvres.includes(command.intent)) pending = pending.filter(item => item.source !== aircraft.source || !manoeuvres.includes(item.intent));
     if (command.field === 'speed') pending = pending.filter(item => item.source !== aircraft.source || item.field !== 'speed');
-    pending.push({ source: aircraft.source, callsign: aircraft.callsign, intent: command.intent, field: command.field, reply });
+    pending.push({ source: aircraft.source, callsign: aircraft.callsign, intent: command.intent, field: command.field,
+      command: liveSampleIntents.has(command.intent) ? { ...command, aircraft: aircraft.source } : null,
+      liveSample: liveSampleIntents.has(command.intent), reply });
     if (pending.length > 4) pending.shift();
     schedule();
   }
@@ -276,7 +292,7 @@
     const report = Object.freeze({ ...aircraft, heading: crossing.heading, intent: 'heading-passing-report', queueKey: source });
     pending = pending.filter(item => item.source !== source || item.intent !== 'request-heading-passing');
     reports.set(source, report);
-    adapter.reportEvent?.(source, `PASSED ${String(crossing.heading).padStart(3, '0')}°M`);
+    adapter.reportEvent?.(source, `HEADING PASSED ${String(crossing.heading).padStart(3, '0')}°M`);
     schedule();
   }
 

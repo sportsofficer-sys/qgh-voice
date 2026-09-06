@@ -130,6 +130,27 @@ test('single exercise grammar supports its callsign, legacy calls and cache refr
   assert.ok(Buffer.byteLength(plan.grammarJson) < 490_000);
 });
 
+test('offline grammar separates Normal and U/S Compass exercise contexts', () => {
+  const normal = OfflineVoice.buildRecognitionPlan({
+    screen: 'single:console', procedure: 'normal', callsigns: ['430']
+  });
+  const us = OfflineVoice.buildRecognitionPlan({
+    screen: 'single:console', procedure: 'us', callsigns: ['430']
+  });
+  assert.notEqual(normal, us, 'a procedure change must never reuse the previous recognition plan');
+  assert.equal(normal.procedure, 'normal');
+  assert.equal(us.procedure, 'us');
+  assert.ok(normal.grammar.includes('turn right heading one four zero'));
+  assert.equal(us.grammar.includes('turn right heading one four zero'), false,
+    'U/S Compass grammar must not bias the recognizer toward hidden heading turns');
+  assert.ok(us.grammar.includes('turn right now'));
+  assert.ok(us.grammar.includes('four three zero transmit for df'));
+  assert.equal(us.grammar.includes('report heading'), false,
+    'U/S Compass grammar must not bias recognition toward unavailable heading reports');
+  assert.equal(us.grammar.includes('report heading four three zero'), false,
+    'U/S Compass grammar must not add an addressed hidden-heading report');
+});
+
 test('offline grammar admits spoken standalone numeric callsigns', () => {
   const single = OfflineVoice.buildRecognitionPlan({ screen: 'single:console', callsigns: ['123'] });
   for (const phrase of ['one two tree transmit for df', 'one hundred twenty three transmit for df']) {

@@ -44,6 +44,7 @@
     availabilityPromise: null,
     preparePromise: null,
     startAttempt: 0,
+    recognitionContext: null,
     lastNativeGrammarJson: null,
     nativeRequestId: null,
     nativeResultReceived: false,
@@ -90,6 +91,11 @@
       return `${kind}:${screen}`;
     }
     return 'entry';
+  }
+
+  function currentProcedure() {
+    const usControl = pageKind() === 'tactical' ? $('tProcedureUs') : $('us');
+    return usControl?.getAttribute('aria-pressed') === 'true' ? 'us' : 'normal';
   }
 
   function buttonText(button) {
@@ -156,7 +162,7 @@
 
   function describeWorkspaceVoiceCommand(command, fallback) {
     if (command?.intent === 'radio-exchange') return String(command.radioMessage).toUpperCase();
-    if (command?.intent === 'request-heading-passing') return `REPORT PASSING ${String(command.heading).padStart(3, '0')}°M`;
+    if (command?.intent === 'request-heading-passing') return `REPORT HEADING PASSING ${String(command.heading).padStart(3, '0')}°M`;
     if (command?.intent === 'start-orbit') return `ORBIT ${command.side.toUpperCase()}`;
     if (command?.intent === 'continue-orbit') return 'CONTINUE ORBIT';
     if (command?.intent === 'resume-normal') return 'RESUME NORMAL';
@@ -180,7 +186,7 @@
       reply = root.QGHRadioAdapter?.snapshot(command.aircraft)?.orbitSide
         ? 'WILL RESUME NORMAL AFTER THIS ORBIT' : 'RESUMING NORMAL';
     } else if (command.intent === 'request-heading-passing') {
-      reply = `WILL REPORT PASSING ${String(command.heading).padStart(3, '0')}°M`;
+      reply = `WILL REPORT HEADING PASSING ${String(command.heading).padStart(3, '0')}°M`;
     } else if (command.intent === 'report-heading') {
       const reported = $(tactical ? 'tHeadingReply' : 'headingReply')?.textContent || '';
       if (/^HEADING \d{3}°M$/.test(reported)) reply = reported;
@@ -621,6 +627,9 @@
       return change.ok ? result(true, `${command.field.toUpperCase()} SET`) : change;
     }
     if (onConsole && command.field === 'heading') {
+      if (isHidden($('headingInput')) || !isAvailable($('headingInput'))) {
+        return result(false, 'HEADING ENTRY IS NOT AVAILABLE IN U/S COMPASS');
+      }
       const change = applyHeading($('headingInput'), command.value);
       return change.ok ? result(true, `HEADING ${String(command.value).padStart(3, '0')}° SET`) : change;
     }
@@ -749,22 +758,26 @@
     if (command.intent === 'request-distance') return clickId('requestDistance', 'DISTANCE REQUESTED');
     if (command.intent === 'normal-turn-heading') {
       if (isHidden($('turnHeadingLeft'))) return result(false, 'HEADING TURNS ARE NOT AVAILABLE IN U/S COMPASS');
-      if (!isAvailable($('turnHeadingLeft'))) return result(false, 'TURN CONTROL IS NOT AVAILABLE');
+      const turnControl = $(command.side === 'left' ? 'turnHeadingLeft' : 'turnHeadingRight');
+      if (!isAvailable(turnControl)) return result(false, 'TURN CONTROL IS NOT AVAILABLE');
       const heading = applyHeading($('headingInput'), command.heading);
-      return heading.ok ? clickId(command.side === 'left' ? 'turnHeadingLeft' : 'turnHeadingRight', `TURN ${command.side.toUpperCase()} ${String(command.heading).padStart(3, '0')}°`) : heading;
+      return heading.ok ? clickElement(turnControl, `TURN ${command.side.toUpperCase()} ${String(command.heading).padStart(3, '0')}°`) : heading;
     }
     if (command.intent === 'continue-turn-heading') {
       if (isHidden($('turnHeadingLeft'))) return result(false, 'CONTINUE HEADING IS NOT AVAILABLE IN U/S COMPASS');
+      const continueControl = $('continueHeading');
+      if (!isAvailable(continueControl)) return result(false, 'CONTINUE TURN IS NOT AVAILABLE');
       const heading = applyHeading($('headingInput'), command.heading);
       if (!heading.ok) return heading;
-      const side = $('continueHeading')?.dataset.turnSide;
+      const side = continueControl.dataset.turnSide;
       if (side === 'left' || side === 'right') markVoiceAffected($(side === 'left' ? 'turnHeadingLeft' : 'turnHeadingRight'));
-      return clickId('continueHeading', `CONTINUE ACTIVE TURN ${String(command.heading).padStart(3, '0')}°`);
+      return clickElement(continueControl, `CONTINUE ACTIVE TURN ${String(command.heading).padStart(3, '0')}°`);
     }
     if (command.intent === 'us-turn') {
       if (isHidden($('turnLeft'))) return result(false, 'U/S TURNS ARE NOT AVAILABLE IN NORMAL QGH');
-      if (!isAvailable($('turnLeft'))) return result(false, 'TURN CONTROL IS NOT AVAILABLE');
-      return clickId(command.side === 'left' ? 'turnLeft' : 'turnRight', `TURN ${command.side.toUpperCase()} NOW`);
+      const turnControl = $(command.side === 'left' ? 'turnLeft' : 'turnRight');
+      if (!isAvailable(turnControl)) return result(false, 'TURN CONTROL IS NOT AVAILABLE');
+      return clickElement(turnControl, `TURN ${command.side.toUpperCase()} NOW`);
     }
     if (command.intent === 'us-turn-stop') return clickId('turnStop', 'TURN STOPPED');
     if (command.intent === 'clock') return clickId(`clock${command.action[0].toUpperCase()}${command.action.slice(1)}`, `CLOCK ${command.action.toUpperCase()}`);
@@ -877,9 +890,10 @@
         if (!selected.ok) return selected;
       }
       if (isHidden($('tTurnLeft'))) return result(false, 'HEADING TURNS ARE NOT AVAILABLE IN U/S COMPASS');
-      if (!isAvailable($('tTurnLeft'))) return result(false, 'TURN CONTROL IS NOT AVAILABLE');
+      const turnControl = $(command.side === 'left' ? 'tTurnLeft' : 'tTurnRight');
+      if (!isAvailable(turnControl)) return result(false, 'TURN CONTROL IS NOT AVAILABLE');
       const heading = applyHeading($('tHeadingInput'), command.heading);
-      return heading.ok ? clickId(command.side === 'left' ? 'tTurnLeft' : 'tTurnRight', `TURN ${command.side.toUpperCase()} ${String(command.heading).padStart(3, '0')}°`) : heading;
+      return heading.ok ? clickElement(turnControl, `TURN ${command.side.toUpperCase()} ${String(command.heading).padStart(3, '0')}°`) : heading;
     }
     if (command.intent === 'continue-turn-heading') {
       if (command.aircraft) {
@@ -887,11 +901,13 @@
         if (!selected.ok) return selected;
       }
       if (isHidden($('tTurnLeft'))) return result(false, 'CONTINUE HEADING IS NOT AVAILABLE IN U/S COMPASS');
+      const continueControl = $('tContinueHeading');
+      if (!isAvailable(continueControl)) return result(false, 'CONTINUE TURN IS NOT AVAILABLE');
       const heading = applyHeading($('tHeadingInput'), command.heading);
       if (!heading.ok) return heading;
-      const side = $('tContinueHeading')?.dataset.turnSide;
+      const side = continueControl.dataset.turnSide;
       if (side === 'left' || side === 'right') markVoiceAffected($(side === 'left' ? 'tTurnLeft' : 'tTurnRight'));
-      return clickId('tContinueHeading', `CONTINUE ACTIVE TURN ${String(command.heading).padStart(3, '0')}°`);
+      return clickElement(continueControl, `CONTINUE ACTIVE TURN ${String(command.heading).padStart(3, '0')}°`);
     }
     if (command.intent === 'us-turn') {
       if (command.aircraft) {
@@ -899,8 +915,9 @@
         if (!selected.ok) return selected;
       }
       if (isHidden($('tUsLeft'))) return result(false, 'U/S TURNS ARE NOT AVAILABLE IN NORMAL QGH');
-      if (!isAvailable($('tUsLeft'))) return result(false, 'TURN CONTROL IS NOT AVAILABLE');
-      return clickId(command.side === 'left' ? 'tUsLeft' : 'tUsRight', `TURN ${command.side.toUpperCase()} NOW`);
+      const turnControl = $(command.side === 'left' ? 'tUsLeft' : 'tUsRight');
+      if (!isAvailable(turnControl)) return result(false, 'TURN CONTROL IS NOT AVAILABLE');
+      return clickElement(turnControl, `TURN ${command.side.toUpperCase()} NOW`);
     }
     if (command.intent === 'us-turn-stop') {
       if (command.aircraft) {
@@ -1057,6 +1074,16 @@
     return null;
   }
 
+  function commandPreemptsPendingConfirmation(command) {
+    if (!command?.accepted) return false;
+    if (command.intent === 'clock') return command.action === 'stop';
+    return new Set([
+      'normal-turn-heading', 'continue-turn-heading', 'us-turn', 'us-turn-stop',
+      'start-orbit', 'continue-orbit', 'resume-normal', 'transmit-df',
+      'report-heading', 'request-distance', 'advance-flight'
+    ]).has(command.intent);
+  }
+
   function confirmPendingVoiceCommand() {
     const command = state.pendingCommand;
     if (!command) return result(false, 'NO VOICE COMMAND AWAITS CONFIRMATION');
@@ -1105,8 +1132,12 @@
       const response = pendingVoiceResponse(transcript, command);
       if (response === 'confirm') return confirmPendingVoiceCommand();
       if (response === 'cancel') return cancelPendingVoiceCommand();
-      setStatus('CONFIRM OR CANCEL THE PENDING VOICE COMMAND', 'error');
-      return result(false, 'CONFIRM OR CANCEL THE PENDING VOICE COMMAND');
+      if (commandPreemptsPendingConfirmation(command)) {
+        clearPendingVoiceCommand();
+      } else {
+        setStatus('CONFIRM OR CANCEL THE PENDING VOICE COMMAND', 'error');
+        return result(false, 'CONFIRM OR CANCEL THE PENDING VOICE COMMAND');
+      }
     }
     if (!command.accepted) {
       setStatus('COMMAND NOT RECOGNISED', 'error');
@@ -1142,8 +1173,44 @@
   function grammarContext() {
     return {
       screen: currentVoiceContext(),
+      procedure: currentProcedure(),
       callsigns: voiceCallsignOptions()
     };
+  }
+
+  function recognitionContextSignature() {
+    const context = grammarContext();
+    const callsigns = context.callsigns.map(item => `${item.id || ''}:${item.callsign || item}`).join('\u0001');
+    return [context.screen, context.procedure, callsigns].join('\u0000');
+  }
+
+  function reconfigureRecognitionContext(signature) {
+    if (!signature || signature === state.recognitionContext) return;
+    state.recognitionContext = signature;
+    const resumeContinuous = state.continuous && !state.manuallyStopped && !pilotBlocksMicrophone();
+    // A capture opened for another screen, procedure or callsign roster cannot
+    // be allowed to finalize later against the new exercise context.
+    state.startAttempt += 1;
+    state.nativeRequestId = null;
+    state.nativeResultReceived = false;
+    state.lastNativeGrammarJson = null;
+    state.callTranscripts.clear();
+    state.lastTranscript = '';
+    state.lastTranscriptAt = 0;
+    state.processing = false;
+    state.starting = false;
+    state.listening = false;
+    clearRestartTimer();
+    root.clearTimeout(state.radioQuietTimer);
+    state.radioQuietTimer = null;
+    clearPendingVoiceCommand();
+    try {
+      if (nativeVoiceBridge()) nativeVoiceBridge().cancel();
+      else state.engine?.cancel();
+    } catch { /* The incremented attempt gate rejects any late result. */ }
+    root.QGHRadioWorkspace?.controllerEnd();
+    updateMicState();
+    if (resumeContinuous) scheduleContinuousRestart();
   }
 
   function currentRecognitionPlan() {
@@ -1889,19 +1956,29 @@
     restoreVoiceDockPosition();
     // Phone content has its own scroll area above the dock. Reset that area only
     // when the existing simulator changes screens; no simulator state is touched.
-    const app = documentRef.querySelector('.app, .tactical-app');
+    const app = documentRef.querySelector('.app, .tactical-app') || documentRef.body;
     if (app && root.MutationObserver) {
-      let context = currentVoiceContext();
-      const screens = app.querySelectorAll('.screen, .tactical-screen');
+      let screen = currentVoiceContext();
+      let context = recognitionContextSignature();
+      state.recognitionContext = context;
+      const refreshRecognitionContext = () => {
+        const nextScreen = currentVoiceContext();
+        const nextContext = recognitionContextSignature();
+        if (nextContext === context) return;
+        if (nextScreen !== screen) root.QGHRadioWorkspace?.reset();
+        reconfigureRecognitionContext(nextContext);
+        screen = nextScreen;
+        context = nextContext;
+        if (phoneDock()) app.scrollTop = 0;
+      };
       const observer = new root.MutationObserver(() => {
-        const next = currentVoiceContext();
-        if (next !== context) {
-          root.QGHRadioWorkspace?.reset();
-          context = next;
-          if (phoneDock()) app.scrollTop = 0;
-        }
+        refreshRecognitionContext();
       });
-      screens.forEach(screen => observer.observe(screen, { attributes: true, attributeFilter: ['class'] }));
+      observer.observe(app, { subtree: true, attributes: true, attributeFilter: ['class', 'aria-pressed'] });
+      // Input values are properties rather than DOM attributes, so roster edits
+      // need the same safe context refresh as a screen/procedure transition.
+      documentRef.addEventListener('input', refreshRecognitionContext);
+      documentRef.addEventListener('change', refreshRecognitionContext);
     }
     checkLocalAvailability({ force: true });
   }

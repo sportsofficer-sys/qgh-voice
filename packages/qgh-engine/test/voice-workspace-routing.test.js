@@ -275,6 +275,7 @@ function createSingleHarness() {
     turnLeft: add(documentRef, consoleScreen, 'button', { id: 'turnLeft', textContent: 'TURN LEFT NOW', hidden: true }),
     turnRight: add(documentRef, consoleScreen, 'button', { id: 'turnRight', textContent: 'TURN RIGHT NOW', hidden: true }),
     turnStop: add(documentRef, consoleScreen, 'button', { id: 'turnStop', hidden: true }),
+    clockStop: add(documentRef, consoleScreen, 'button', { id: 'clockStop', textContent: 'STOP CLOCK' }),
     transmit: add(documentRef, consoleScreen, 'button', { id: 'transmit', textContent: 'TRANSMIT FOR D/F' }),
     restartExercise: add(documentRef, consoleScreen, 'button', { id: 'restartExercise', textContent: 'RESTART EXERCISE' }),
     replay: add(documentRef, analysis, 'button', {
@@ -498,13 +499,27 @@ test('numbered continue retains the heading-control route and bare continue requ
   }
 });
 
+test('an unavailable continue-heading call does not alter its heading field before rejection', () => {
+  for (const tactical of [false, true]) {
+    const h = tactical ? createTacticalHarness() : createSingleHarness();
+    setActive(h.screens, h.consoleScreen);
+    h.controls.headingInput.value = '150';
+    h.controls.continueHeading.disabled = true;
+    const prefix = tactical ? 'Raven twenty one ' : '';
+    const outcome = h.workspace.dispatchTranscript(prefix + 'continue zero six zero');
+    assert.equal(outcome.ok, false);
+    assert.equal(h.controls.headingInput.value, '150');
+    assert.equal(h.controls.continueHeading.clickCount, 0);
+  }
+});
+
 test('passing report voice variants arm the addressed report, highlight without clicking or turning, and reject malformed calls', () => {
   for (const tactical of [false, true]) {
     const h = tactical ? createTacticalHarness() : createSingleHarness();
     setActive(h.screens, h.consoleScreen);
     const requests = []; const replies = [];
     h.sandbox.QGHRadioWorkspace = {
-      requestHeadingPassing(command) { requests.push(command); return { ok: true, message: `WILL REPORT PASSING ${String(command.heading).padStart(3, '0')}°M` }; },
+      requestHeadingPassing(command) { requests.push(command); return { ok: true, message: `WILL REPORT HEADING PASSING ${String(command.heading).padStart(3, '0')}°M` }; },
       acknowledge: command => replies.push(command)
     };
     const prefix = tactical ? 'Raven twenty one ' : '';
@@ -516,7 +531,7 @@ test('passing report voice variants arm the addressed report, highlight without 
       assert.equal(requests.at(-1).aircraft, tactical ? 'B' : 'single');
       assert.equal(h.controls.requestHeading.clickCount, 0, 'do not report the current heading immediately');
       assert.equal(h.controls.requestHeading.classList.contains('voice-command-effect'), true);
-      assert.match(showAppliedReply(h), /WILL REPORT PASSING 325/);
+      assert.match(showAppliedReply(h), /WILL REPORT HEADING PASSING 325/);
     }
     assert.equal(h.controls.turnHeadingRight.clickCount, 0);
     assert.equal(h.controls.turnHeadingLeft.clickCount, 0);
@@ -717,6 +732,25 @@ test('voice router requires an explicit confirmation before restart and accepts 
   const confirmed = workspace.dispatchTranscript('confirm voice command');
   assert.equal(confirmed.ok, true);
   assert.equal(controls.restartExercise.clickCount, 1);
+});
+
+test('an urgent flight or clock stop cancels a pending restart confirmation and executes immediately', () => {
+  const harness = createSingleHarness();
+  const { workspace, screens, consoleScreen, controls } = harness;
+  setActive(screens, consoleScreen);
+  controls.turnStop.hidden = false;
+
+  assert.match(workspace.dispatchTranscript('restart exercise').message, /CONFIRM/);
+  const stopTurn = workspace.dispatchTranscript('stop turn now');
+  assert.equal(stopTurn.ok, true);
+  assert.equal(controls.turnStop.clickCount, 1);
+  assert.equal(controls.restartExercise.clickCount, 0);
+
+  assert.match(workspace.dispatchTranscript('restart exercise').message, /CONFIRM/);
+  const stopClock = workspace.dispatchTranscript('stop clock');
+  assert.equal(stopClock.ok, true);
+  assert.equal(controls.clockStop.clickCount, 1);
+  assert.equal(controls.restartExercise.clickCount, 0);
 });
 
 test('a pending voice confirmation expires when its exercise screen changes', () => {

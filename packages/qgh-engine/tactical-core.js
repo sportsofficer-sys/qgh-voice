@@ -526,10 +526,19 @@
   function startTurn(exercise, id, side) {
     if (exercise.procedure !== 'us') throw new Error('Timed turns are available only in U/S Compass.');
     if (!TURN_SIDES.has(side)) throw new Error('Turn side must be left or right.');
-    const startIndex = exercise.events.length;
     const aircraft = getAircraft(exercise, id);
+    if (aircraft.orbit) return null;
+    const currentSide = aircraft.manualTurnSide || aircraft.initialTurnSide;
+    if (currentSide === side) {
+      return {
+        aircraft,
+        radius: turnRadiusNm(aircraft.cfg.speed, aircraft.cfg.rate),
+        unchanged: true,
+        events: []
+      };
+    }
+    const startIndex = exercise.events.length;
     detachFormationFollower(exercise, aircraft, 'individual timed turn');
-    if (aircraft.manualTurnSide || aircraft.initialTurnSide) return null;
     aircraft.orbit = null;
     aircraft.initialTurnSide = null;
     aircraft.targetHeading = null;

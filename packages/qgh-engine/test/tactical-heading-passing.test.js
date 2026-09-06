@@ -178,7 +178,7 @@ function harness({ formation = false, procedure = 'normal', rate = 3 } = {}) {
 }
 
 const clone = value => JSON.parse(JSON.stringify(value));
-const crossingLogs = h => h.state.commands.filter(item => item.type === 'HEADING PASSING REPORT' && /^PASSED /.test(item.detail));
+const crossingLogs = h => h.state.commands.filter(item => item.type === 'HEADING PASSING REPORT' && /^HEADING PASSED /.test(item.detail));
 
 test('manual tactical speed supersedes only its aircraft pending speed reply', () => {
   const h = harness();
@@ -258,7 +258,7 @@ test('tactical Advance observes every flight step and preserves the reporting ai
   assert.equal(crossingLogs(h)[0].aircraftId, 'A');
   assert.equal(crossingLogs(h)[0].callsign, 'FALCON 11');
   h.advanceTime(300);
-  assert.match(h.captions[0].text, /^PASSED 063°M · FALCON 11$/);
+  assert.match(h.captions[0].text, /^HEADING PASSED 063°M · FALCON 11$/);
   assert.equal(h.captions[0].source, 'A');
   assert.equal(h.adapter.observation().phase, 'live');
   assert.equal(h.adapter.observation().source, 'A');
@@ -281,7 +281,7 @@ test('live tactical steps report once for the addressed aircraft without changin
   h.tick();
   assert.equal(crossingLogs(h).length, 1);
   h.advanceTime(300);
-  assert.equal(h.captions[0].text, 'PASSING 140°M · RAVEN 21');
+  assert.equal(h.captions[0].text, 'HEADING PASSING 140°M · RAVEN 21');
   assert.equal(h.captions[0].source, 'B');
   assert.equal(raven.targetHeading, 90);
   assert.equal(raven.forcedTurnSide, 'left');
@@ -388,5 +388,5 @@ test('resetting tactical microphone playback preserves an armed flight report', 
   h.radio.reset();
   h.tick(4);
   h.advanceTime(300);
-  assert.equal(h.captions[0].text, 'PASSING 063°M · FALCON 11');
+  assert.equal(h.captions[0].text, 'HEADING PASSING 063°M · FALCON 11');
 });

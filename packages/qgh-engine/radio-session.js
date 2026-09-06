@@ -44,7 +44,13 @@
   function parseMessage(value, Voice, options = {}) {
     const transcript = Voice.normalizeTranscript(value);
     if (/^(?:(?:confirm|cancel) voice command|confirm termination|keep exercise)$/.test(transcript)) return null;
-    if (/\borbit\b/.test(transcript) || /(?:^| )continue$/.test(transcript) || /\bresume normal\b/.test(transcript)) {
+    const explicitOrbit = /\borbit\b/.test(transcript) || /\bresume normal\b/.test(transcript);
+    // "Homing nnn continue" is a valid information call.  Do this check before
+    // treating a terminal bare "continue" as an orbit command; an addressed
+    // callsign must not turn an information call into aircraft movement.
+    const hasReceiptCue = RADIO_CUES.some(cue => cue.kind === 'receipt' && cue.pattern.test(transcript));
+    const bareContinue = /(?:^| )continue(?: (?:the )?orbit)?(?: please)?$/.test(transcript) && !hasReceiptCue;
+    if (explicitOrbit || bareContinue) {
       const reject = reason => ({ accepted: false, transcript, reason });
       const match = /^(.*?)(?:(?:commence|start|make)(?: an?| the)? )?(?:orbit (left|right)(?: now)?|(left|right)(?: hand)? orbit(?: now)?|(continue(?: (?:the )?orbit)?)|(resume normal))(?: please)?$/.exec(transcript);
       if (!match) return reject('specify-left-or-right-orbit');
@@ -52,11 +58,16 @@
       let aircraft;
       if (prefix) {
         const target = Voice.parseCommand(`${prefix} transmit for df`, { callsigns: options.callsigns });
-        if (!target.accepted || !target.aircraft) return reject('unknown-aircraft');
-        aircraft = target.aircraft;
+        // “Homing … continue” is an RT information call, not an orbit command.
+        // Only reject an unknown addressee when the caller actually used orbit syntax.
+        if (!target.accepted || !target.aircraft) {
+          if (explicitOrbit) return reject('unknown-aircraft');
+        } else aircraft = target.aircraft;
       } else if (!options.single) return reject('callsign-required');
-      return { accepted: true, transcript, intent: match[5] ? 'resume-normal' : match[4] ? 'continue-orbit' : 'start-orbit',
-        ...(match[2] || match[3] ? { side: match[2] || match[3] } : {}), ...(aircraft ? { aircraft } : {}) };
+      if (!prefix || aircraft) {
+        return { accepted: true, transcript, intent: match[5] ? 'resume-normal' : match[4] ? 'continue-orbit' : 'start-orbit',
+          ...(match[2] || match[3] ? { side: match[2] || match[3] } : {}), ...(aircraft ? { aircraft } : {}) };
+      }
     }
     // Claim malformed passing requests too: never let them fall through to an
     // immediate heading report, or infer a turn from a future reporting condition.
@@ -209,8 +220,12 @@
     } else if (['request-heading-passing', 'heading-passing-report'].includes(command.intent)) {
       if (aircraft.procedure === 'us' || !Number.isInteger(command.heading) || command.heading < 0 || command.heading > 360) return null;
       const heading = String(command.heading % 360).padStart(3, '0');
-      const action = command.intent === 'request-heading-passing' ? 'Will report passing' : command.delayed ? 'Passed' : 'Passing';
-      text = `${action.toUpperCase()} ${heading}°M`; speech = `${action} ${spokenDigits(heading)}`;
+      const action = command.intent === 'request-heading-passing' ? 'Will report heading passing' : command.delayed ? 'Heading passed' : 'Heading passing';
+      // Keep the controller-facing wording precise, while using the existing
+      // bounded offline phrase bank for the pilot's acknowledgement.  The
+      // spoken order is equivalent and avoids spelling fixed words as letters.
+      const speechAction = command.intent === 'request-heading-passing' ? 'Will report passing heading' : action;
+      text = `${action.toUpperCase()} ${heading}°M`; speech = `${speechAction} ${spokenDigits(heading)}`;
     } else if (command.intent === 'report-heading') {
       if (aircraft.procedure === 'us' || !Number.isFinite(aircraft.heading)) return null;
       const heading = String((Math.round(aircraft.heading) % 360 + 360) % 360).padStart(3, '0');

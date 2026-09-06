@@ -282,6 +282,50 @@ test('interprets flexible local RT phrasing only when the essential command slot
   });
 });
 
+test('rejects qualified, malformed-unit, and compound calls rather than silently executing a subset', () => {
+  const options = { callsigns: [{ id: 'A', callsign: '430' }, { id: 'B', callsign: 'RAVEN 21' }] };
+  for (const transcript of [
+    '430 do not turn left heading 140',
+    '430 turn left heading 140 after ten seconds',
+    '430 turn right heading 140 if able',
+    '430 do not orbit left',
+    'do not reset clock',
+    'do not include raven twenty one in formation',
+    'raven twenty one stop following leader when overhead',
+    '430 set speed 250 feet',
+    '430 set speed minus 250',
+    '430 set speed 250 kilometres per hour',
+    '430 turn right heading minus 140',
+    '430 turn right heading 140 feet',
+    'advance flight two minutes',
+    'set replay speed ten knots',
+    '430 turn right heading 140 and report heading',
+    '430 turn right 140 report distance'
+  ]) {
+    assert.equal(Voice.parseCommand(transcript, options).accepted, false, transcript);
+  }
+});
+
+test('gives formation-specific phrases precedence over a generic aircraft selection', () => {
+  const options = { callsigns: [{ id: 'A', callsign: 'FALCON 11' }, { id: 'B', callsign: 'RAVEN 21' }] };
+  assert.deepEqual(Voice.parseCommand('please select formation leader raven twenty one', options), {
+    accepted: true,
+    transcript: 'please select formation leader raven twenty one',
+    intent: 'set-formation-leader',
+    aircraft: 'B',
+    match: 'semantic',
+    confidence: 'high'
+  });
+  assert.deepEqual(Voice.parseCommand('raven twenty one stop following formation leader', options), {
+    accepted: true,
+    transcript: 'raven twenty one stop following formation leader',
+    intent: 'stop-following-leader',
+    aircraft: 'B',
+    match: 'semantic',
+    confidence: 'high'
+  });
+});
+
 test('flags semantic navigation and reset actions for a separate confirmation step', () => {
   const restart = Voice.parseCommand('start a fresh exercise please');
   const changeType = Voice.parseCommand('go back and change qgh mode');

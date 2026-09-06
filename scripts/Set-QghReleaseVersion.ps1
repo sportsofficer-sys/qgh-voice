@@ -35,7 +35,7 @@ try {
     throw "Could not parse QGH release metadata: $($_.Exception.Message)"
 }
 
-if ($webRelease.name -ne 'QGH Simulator') {
+if ($webRelease.name -ne 'Reds QGH Simulator') {
     throw 'The PWA release metadata has an unexpected application name.'
 }
 

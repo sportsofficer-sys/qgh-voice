@@ -254,6 +254,61 @@ test('an individual U/S Compass turn releases only the selected formation wingma
   assert.ok(Tactical.getAircraft(exercise, 'C').manualTurnSide === 'right');
 });
 
+test('U/S Compass directly reverses a timed turn without resetting position or turn geometry', () => {
+  const exercise = makeExercise('us', 2);
+  const aircraft = Tactical.getAircraft(exercise, 'A');
+  aircraft.initialTurnSide = null;
+  aircraft.targetHeading = aircraft.plane.heading;
+
+  const first = Tactical.startTurn(exercise, 'A', 'left');
+  assert.ok(first);
+  Tactical.advance(exercise, 4);
+  const beforeReverse = { ...aircraft.plane };
+  const headingAtReverse = aircraft.plane.heading;
+
+  const reversed = Tactical.startTurn(exercise, 'A', 'right');
+  assert.ok(reversed, 'an opposite NOW command should reverse an active timed turn');
+  assert.equal(reversed.unchanged, undefined);
+  assert.deepEqual(aircraft.plane, beforeReverse, 'the reversal command itself must not move or teleport the aircraft');
+  assert.equal(aircraft.manualTurnSide, 'right');
+  assert.equal(aircraft.manualTurnRecord.side, 'right');
+  assert.equal(aircraft.manualTurnRecord.startHeading, headingAtReverse);
+
+  const duplicate = Tactical.startTurn(exercise, 'A', 'right');
+  assert.ok(duplicate);
+  assert.equal(duplicate.unchanged, true, 'a same-side NOW call should keep the active turn intact');
+  assert.equal(aircraft.manualTurnRecord.startHeading, headingAtReverse);
+
+  Tactical.advance(exercise, 1);
+  assert.ok(
+    headingError(headingAtReverse, aircraft.plane.heading) <= aircraft.cfg.rate + 1e-8,
+    'the post-reversal heading change must remain bounded by the selected rate of turn'
+  );
+  assert.equal(Tactical.stopTurn(exercise, 'A').aircraft.manualTurnSide, null);
+});
+
+test('a rejected or unchanged U/S command does not detach a formation follower', () => {
+  const exercise = Tactical.createExercise({
+    procedure: 'us',
+    runway: 230,
+    outbound: 65,
+    inbound: 225,
+    aircraft: fleet(3),
+    formation: formationOptions(),
+    randomizeInitial: false
+  });
+  const wingman = Tactical.getAircraft(exercise, 'B');
+  wingman.orbit = Core.createOrbit('right', wingman.plane.heading);
+  assert.equal(Tactical.startTurn(exercise, 'B', 'left'), null);
+  assert.equal(Tactical.formationRoleFor(exercise, 'B'), 'FORMATION');
+
+  wingman.orbit = null;
+  wingman.initialTurnSide = 'right';
+  const sameSide = Tactical.startTurn(exercise, 'B', 'right');
+  assert.equal(sameSide.unchanged, true);
+  assert.equal(Tactical.formationRoleFor(exercise, 'B'), 'FORMATION');
+});
+
 test('an invalid individual heading command does not release a formation wingman', () => {
   const exercise = Tactical.createExercise({
     procedure: 'normal',

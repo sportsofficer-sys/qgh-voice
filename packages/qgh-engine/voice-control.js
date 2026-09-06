@@ -687,12 +687,76 @@
     'new-exercise', 'restart-exercise', 'return-to-mode-selection', 'select-simulator-mode',
     'set-aircraft-callsign'
   ]);
+  // A recognition result can contain extra words. For a flight-control trainer, a
+  // qualified, conditional, corrected, or chained call must never be reduced to the
+  // first executable-looking fragment. The controller can give a new clear call.
+  const UNSAFE_CONTROL_QUALIFIERS = new Set([
+    'not', 'negative', 'minus', 'cancel', 'abort', 'after', 'before', 'unless', 'until',
+    'if', 'when', 'while', 'except', 'however', 'correction', 'correct', 'instead', 'rather'
+  ]);
+  const CONTROL_ACTION_WORDS = new Set([
+    'turn', 'orbit', 'continue', 'resume', 'transmit', 'send', 'report', 'request',
+    'set', 'select', 'change', 'assign', 'add', 'remove', 'include', 'exclude',
+    'restart', 'reset', 'advance', 'terminate', 'stop'
+  ]);
 
   function semanticTokens(transcript) {
     return normalizeTranscript(transcript).split(' ')
       .filter(Boolean)
       .map(token => SEMANTIC_ALIASES[token] || token)
       .filter(token => !SEMANTIC_FILLERS.has(token));
+  }
+
+  function safetyRejection(transcript) {
+    const tokens = normalizeTranscript(transcript).split(' ').filter(Boolean);
+    if (!tokens.length) return null;
+    const hasAction = tokens.some(token => CONTROL_ACTION_WORDS.has(SEMANTIC_ALIASES[token] || token));
+    if (hasAction && tokens.some(token => UNSAFE_CONTROL_QUALIFIERS.has(token))) return 'qualified-command';
+
+    // Only the exact one-minute simulation advance is implemented. Do not turn
+    // an unrecognised duration into the nearest available control.
+    if (/^advance flight(?:\s+by)?\b/.test(tokens.join(' '))) {
+      const supported = new Set([
+        'advance flight', 'advance flight one minute', 'advance flight 1 minute',
+        'advance flight by one minute', 'advance flight by 1 minute'
+      ]);
+      if (!supported.has(tokens.join(' '))) return 'unsupported-advance-duration';
+    }
+
+    // Replay speed uses a deliberately closed set. A unit or an unsupported value
+    // must not be stripped away by the flexible parser.
+    if (/^set replay speed\b/.test(tokens.join(' '))) {
+      const replay = parseReplaySpeed(tokens.join(' '));
+      if (!replay?.accepted) return 'unsupported-replay-speed';
+    }
+
+    const unitTokens = new Set(['feet', 'foot', 'ft', 'knots', 'knot', 'kt', 'nm', 'nautical', 'mile', 'miles', 'metres', 'meters', 'kilometres', 'kilometers', 'hour', 'hours']);
+    const hasUnit = (...names) => names.some(name => tokens.includes(name));
+    const headingCall = (tokens.includes('turn') && (tokens.includes('left') || tokens.includes('right')))
+      || hasUnit('heading', 'runway', 'inbound', 'outbound');
+    if (headingCall && tokens.some(token => unitTokens.has(token))) return 'invalid-heading-unit';
+    if (tokens.includes('speed') && !tokens.includes('replay')
+      && hasUnit('feet', 'foot', 'ft', 'nm', 'nautical', 'mile', 'miles', 'metres', 'meters', 'kilometres', 'kilometers', 'hour', 'hours')) {
+      return 'invalid-speed-unit';
+    }
+
+    const chained = tokens.includes('and') || tokens.includes('then');
+    if (chained && tokens.some(token => CONTROL_ACTION_WORDS.has(SEMANTIC_ALIASES[token] || token))) {
+      // Preserve the intentional navigation phrase already used by the entry page;
+      // other chained instructions must be separated into clear calls.
+      if (tokens.join(' ') !== 'go back and change qgh mode') return 'compound-command';
+    }
+    const operations = new Set();
+    if (tokens.includes('turn') && (tokens.includes('left') || tokens.includes('right')) && !tokens.includes('stop')) operations.add('turn');
+    if (tokens.includes('orbit')) operations.add('orbit');
+    if (tokens.includes('report') || tokens.includes('request')) operations.add('report');
+    if (tokens.includes('transmit') || tokens.includes('send')) operations.add('transmit');
+    if (tokens.includes('set') || tokens.includes('assign')) operations.add('set');
+    if (tokens.includes('advance')) operations.add('advance');
+    if (tokens.includes('restart') || tokens.includes('terminate')) operations.add('exercise');
+    if (operations.size > 1) return 'compound-command';
+    if (tokens.indexOf('turn') !== -1 && tokens.indexOf('stop') > tokens.indexOf('turn')) return 'compound-command';
+    return null;
   }
 
   function hasToken(tokens, ...candidates) {
@@ -994,6 +1058,15 @@
     if (hasToken(tokens, 'focus', 'show') && hasToken(tokens, 'all') && hasToken(tokens, 'aircraft')) {
       return semanticAccept(transcript, 'focus-all-aircraft');
     }
+    if (target && hasToken(tokens, 'stop') && hasToken(tokens, 'following', 'formation', 'leader')) {
+      return semanticAccept(transcript, 'stop-following-leader', targetDetail);
+    }
+    if (target && hasToken(tokens, 'break') && hasToken(tokens, 'formation')) {
+      return semanticAccept(transcript, 'stop-following-leader', targetDetail);
+    }
+    if (target && hasToken(tokens, 'formation') && hasToken(tokens, 'leader') && hasToken(tokens, 'select', 'set', 'choose')) {
+      return semanticAccept(transcript, 'set-formation-leader', targetDetail);
+    }
     if (target && hasToken(tokens, 'focus', 'show') && hasToken(tokens, 'track', 'aircraft')) {
       return semanticAccept(transcript, 'focus-aircraft', targetDetail);
     }
@@ -1009,13 +1082,6 @@
       if (target && hasToken(tokens, 'add', 'include')) return semanticAccept(transcript, 'set-formation-member', { ...targetDetail, enabled: true });
       if (target && hasToken(tokens, 'remove', 'exclude')) return semanticAccept(transcript, 'set-formation-member', { ...targetDetail, enabled: false });
     }
-    if (target && hasToken(tokens, 'stop') && hasToken(tokens, 'following', 'formation', 'leader')) {
-      return semanticAccept(transcript, 'stop-following-leader', targetDetail);
-    }
-    if (target && hasToken(tokens, 'break') && hasToken(tokens, 'formation')) {
-      return semanticAccept(transcript, 'stop-following-leader', targetDetail);
-    }
-
     const bearingMode = exactlyOneToken(tokens, ['qdm', 'qte']);
     if (hasToken(tokens, 'qdm', 'qte') && !bearingMode) return null;
     if (bearingMode && hasToken(tokens, 'show', 'select', 'set')) {
@@ -1107,6 +1173,9 @@
   }
 
   function parseCommand(value, options) {
+    const transcript = normalizeTranscript(value);
+    const unsafe = safetyRejection(transcript);
+    if (unsafe) return reject(transcript, unsafe);
     const strict = parseStrictCommand(value, options);
     if (strict.accepted) return strict;
     // A strict parser can distinguish an unknown or ambiguous callsign. Never let a

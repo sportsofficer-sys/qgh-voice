@@ -494,13 +494,28 @@
 
   function updateUsTurnControls() {
     const turning = Boolean(state.manualTurnSide || state.initialTurnSide);
-    $('turnLeft').disabled = turning;
-    $('turnRight').disabled = turning;
-    $('turnStop').disabled = !turning;
+    const available = state.procedure === 'us' && Boolean(state.plane && state.cfg);
+    const orbitActive = Boolean(state.orbit);
+    $('turnLeft').disabled = !available || orbitActive;
+    $('turnRight').disabled = !available || orbitActive;
+    $('turnStop').disabled = !available || !turning;
+    for (const side of ['left', 'right']) {
+      $('turn' + (side === 'left' ? 'Left' : 'Right'))?.setAttribute(
+        'aria-pressed',
+        String(!orbitActive && (state.manualTurnSide || state.initialTurnSide) === side)
+      );
+    }
   }
 
   function startTurn(side) {
-    if (!state.plane || state.manualTurnSide || state.initialTurnSide) return;
+    if (!state.plane || !state.cfg || state.procedure !== 'us' || state.orbit) return;
+    const currentSide = state.manualTurnSide || state.initialTurnSide;
+    if (currentSide === side) {
+      updateUsTurnControls();
+      showToast(`TURN ${side.toUpperCase()} CONTINUES`);
+      window.QGHRadioWorkspace?.manualCommand({ intent: 'us-turn', side });
+      return;
+    }
     state.initialTurnSide = null;
     state.targetHeading = null;
     state.forcedTurnSide = null;
@@ -543,6 +558,7 @@
     $('usCtl').hidden = !usCompass;
     $('requestHeading').hidden = usCompass;
     $('infoRow').classList.toggle('single', usCompass);
+    updateUsTurnControls();
     updateNormalContinueControl();
   }
 

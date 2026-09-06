@@ -62,6 +62,22 @@ test('QGH information and briefing calls are receipts, never keyword-driven mano
   assert.equal(Radio.parseMessage('confirm termination', Voice, options), null);
 });
 
+test('QGH information calls ending in continue remain receipts rather than accidental orbits', () => {
+  const textOptions = { callsigns: [{ id: 'single', callsign: 'RAVEN 21' }], single: true };
+  const numericOptions = { callsigns: [{ id: 'single', callsign: '430' }], single: true };
+  for (const [phrase, options, aircraft] of [
+    ['homing two three zero continue', textOptions, undefined],
+    ['raven twenty one homing two three zero continue', textOptions, 'single'],
+    ['four three zero homing two three zero continue', numericOptions, 'single']
+  ]) {
+    const call = Radio.parseMessage(phrase, Voice, options);
+    assert.equal(call.accepted, true, phrase);
+    assert.equal(call.intent, 'radio-exchange', phrase);
+    assert.equal(call.radioKind, 'receipt', phrase);
+    assert.equal(call.aircraft, aircraft, phrase);
+  }
+});
+
 function receiver() {
   let now = 0;
   let bearing = { source: 'A', callsign: 'RAVEN 21', qdm: 60, qte: 240, overhead: false };

@@ -17,7 +17,7 @@
 
     <article class="guide-card" aria-labelledby="guideTitle">
       <header class="guide-intro">
-        <span>USER GUIDE · 4.4.2 NUMERIC CALLSIGNS</span>
+        <span>USER GUIDE · 4.4.3 VOICE SAFETY &amp; U/S TURNS</span>
         <h2 id="guideTitle">QGH Simulator</h2>
         <p>Training use only. Verify all operational procedures against current authorised publications and local instructions.</p>
       </header>
@@ -58,6 +58,7 @@
             <p>“Turn left now”</p>
             <p>“Turn right now”</p>
             <p>“Stop turn now”</p>
+            <p>An opposite NOW call reverses the active timed turn immediately; it does not require a separate Stop Turn call first.</p>
             <p>“Request distance” (heading reports are unavailable with a U/S compass)</p>
             <p>“Start clock” · “Advance flight one minute”</p>
           </section>
@@ -71,7 +72,7 @@
             <p>“Raven Twenty One stop following leader”</p>
           </section>
         </div>
-        <p class="guide-note">Use aviation digits for headings: zero, one, two, tree, four, fife, six, seven, eight, niner. Plain phrase variations are accepted when the aircraft, action and required heading are clear. Give one call at a time. “Terminate exercise” opens the safety confirmation; say “Confirm termination” or “Keep exercise.”</p>
+        <p class="guide-note">Use aviation digits for headings: zero, one, two, tree, four, fife, six, seven, eight, niner. Plain phrase variations are accepted when the aircraft, action and required heading are clear. Give one clear action at a time: conditional, negated, wrong-unit and chained calls are rejected without changing the exercise. “Terminate exercise” opens the safety confirmation; say “Confirm termination” or “Keep exercise.”</p>
       </section>
 
       <section class="guide-section" aria-labelledby="guideRadio">
@@ -94,14 +95,14 @@
         <p><b>Orbits — both procedures:</b> use <q>Orbit left</q>, <q>Orbit right</q>, <q>Left hand orbit</q> or <q>Right hand orbit</q>, or the ORBIT buttons. An orbit starts from the aircraft’s current position and heading, at the selected speed and turn rate. The pilot reports each completed 360° circle and continues circling, with red feedback and D/F during the report. No heading is read out in U/S Compass.</p>
         <p><q>Continue</q> or <q>Continue orbit</q> keeps the existing orbit and cancels a pending resume instruction. <q>Resume normal</q> (also a button) finishes the current circle, then flies straight on the actual heading at which the orbit began. At the exact start of a circle, it can resume immediately. A new turn-to-heading call—including <q>Continue zero six zero</q> in Normal QGH—overrides the orbit immediately at the selected rate. In U/S Compass, <q>Stop turn now</q> rolls out on the current heading instead. Tactical calls need the aircraft callsign; a separate orbit command to a follower releases that aircraft from formation. A leader’s orbit retains its attached followers.</p>
         <p>An unchanged speed and turn rate produce a closed circular path. Changing speed during the orbit changes its radius; the simulator does not teleport the aircraft back to the old position. Completion is detected at the next quarter-second flight sample; busy-channel reports wait until the channel is available.</p>
-        <p><b>Report a heading when passing:</b> in Normal QGH, say <q>Report heading passing three two five</q>, <q>Report passing heading three two five</q> or <q>Report passing three two five</q>. Any heading 000–360 is accepted (360 means 000). This arms a one-time report; it does not change the aircraft’s turn or heading. The pilot reports <q>Passing three two five</q> when the aircraft crosses that heading, with red feedback and aircraft D/F. In Tactical QGH, put the aircraft’s callsign first. Each aircraft has one pending report; a newer valid request replaces it. Changing aircraft selection, stopping the microphone or giving another turn does not cancel the report. Restarting or terminating the exercise clears it. Heading reports remain unavailable with a U/S compass.</p>
-        <p>Reports wait while the radio is busy. If the crossing occurred more than two simulated seconds earlier—including during <b>Advance flight 1 min</b>—the pilot says <q>Passed</q> instead of <q>Passing</q>. D/F always shows that aircraft’s position during its actual transmission, then holds the last reading for two seconds. Muted pilot audio still gives the red report and D/F.</p>
+        <p><b>Report a heading when passing:</b> in Normal QGH, say <q>Report heading passing three two five</q>, <q>Report passing heading three two five</q> or <q>Report passing three two five</q>. Any heading 000–360 is accepted (360 means 000). This arms a one-time report; it does not change the aircraft’s turn or heading. The pilot reports <q>Heading passing three two five</q> when the aircraft crosses that heading, with red feedback and aircraft D/F. In Tactical QGH, put the aircraft’s callsign first. Each aircraft has one pending report; a newer valid request replaces it. Changing aircraft selection, stopping the microphone or giving another turn does not cancel the report. Restarting or terminating the exercise clears it. Heading reports remain unavailable with a U/S compass.</p>
+        <p>Reports wait while the radio is busy. If the crossing occurred more than two simulated seconds earlier—including during <b>Advance flight 1 min</b>—the pilot says <q>Heading passed</q> instead of <q>Heading passing</q>. D/F always shows that aircraft’s position during its actual transmission, then holds the last reading for two seconds. Muted pilot audio still gives the red report and D/F.</p>
         <h4>INFORMATIONAL RT AND LIMITS</h4>
         <p>Recognised informational calls such as “Surface wind two three zero degrees ten knots”, “Runway in use two three”, and “Overhead turn will be right longer way for outbound track zero six five” receive ROGER and aircraft D/F, without changing flight controls. ROGER means receipt, not execution.</p>
         <p>The <a href="rt-reference.md" download>QGH / DF RT reference</a> preserves the supplied phraseology for study. It is not a list of fully implemented commands. Descent, landing, visual reports, aircraft system checks and speechless PTT-click procedures are not simulated by this radio update. Recognised unsupported requests display NOT SIMULATED rather than claiming compliance. Unclear messages and unknown callsigns do not produce a guessed manoeuvre.</p>
-        <p>Give one clear call at a time. A recognised final segment executes immediately: a condition, correction or negation spoken later cannot retroactively prevent that earlier action. Make a subsequent explicit instruction to amend it; do not combine weather, conditional instructions and turns in one call.</p>
+        <p>Give one clear call at a time. A conditional, correction, negation, unsupported unit or chained instruction is rejected as a whole; it does not execute an earlier-looking fragment. Repeat the intended instruction as a new clear call. Do not combine weather, conditional instructions and turns in one call.</p>
         <h4>OFFLINE AUDIO</h4>
-        <p>Web v4.4.2 includes its four-voice pilot pack in the initial offline download. Controller recognition has a separate initial voice-setup step. Pilot replies are composed from packaged audio clips, with no device-voice or remote fallback. If audio is unavailable, captions and timed aircraft D/F continue without sound. Previously released Windows and Android packages have their earlier audio implementation; matching 4.4.2 native packages are not part of this web release. Verify recognition and replies in airplane mode on the actual device before training.</p>
+        <p>Web v4.4.3 includes its four-voice pilot pack in the initial offline download. Controller recognition has a separate initial voice-setup step. Pilot replies are composed from packaged audio clips, with no device-voice or remote fallback. If audio is unavailable, captions and timed aircraft D/F continue without sound. Windows and Android packages are rebuilt only after this web candidate is verified. Verify recognition and replies in airplane mode on the actual device before training.</p>
       </section>
 
       <section class="guide-section" aria-labelledby="guideTactical">

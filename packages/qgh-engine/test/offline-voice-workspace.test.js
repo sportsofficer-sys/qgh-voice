@@ -170,9 +170,13 @@ function makeOfflineEngine(options) {
 
 function createEnvironment(options) {
   const document = new FakeDocument();
+  const app = document.createElement('main');
+  app.className = 'app';
+  document.body.append(app);
   const timers = new Map();
   const timerDeadlines = new Map();
   const listeners = new Map();
+  const mutationObservers = [];
   const storage = new Map(options?.stored || []);
   let nextTimer = 1;
   let now = 0;
@@ -201,10 +205,15 @@ function createEnvironment(options) {
     },
     location: { href: 'https://example.test/qgh/single.html' }
   };
+  sandbox.MutationObserver = class FakeMutationObserver {
+    constructor(callback) { this.callback = callback; this.observed = []; mutationObservers.push(this); }
+    observe(target, options) { this.observed.push({ target, options }); }
+    disconnect() { this.observed = []; }
+  };
   sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
   vm.runInContext(workspaceSource, sandbox);
-  return { document, timers, listeners, storage, sandbox, workspace: sandbox.QGHVoiceWorkspace,
+  return { document, app, timers, listeners, storage, sandbox, workspace: sandbox.QGHVoiceWorkspace,
     now: () => now,
     advanceTime(milliseconds) {
       const end = now + milliseconds;
@@ -220,6 +229,9 @@ function createEnvironment(options) {
         callback();
       }
       now = end;
+    },
+    triggerMutations() {
+      mutationObservers.filter(observer => observer.observed.length).forEach(observer => observer.callback([]));
     }
   };
 }
@@ -282,7 +294,7 @@ function createNativeRadioEnvironment() {
   }
   env.document.body.append(setup, consoleScreen);
   env.radio.setAudioEnabled(true);
-  return { ...env, nativeVoice, nativeSpeech, commands };
+  return { ...env, setup, consoleScreen, nativeVoice, nativeSpeech, commands };
 }
 
 async function startNativeContinuous(env) {
@@ -295,6 +307,19 @@ async function startNativeContinuous(env) {
   env.workspace.receiveNativeVoiceEvent({ type: 'started', requestId });
   return requestId;
 }
+
+test('continuous recognition retires the previous screen context and rearms after an exercise screen change', async () => {
+  const env = createNativeRadioEnvironment();
+  const firstRequestId = await startNativeContinuous(env);
+  env.consoleScreen.classList.remove('active');
+  env.setup.classList.add('active');
+  env.triggerMutations();
+  env.advanceTime(180);
+  await flush();
+  assert.equal(env.nativeVoice.cancels, 1, 'the old screen capture must be retired before its grammar can become stale');
+  assert.equal(env.nativeVoice.starts.length, 2, 'continuous listening should rearm without changing the user mode');
+  assert.notEqual(env.nativeVoice.starts.at(-1).requestId, firstRequestId);
+});
 
 test('native activity interrupts real pilot audio, extends the quiet boundary, and executes only one final', async () => {
   const env = createNativeRadioEnvironment();

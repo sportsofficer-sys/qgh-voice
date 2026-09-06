@@ -430,9 +430,17 @@
   function updateUsTurnControls() {
     const aircraft = currentAircraft();
     const turning = Boolean(aircraft && (aircraft.manualTurnSide || aircraft.initialTurnSide));
-    $('tUsLeft').disabled = turning;
-    $('tUsRight').disabled = turning;
-    $('tUsStop').disabled = !turning;
+    const available = state.procedure === 'us' && Boolean(aircraft);
+    const orbitActive = Boolean(aircraft?.orbit);
+    $('tUsLeft').disabled = !available || orbitActive;
+    $('tUsRight').disabled = !available || orbitActive;
+    $('tUsStop').disabled = !available || !turning;
+    for (const side of ['left', 'right']) {
+      $('tUs' + (side === 'left' ? 'Left' : 'Right'))?.setAttribute(
+        'aria-pressed',
+        String(!orbitActive && (aircraft?.manualTurnSide || aircraft?.initialTurnSide) === side)
+      );
+    }
   }
 
   function updateNormalContinueControl() {
@@ -549,6 +557,7 @@
     $('tUsControls').hidden = !usCompass;
     $('tRequestHeading').hidden = usCompass;
     $('tInfoRow').classList.toggle('single', usCompass);
+    updateUsTurnControls();
     updateNormalContinueControl();
   }
 
@@ -871,11 +880,14 @@
     try {
       const result = Tactical.startTurn(state.exercise, state.activeAircraftId, side);
       if (!result) {
-        showToast('STOP THE CURRENT TURN BEFORE GIVING A NEW TURN');
+        showToast('STOP ORBIT BEFORE TIMED TURN');
         return;
       }
       if (result.events && result.events.length) logEvents(result.events);
-      logCommand(result.aircraft.id, 'TURN ' + side.toUpperCase() + ' NOW', 'Timed turn at ' + result.aircraft.cfg.rate.toFixed(1) + '°/sec · nominal radius ' + result.radius.toFixed(2) + ' NM.');
+      const detail = result.unchanged
+        ? 'Already turning ' + side.toUpperCase() + ' at ' + result.aircraft.cfg.rate.toFixed(1) + '°/sec; turn geometry retained.'
+        : 'Timed turn at ' + result.aircraft.cfg.rate.toFixed(1) + '°/sec · nominal radius ' + result.radius.toFixed(2) + ' NM.';
+      logCommand(result.aircraft.id, 'TURN ' + side.toUpperCase() + ' NOW', detail);
       startFlightLoop();
       renderRail();
       renderSelectedAircraft();

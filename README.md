@@ -2,7 +2,7 @@
 
 Offline-first QGH training simulator for Windows, Android, iPhone, iPad, and modern web browsers.
 
-Web update: **v4.4.2 - Numeric Callsigns**. [Open Reds QGH Simulator](https://redsqghsimulator.netlify.app/) or read the [release notes](docs/qa/v4.4.2-web-release.md). This release targets the web app; Windows and Android installers remain separate and have not been rebuilt for 4.4.2.
+Local web candidate: **v4.4.3 - Voice Safety & U/S Turns**. It is intentionally not published until browser verification. [Open the current Reds QGH Simulator](https://redsqghsimulator.netlify.app/) or read the [candidate notes](docs/qa/v4.4.3-web-candidate.md). Windows and Android installers remain at their previous delivered release until the web candidate is approved.
 
 See [USER_GUIDE.md](USER_GUIDE.md) for installation, exercise, replay, tactical, and voice-control guidance.
 

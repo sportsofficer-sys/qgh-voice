@@ -97,6 +97,15 @@
     return [...variants];
   }
 
+  function plainDigitCallsignVariant(value) {
+    const callsign = String(value?.callsign || value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const numeric = callsign.match(/^(\d{1,3})$/);
+    if (!numeric) return '';
+    const digits = phraseForDigits(numeric[1])
+      .replace(/\btree\b/g, 'three').replace(/\bfife\b/g, 'five').replace(/\bniner\b/g, 'nine');
+    return digits;
+  }
+
   function callsignDesignator(value) {
     const callsign = String(value?.callsign || value || '').trim().toLowerCase().replace(/\s+/g, ' ');
     return callsign.replace(/\s+\d{1,3}$/, '') || callsign;
@@ -209,26 +218,41 @@
     return [...fallback];
   }
 
+  function grammarProcedure(context) {
+    const requested = String(context?.procedure || context?.mode || '').trim().toLowerCase();
+    return requested === 'us' || requested.includes('u/s') || requested.includes('unserviceable')
+      ? 'us' : 'normal';
+  }
+
   function recognitionPlanContext(context) {
     const callsigns = (Array.isArray(context?.callsigns) ? context.callsigns : [])
       .map(raw => String(raw?.callsign || raw || '').trim().toLowerCase())
       .filter(Boolean);
     const screen = grammarScreen(context, callsigns);
     const scope = grammarScope(screen);
+    const procedure = grammarProcedure(context);
     // Callsigns only alter an exercise grammar. Keeping them out of every other
     // cache key avoids rebuilding a large grammar while a user edits setup fields.
     const activeCallsigns = isExerciseScreen(screen) ? callsigns : [];
-    return { screen, scope, callsigns: activeCallsigns, cacheKey: [screen, ...activeCallsigns].join('\u0000') };
+    return { screen, scope, procedure, callsigns: activeCallsigns,
+      cacheKey: [screen, procedure, ...activeCallsigns].join('\u0000') };
   }
 
   function buildGrammar(context) {
     const details = recognitionPlanContext(context);
-    const { screen, scope, callsigns } = details;
+    const { screen, scope, procedure, callsigns } = details;
 
-    const phrases = new Set(staticGrammarPhrases());
+    // Keep the recognizer's local bias aligned to the visible console.  U/S
+    // Compass has no heading display/control, so do not spend recognition
+    // budget on an unavailable report-heading call.
+    const phrases = new Set(staticGrammarPhrases().filter(phrase => !(
+      isExerciseScreen(screen) && procedure === 'us' && /^report heading$/.test(phrase)
+    )));
 
     if (isExerciseScreen(screen)) callsigns.forEach(rawCallsign => {
       const variants = callsignVariants(rawCallsign, { includeDigitWords: true });
+      const plainDigits = plainDigitCallsignVariant(rawCallsign);
+      if (plainDigits) variants.push(plainDigits);
       if (scope === 'single') variants.push(callsignDesignator(rawCallsign));
       new Set(variants).forEach(callsign => {
         const transmitPhrases = [
@@ -239,8 +263,9 @@
         addPhrases(phrases, [
           `select aircraft ${callsign}`, `transmit aircraft ${callsign}`,
           `transmit qdm ${callsign}`, `transmit qte ${callsign}`,
-          `report heading ${callsign}`, `report distance ${callsign}`,
-          ...(scope === 'single' ? [`${callsign} report heading`, `${callsign} report distance`,
+          ...(procedure === 'normal' ? [`report heading ${callsign}`] : []), `report distance ${callsign}`,
+          ...(scope === 'single' ? [
+            ...(procedure === 'normal' ? [`${callsign} report heading`] : []), `${callsign} report distance`,
             `${callsign} turn left now`, `${callsign} turn right now`, `${callsign} stop turn now`] : []),
           `select formation leader ${callsign}`, `select formation member ${callsign}`,
           `stop following leader ${callsign}`, `focus aircraft ${callsign}`,
@@ -253,12 +278,14 @@
     // Unknown output and whole-message intent must still be checked by the parser.
     phrases.add('[unk]');
     if (isExerciseScreen(screen)) {
+      addPhrases(phrases, ['orbit left', 'orbit right', 'left hand orbit', 'right hand orbit', 'continue orbit', 'resume normal']);
+    }
+    if (isExerciseScreen(screen) && procedure === 'normal') {
       // Vosk's compositional language model already contains all heading digits.
       // Reserve the new word-order/callsign transitions before optional aliases
       // consume the budget; the parser validates every resulting 000–360 value.
       const prefixes = scope === 'single' ? [''] : [];
       callsigns.forEach(callsign => headingAliases(callsign, callsigns, 'digits').forEach(alias => prefixes.push(`${alias} `)));
-      addPhrases(phrases, ['orbit left', 'orbit right', 'left hand orbit', 'right hand orbit', 'continue orbit', 'resume normal']);
       prefixes.forEach(prefix => addPhrases(phrases, [
         `${prefix}report heading passing tree two fife`,
         `${prefix}report passing heading zero niner zero`,
@@ -266,8 +293,8 @@
       ]));
     }
     // Add headings after the other commands so the tactical alias budget accounts for
-    // the entire grammar. They are relevant only during an exercise.
-    if (isExerciseScreen(screen)) {
+    // the entire grammar. They are relevant only during a Normal QGH exercise.
+    if (isExerciseScreen(screen) && procedure === 'normal') {
       if (scope === 'tactical') addTacticalExerciseHeadings(phrases, callsigns);
       else {
         addSingleExerciseHeadings(phrases);
@@ -289,7 +316,9 @@
     }
     if (isExerciseScreen(screen)) {
       const radio = root.QGHRadioSession || (typeof module === 'object' && module.exports ? require('./radio-session.js') : null);
-      const examples = radio?.GRAMMAR_EXAMPLES || [];
+      const examples = (radio?.GRAMMAR_EXAMPLES || []).filter(phrase => (
+        procedure !== 'us' || !/\b(?:heading|passing)\b/i.test(phrase)
+      ));
       const additional = [...examples];
       callsigns.forEach(callsign => headingAliases(callsign, callsigns, 'digits').forEach(alias =>
         additional.unshift(...['orbit left', 'orbit right', 'left hand orbit', 'right hand orbit', 'continue orbit', 'continue', 'resume normal'].map(phrase => `${alias} ${phrase}`))));
@@ -316,6 +345,7 @@
     const plan = Object.freeze({
       screen: details.screen,
       scope: details.scope,
+      procedure: details.procedure,
       grammar,
       grammarJson: JSON.stringify(grammar)
     });
