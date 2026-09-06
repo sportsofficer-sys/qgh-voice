@@ -123,6 +123,25 @@
     documentRef.documentElement?.style?.setProperty('--qgh-browser-bottom-inset', `${browserBottomInset()}px`);
   }
 
+  function refreshViewportLayout() {
+    syncBrowserBottomInset();
+    positionVoicePopovers();
+  }
+
+  function scheduleBrowserBottomInset() {
+    refreshViewportLayout();
+    if (!root.visualViewport) return;
+    // Safari may finish expanding its first-load browser controls after the
+    // workspace script runs, without a later viewport event for this document.
+    const nextFrame = () => {
+      refreshViewportLayout();
+      if (typeof root.requestAnimationFrame === 'function') root.requestAnimationFrame(refreshViewportLayout);
+    };
+    if (typeof root.requestAnimationFrame === 'function') root.requestAnimationFrame(nextFrame);
+    else root.setTimeout(nextFrame, 0);
+    root.setTimeout(refreshViewportLayout, 240);
+  }
+
   function result(ok, message) {
     return { ok: Boolean(ok), message };
   }
@@ -1871,7 +1890,7 @@
       listeningIndicator, engineNote, confirmationPanel: confirmation, confirmationDetail,
       confirmationButton, cancellationButton, lastCallDetail, announcement
     });
-    syncBrowserBottomInset();
+    scheduleBrowserBottomInset();
     settingsToggle.addEventListener('click', () => {
       const opening = settings.hidden;
       setSettingsOpen(opening);
@@ -1943,15 +1962,12 @@
     root.addEventListener('pointermove', moveDock);
     root.addEventListener('pointerup', event => { endDockDrag(event); endPressToTalk(event); });
     root.addEventListener('pointercancel', event => { endDockDrag(event); endPressToTalk(event); });
-    const syncViewportLayout = () => {
-      syncBrowserBottomInset();
-      positionVoicePopovers();
-    };
-    root.visualViewport?.addEventListener?.('resize', syncViewportLayout);
-    root.visualViewport?.addEventListener?.('scroll', syncViewportLayout);
-    root.addEventListener('orientationchange', syncViewportLayout);
+    root.visualViewport?.addEventListener?.('resize', refreshViewportLayout);
+    root.visualViewport?.addEventListener?.('scroll', refreshViewportLayout);
+    root.addEventListener('orientationchange', scheduleBrowserBottomInset);
+    root.addEventListener('pageshow', scheduleBrowserBottomInset);
     root.addEventListener('resize', () => {
-      syncBrowserBottomInset();
+      refreshViewportLayout();
       if (state.dock.dataset.phone !== String(phoneDock())) { restoreVoiceDockPosition(); return; }
       const left = Number.parseFloat(dock.style.left);
       const top = Number.parseFloat(dock.style.top);

@@ -46,4 +46,7 @@ test('phone voice dock follows the live browser viewport instead of Safari brows
   assert.match(workspace, /--qgh-browser-bottom-inset/);
   assert.match(voiceStyles, /--qgh-browser-bottom-inset/);
   assert.match(voiceStyles, /--qgh-phone-bottom-inset/);
+  assert.match(workspace, /scheduleBrowserBottomInset/);
+  assert.match(workspace, /pageshow/);
+  assert.match(workspace, /requestAnimationFrame/);
 });
