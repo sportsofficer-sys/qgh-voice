@@ -1804,6 +1804,7 @@
     settings.append(continuousLabel, prepare, engineNote, resetPosition, lastCall);
     let updatePilotNote = () => {};
     if (root.QGHRadioWorkspace) {
+      const setupPilotReadbacks = $('setupPilotReadbacks');
       const pilotLabel = documentRef.createElement('label');
       pilotLabel.className = 'voice-continuous';
       const pilotAudio = documentRef.createElement('input');
@@ -1817,12 +1818,28 @@
       mutePilot.type = 'button';
       mutePilot.className = 'voice-mute-pilot';
       mutePilot.textContent = 'MUTE PILOT REPLIES';
+      const isPilotSetupStage = () => /:(?:setup)$/.test(currentVoiceContext());
+      const requestPilotReadbacks = () => {
+        if (!isPilotSetupStage()) {
+          setStatus('SET UP PILOT REPLIES BEFORE START', 'neutral');
+          updatePilotNote();
+          return false;
+        }
+        pilotAudio.checked = false;
+        setSettingsOpen(false);
+        root.QGHHeadphones?.requestEnable();
+        return true;
+      };
       updatePilotNote = () => {
         const enabled = root.QGHRadioWorkspace.status().audioEnabled;
+        const inSetup = isPilotSetupStage();
         pilotAudio.checked = enabled;
+        pilotLabel.hidden = !inSetup;
         mutePilot.hidden = !enabled;
         pilotNote.textContent = root.QGHPilotVoiceEngine
-          ? `${enabled ? 'Headphones confirmed by you.' : 'Muted. Connect headphones and complete the audio check to enable.'} Bundled male voices · target 150 words/minute. PTT and continuous controller speech take priority.`
+          ? inSetup
+            ? `${enabled ? 'Headphones confirmed by you.' : 'Muted. Connect headphones and complete the audio check to enable.'} Bundled male voices · target 150 words/minute. PTT and continuous controller speech take priority.`
+            : `${enabled ? 'Pilot replies are on. You can mute them here.' : 'Pilot replies are muted.'} Headphone setup is available before starting the next exercise.`
           : root.QGHRadioWorkspace.audioAvailable()
             ? 'Off by default: muted. Enable only with headphones. In continuous mode, your speech interrupts pilot audio. PTT always takes priority.'
             : 'No local English output voice available. Captions and timed pilot D/F still work offline.';
@@ -1834,9 +1851,7 @@
       root.addEventListener?.('qgh-pilot-audio-change', updatePilotNote);
       pilotAudio.addEventListener('change', () => {
         if (pilotAudio.checked && root.QGHHeadphones) {
-          pilotAudio.checked = false;
-          setSettingsOpen(false);
-          root.QGHHeadphones.requestEnable();
+          requestPilotReadbacks();
         } else {
           if (root.QGHHeadphones) root.QGHHeadphones.mute();
           else root.QGHRadioWorkspace.setAudioEnabled(pilotAudio.checked);
@@ -1848,6 +1863,7 @@
         else root.QGHRadioWorkspace.setAudioEnabled(false);
         updatePilotNote();
       });
+      setupPilotReadbacks?.addEventListener('click', requestPilotReadbacks);
       settings.append(pilotLabel, mutePilot, pilotNote);
     }
 

@@ -417,6 +417,18 @@ select {
   letter-spacing: .08em;
 }
 
+.tactical-pilot-readback-setup {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 18px;
+  border-color: var(--t-accent);
+  color: var(--t-accent-dark);
+  background: #fffefa;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+}
+
 .tactical-console {
   padding-top: 26px;
 }
