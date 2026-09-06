@@ -1,5 +1,9 @@
 [build]
+  command = "node scripts/build-web.mjs"
   publish = "apps/web/dist"
 
-# The simulator is a prebuilt static PWA. Netlify should publish the checked-in
-# distribution exactly as it is, without running a second build step.
+[build.environment]
+  NODE_VERSION = "22"
+
+# Generate the PWA from the shared simulator source. The output folder is
+# deliberately ignored by Git and must be built on every deployment.
