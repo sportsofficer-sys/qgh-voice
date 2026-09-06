@@ -5,15 +5,17 @@ const { create } = require('../headphone-consent.js');
 
 function harness() {
   const enabled = [];
+  const rates = [];
   let complete;
   let stops = 0;
   const consent = create({
     setEnabled: value => enabled.push(value),
+    setRate: value => rates.push(value),
     playTest: () => new Promise(resolve => { complete = resolve; }),
     stopTest: () => { stops++; },
     onChange() {}
   });
-  return { consent, enabled, complete: value => complete(value), stops: () => stops };
+  return { consent, enabled, rates, complete: value => complete(value), stops: () => stops };
 }
 
 test('pilot audio requires a completed test and fresh explicit headphone confirmation', async () => {
@@ -67,4 +69,19 @@ test('changing voice invalidates the test and only the latest test can succeed',
   h.complete(true); await pending;
   assert.equal(h.consent.status().tested, false);
   assert.equal(h.consent.confirm(true), false);
+});
+
+test('pilot readback pace is selected only while the pre-flight confirmation is open', async () => {
+  const h = harness();
+  assert.equal(h.consent.status().rate, 1);
+  assert.equal(h.consent.setRate(2), false);
+  h.consent.open();
+  const pending = h.consent.test();
+  assert.equal(h.consent.setRate(3), true);
+  assert.equal(h.consent.status().rate, 3);
+  assert.equal(h.consent.status().tested, false);
+  assert.equal(h.rates.at(-1), 3);
+  h.complete(true); await pending;
+  assert.equal(h.consent.confirm(true), false, 'changing speed requires a fresh audio test');
+  assert.equal(h.consent.setRate(4), false);
 });

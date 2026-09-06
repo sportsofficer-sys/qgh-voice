@@ -21,7 +21,7 @@
   // nominal word count allows.  Correct its *actual* duration at playback so
   // pilot replies meet the published 150 WPM target on every browser.
   const PILOT_TARGET_WPM = 150;
-  const MAX_PACE_CORRECTION = 2.25;
+  const MAX_PACE_CORRECTION = 6.75;
   let state = 'unprepared';
   let worker = null;
   let context = null;
@@ -75,11 +75,12 @@
       .trim().split(/\s+/).filter(Boolean).length;
   }
 
-  function paceFor(text, sampleCount, sampleRate) {
+  function paceFor(text, sampleCount, sampleRate, rateMultiplier) {
     const words = spokenWordCount(text);
     const duration = sampleCount / sampleRate;
     if (!words || !Number.isFinite(duration) || duration <= 0) return 1;
-    const targetDuration = words * 60 / PILOT_TARGET_WPM;
+    const multiplier = [1, 2, 3].includes(Number(rateMultiplier)) ? Number(rateMultiplier) : 1;
+    const targetDuration = words * 60 / (PILOT_TARGET_WPM * multiplier);
     return Math.max(1, Math.min(MAX_PACE_CORRECTION, duration / targetDuration));
   }
 
@@ -152,7 +153,7 @@
       buffer.copyToChannel(samples, 0);
       audio = context.createBufferSource();
       audio.buffer = buffer;
-      const pace = paceFor(pending.text, samples.length, message.sampleRate);
+      const pace = paceFor(pending.text, samples.length, message.sampleRate, pending.rateMultiplier);
       // The correction only shortens an over-long assembled reply. It never
       // slows a naturally brisk clip, and does not affect flight or D/F timing.
       audio.playbackRate.value = pace;

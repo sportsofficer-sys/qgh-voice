@@ -11,6 +11,7 @@
   const speechDocumentId = root.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   // Audible readbacks are an explicit headphones opt-in, never a speaker default.
   let audioEnabled = false;
+  let pilotRate = 1;
   let controllerHeld = false;
   let generation = 0;
   let pending = [];
@@ -208,7 +209,7 @@
       };
       startTimer = root.setTimeout(fallback, 60000);
       try {
-        const result = bundledSpeech.speak({ id: active.bundledId, text: item.reply.speech, source: item.source,
+        const result = bundledSpeech.speak({ id: active.bundledId, text: item.reply.speech, source: item.source, rateMultiplier: pilotRate,
           onstart: guarded(onAudioStart), onend: guarded(onAudioEnd), onerror: guarded(fallback) });
         if (result?.catch) result.catch(guarded(fallback));
       } catch { fallback(); }
@@ -220,7 +221,7 @@
       active.nativeId = `qgh-pilot-${speechDocumentId}-${ticket}`;
       active.nativeCallbacks = { start: onAudioStart, end: onAudioEnd, error: fallback };
       armAudioWatchdogs();
-      try { nativeSpeech.speak(active.nativeId, item.reply.speech, 100 / 150); }
+      try { nativeSpeech.speak(active.nativeId, item.reply.speech, pilotRate); }
       catch { fallback(); }
       return;
     }
@@ -237,9 +238,10 @@
       active.utterance = utterance;
       utterance.voice = voice;
       utterance.lang = voice.lang;
-      // Approximate 100 WPM using a 150 WPM baseline; local voices vary.
+      // Device voices use their ordinary rate at 1×; the bundled pack follows
+      // the same 150 WPM baseline. This affects audio only, never flight/D-F.
       // This affects headphone readbacks only, never simulation or muted DF timing.
-      utterance.rate = 100 / 150;
+      utterance.rate = pilotRate;
       utterance.onstart = onAudioStart;
       utterance.onend = onAudioEnd;
       utterance.onerror = fallback;
@@ -325,12 +327,16 @@
     }
   }
 
+  function setPilotRate(value) {
+    pilotRate = [1, 2, 3].includes(Number(value)) ? Number(value) : 1;
+  }
+
   root.QGHRadioWorkspace = Object.freeze({ acknowledge, controllerStart, controllerEnd, interrupt, reset, resetExercise, requestHeadingPassing, observeHeading, notifyOrbitComplete, channelAvailable: schedule,
     manualCommand: command => {
       if (!root.QGHVoiceWorkspace?.isDispatchingRadioCommand()) acknowledge(command);
     },
-    setAudioEnabled, receiveNativeSpeechEvent, audioAvailable: () => bundledSpeech ? bundledSpeech.capability() === 'ready' : nativeSpeech ? nativeAudioAvailable() : Boolean(localVoice()),
+    setAudioEnabled, setPilotRate, receiveNativeSpeechEvent, audioAvailable: () => bundledSpeech ? bundledSpeech.capability() === 'ready' : nativeSpeech ? nativeAudioAvailable() : Boolean(localVoice()),
     allowsBargeIn: () => audioEnabled,
-    status: () => ({ audioEnabled, controllerHeld, phase: active ? 'pilot' : controllerHeld ? 'controller' : pending.length ? 'pending' : 'idle', pending: pending.length })
+    status: () => ({ audioEnabled, pilotRate, controllerHeld, phase: active ? 'pilot' : controllerHeld ? 'controller' : pending.length ? 'pending' : 'idle', pending: pending.length })
   });
 })(typeof globalThis === 'undefined' ? this : globalThis);

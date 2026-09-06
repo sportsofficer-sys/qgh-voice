@@ -4,7 +4,7 @@
   // This records a person's confirmation, not hardware detection. Nothing is
   // restored from storage: a previous visit cannot prove today's audio route.
   function create(options) {
-    const state = { open: false, testing: false, tested: false, confirmed: false, message: '' };
+    const state = { open: false, testing: false, tested: false, confirmed: false, rate: 1, message: '' };
     let generation = 0;
     const publish = () => options.onChange?.({ ...state });
     function invalidateTest() {
@@ -27,6 +27,15 @@
       mute,
       invalidateTest,
       deviceChanged() { mute('Audio devices changed. Pilot replies muted — check your headphones again.'); },
+      setRate(rate) {
+        if (!state.open || ![1, 2, 3].includes(Number(rate))) return false;
+        state.rate = Number(rate);
+        options.setRate?.(state.rate);
+        invalidateTest();
+        state.message = `Pilot readback speed ${state.rate}× selected. Test the audio before enabling replies.`;
+        publish();
+        return true;
+      },
       async test() {
         if (!state.open || state.testing) return false;
         invalidateTest();
@@ -61,6 +70,7 @@
   let testButton;
   let checkbox;
   let enableButton;
+  let rateButtons = [];
   let status;
   let previousFocus;
   let testingTicket = 0;
@@ -78,6 +88,7 @@
   }
   const controller = create({
     setEnabled: enabled => root.QGHRadioWorkspace.setAudioEnabled(enabled),
+    setRate: rate => root.QGHRadioWorkspace.setPilotRate(rate),
     stopTest,
     playTest: () => new Promise(resolve => {
       const ticket = ++testingTicket;
@@ -97,7 +108,7 @@
       engine.prepare({ onProgress: message => { if (ticket === testingTicket && status) status.textContent = typeof message === 'string' ? message : 'Preparing offline voices…'; } })
         .then(() => {
           if (ticket !== testingTicket) return;
-          return engine.speak({ id: `headphone-test-${ticket}`, source: 'single',
+          return engine.speak({ id: `headphone-test-${ticket}`, source: 'single', rateMultiplier: controller.status().rate,
             text: 'Roger, turning right two three zero, Falcon one one.',
             onend: () => {
               if (ticket !== testingTicket) return;
@@ -116,7 +127,11 @@
       if (dialog) {
         status.textContent = state.message;
         testButton.disabled = state.testing;
-        testButton.textContent = state.testing ? 'PREPARING / TESTING…' : 'TEST HEADPHONE AUDIO';
+        testButton.textContent = state.testing ? 'PREPARING / TESTING…' : `TEST HEADPHONE AUDIO · ${state.rate}×`;
+        rateButtons.forEach(button => {
+          button.setAttribute('aria-pressed', String(Number(button.dataset.rate) === state.rate));
+          button.disabled = state.testing;
+        });
         checkbox.disabled = !state.tested || state.testing;
         if (!state.tested) checkbox.checked = false;
         enableButton.disabled = !state.tested || !checkbox.checked || state.testing;
@@ -138,7 +153,19 @@
       const eyebrow = element('p', 'PILOT AUDIO · OFFLINE', 'headphone-eyebrow');
       const heading = element('h2', 'Connect your headphones'); heading.id = 'headphoneTitle';
       const warning = element('p', 'Speaker audio can enter your microphone and be mistaken for controller commands, causing unintended actions. Wear headphones and mute pilot replies before removing or disconnecting them.', 'headphone-warning');
-      const pace = element('p', 'Four male pilot voices · target 150 words/minute', 'headphone-pace');
+      const pace = element('p', 'Four male pilot voices · choose your training pace', 'headphone-pace');
+      const rateGroup = element('div', '', 'headphone-rate-group');
+      rateGroup.setAttribute('role', 'group');
+      rateGroup.setAttribute('aria-label', 'Pilot readback speed');
+      for (const rate of [1, 2, 3]) {
+        const rateButton = element('button', `${rate}× · ${rate * 150} WPM`, 'headphone-rate');
+        rateButton.type = 'button';
+        rateButton.dataset.rate = String(rate);
+        rateButton.setAttribute('aria-pressed', String(rate === 1));
+        rateButton.addEventListener('click', () => controller.setRate(rate));
+        rateButtons.push(rateButton);
+        rateGroup.append(rateButton);
+      }
       const explanation = element('p', 'The test plays a sample pilot readback without changing the exercise. This is your confirmation, not automatic headphone detection. Audio-device changes are monitored where the browser supports it. Some changes may not be reported.', 'headphone-help');
       testButton = element('button', 'TEST HEADPHONE AUDIO'); testButton.type = 'button';
       testButton.addEventListener('click', () => controller.test());
@@ -153,7 +180,7 @@
       enableButton = element('button', 'ENABLE PILOT REPLIES', 'headphone-enable'); enableButton.type = 'button';
       enableButton.addEventListener('click', () => controller.confirm(checkbox.checked));
       actions.append(cancel, enableButton);
-      dialog.append(eyebrow, heading, warning, pace, explanation, testButton, status, label, actions);
+      dialog.append(eyebrow, heading, warning, pace, rateGroup, explanation, testButton, status, label, actions);
       dialog.addEventListener('cancel', event => { event.preventDefault(); controller.close(); });
       document.body.append(dialog);
     }

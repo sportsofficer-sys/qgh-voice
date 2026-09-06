@@ -493,6 +493,9 @@ body:has(.voice-dock) { padding-right: 90px; }
 .headphone-dialog .headphone-eyebrow { color: #006568; font: 600 11px/1.5 'IBM Plex Mono', monospace; letter-spacing: .09em; }
 .headphone-warning { border-left: 3px solid #b32f36; padding-left: 14px; }
 .headphone-pace { color: #006568; font-weight: 600; }
+.headphone-rate-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.headphone-dialog .headphone-rate { min-height: 42px; padding: 8px 4px; font-size: 10px; }
+.headphone-dialog .headphone-rate[aria-pressed='true'] { border-color: #007d7d; background: #007d7d; color: #fff; }
 .headphone-help { color: #485b60; font-size: 13px; }
 .headphone-dialog button { width: 100%; min-height: 48px; padding: 12px; border: 1px solid #9cadaa; border-radius: 8px; background: #fffefa; color: #075e60; font: 600 12px/1.35 'IBM Plex Sans', sans-serif; cursor: pointer; }
 .headphone-dialog button:disabled { color: #647776; background: #eceeea; cursor: not-allowed; }
