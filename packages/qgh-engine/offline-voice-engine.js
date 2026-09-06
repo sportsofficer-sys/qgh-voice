@@ -88,10 +88,10 @@
     if (numeric) {
       const prefix = numeric[1].trim();
       const cardinal = phraseForCardinal(Number(numeric[2]));
-      if (prefix && cardinal) variants.add(`${prefix} ${cardinal}`);
+      if (cardinal) variants.add(`${prefix ? `${prefix} ` : ''}${cardinal}`);
       if (options?.includeDigitWords) {
         const digits = phraseForDigits(numeric[2]);
-        if (prefix && digits) variants.add(`${prefix} ${digits}`);
+        if (digits) variants.add(`${prefix ? `${prefix} ` : ''}${digits}`);
       }
     }
     return [...variants];
@@ -145,12 +145,13 @@
   function headingAliases(rawCallsign, allCallsigns, compactMode) {
     const designator = callsignDesignator(rawCallsign);
     const designatorCount = allCallsigns.filter(candidate => callsignDesignator(candidate) === designator).length;
+    const numericOnly = /^\d{3}$/.test(String(rawCallsign?.callsign || rawCallsign || '').trim());
     // A unique designator is the concise RT form the parser accepts. When two aircraft share
     // one designator, grammar phrases must carry a complete callsign so routing stays exact.
-    if (designatorCount === 1) return [designator];
+    if (designatorCount === 1 && !numericOnly) return [designator];
     const preserveLeadingZeros = /\s0\d{1,2}$/.test(String(rawCallsign?.callsign || rawCallsign || ''));
     const variants = callsignVariants(rawCallsign, {
-      includeDigitWords: compactMode === 'digits' || Boolean(compactMode && preserveLeadingZeros)
+      includeDigitWords: numericOnly || compactMode === 'digits' || Boolean(compactMode && preserveLeadingZeros)
     });
     return compactMode ? variants.slice(-1) : variants;
   }
@@ -174,7 +175,9 @@
     // Keep the two Normal turn phrasings together. If expanded callsign aliases exceed
     // Android's limits, use one complete spoken callsign per shared designator instead.
     // Digit words provide a shorter fallback for long cardinal suffixes such as 999.
-    for (const compactMode of [null, 'cardinal', 'digits']) {
+    const hasStandaloneNumeric = callsigns.some(callsign => /^\d{3}$/.test(String(callsign || '').trim()));
+    const compactModes = hasStandaloneNumeric ? [null, 'digits', 'cardinal'] : [null, 'cardinal', 'digits'];
+    for (const compactMode of compactModes) {
       const candidate = new Set(phrases);
       const headingCallsigns = callsigns.flatMap(rawCallsign => headingAliases(rawCallsign, callsigns, compactMode));
       headingCallsigns.forEach(callsign => {

@@ -71,6 +71,23 @@ test('Tactical QGH permits only 2–4 uniquely named aircraft', () => {
     () => Tactical.createExercise({ procedure: 'normal', runway: 230, outbound: 65, inbound: 225, aircraft: duplicate }),
     /unique callsign/
   );
+
+  const numeric = fleet(2);
+  numeric[0].callsign = '100';
+  numeric[1].callsign = '999';
+  assert.deepEqual(
+    Tactical.createExercise({ procedure: 'normal', runway: 230, outbound: 65, inbound: 225, aircraft: numeric })
+      .aircraft.map(aircraft => aircraft.callsign),
+    ['100', '999']
+  );
+  for (const invalid of ['23', '1000']) {
+    const invalidFleet = fleet(2);
+    invalidFleet[0].callsign = invalid;
+    assert.throws(
+      () => Tactical.createExercise({ procedure: 'normal', runway: 230, outbound: 65, inbound: 225, aircraft: invalidFleet }),
+      /100 to 999/
+    );
+  }
 });
 
 test('every tactical aircraft receives an independently randomised starting state', () => {

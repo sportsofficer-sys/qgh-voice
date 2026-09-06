@@ -38,6 +38,9 @@
     const normalized = String(value || '').trim().replace(/\s+/g, ' ').toUpperCase();
     if (!normalized) throw new Error('Each aircraft needs a callsign.');
     if (normalized.length > 20) throw new Error('Callsigns must be 20 characters or fewer.');
+    if (/^\d+$/.test(normalized) && !/^[1-9]\d{2}$/.test(normalized)) {
+      throw new Error('Numeric callsigns must be from 100 to 999.');
+    }
     return normalized;
   }
 

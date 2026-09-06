@@ -710,9 +710,11 @@
   function startExercise() {
     try {
       const callsign = $('callsign').value.trim().replace(/\s+/g, ' ').toUpperCase();
-      if (!/^[A-Z][A-Z0-9 ]{0,19}$/.test(callsign)) {
+      const isTextCallsign = /^[A-Z][A-Z0-9 ]{0,19}$/.test(callsign);
+      const isNumericCallsign = /^(?:[1-9]\d{2})$/.test(callsign);
+      if (!isTextCallsign && !isNumericCallsign) {
         $('callsign').focus();
-        throw new Error('Enter a callsign of 1–20 letters, digits or spaces, starting with a letter.');
+        throw new Error('Enter a text callsign of 1–20 letters, digits or spaces, or a number from 100 to 999.');
       }
       clearReplay();
       clearLiveSpeedChange();

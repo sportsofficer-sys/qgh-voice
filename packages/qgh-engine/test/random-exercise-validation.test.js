@@ -391,6 +391,14 @@ function setExercise(harness, scenario, procedure) {
   harness.click('transmit');
 }
 
+test('single-aircraft setup accepts a standalone numeric callsign from 100 to 999', () => {
+  const h = makeHarness();
+  h.elements.callsign.value = '387';
+  h.click('startExercise');
+  assert.equal(h.state.cfg.callsign, '387');
+  assert.equal(h.elements.badge.textContent, '387 · NORMAL QGH');
+});
+
 function turnNormalTo(harness, target, longerWay = false) {
   const state = harness.state;
   const from = state.plane.heading;

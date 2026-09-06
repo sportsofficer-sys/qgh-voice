@@ -2,7 +2,7 @@
 
 Offline-first QGH training simulator for Windows, Android, iPhone, iPad, and modern web browsers.
 
-Web update: **v4.4.1 - Headphone Pilots**. [Open Reds QGH Simulator](https://reds-aviation.github.io/qgh-voice/) or read the [release notes](docs/qa/v4.4.1-web-release.md). This release targets the web app; Windows and Android installers remain separate and have not been rebuilt for 4.4.1.
+Web update: **v4.4.2 - Numeric Callsigns**. [Open Reds QGH Simulator](https://redsqghsimulator.netlify.app/) or read the [release notes](docs/qa/v4.4.2-web-release.md). This release targets the web app; Windows and Android installers remain separate and have not been rebuilt for 4.4.2.
 
 See [USER_GUIDE.md](USER_GUIDE.md) for installation, exercise, replay, tactical, and voice-control guidance.
 

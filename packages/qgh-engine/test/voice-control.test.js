@@ -110,6 +110,56 @@ test('Normal turn commands have the same target and readback with or without the
   }
 });
 
+test('routes standalone numeric callsigns from 100 to 999 in written and spoken forms', () => {
+  const options = { callsigns: [
+    { id: 'A', callsign: '123' },
+    { id: 'B', callsign: '456' }
+  ] };
+
+  for (const phrase of [
+    '123 turn right heading two three zero',
+    'one two three turn right heading two three zero',
+    'one hundred twenty three turn right heading two three zero'
+  ]) {
+    const command = Voice.parseCommand(phrase, options);
+    assert.equal(command.accepted, true, phrase);
+    assert.equal(command.aircraft, 'A', phrase);
+    assert.equal(command.heading, 230, phrase);
+  }
+
+  assert.equal(Voice.parseCommand('four five six transmit for df', options).aircraft, 'B');
+  assert.equal(Voice.parseCommand('124 transmit for df', options).accepted, false);
+  assert.equal(Voice.parseCommand('23 transmit for df', options).accepted, false);
+});
+
+test('never mistakes a heading or other numeric value for a standalone numeric callsign', () => {
+  const options = { callsigns: [
+    { id: 'F', callsign: 'FALCON 11' },
+    { id: 'N', callsign: '230' }
+  ] };
+
+  const bareTurn = Voice.parseCommand('turn right heading two three zero', options);
+  assert.equal(bareTurn.accepted, true);
+  assert.equal(bareTurn.aircraft, undefined);
+  assert.equal(bareTurn.heading, 230);
+
+  const falconTurn = Voice.parseCommand('Falcon turn right heading two three zero', options);
+  assert.equal(falconTurn.aircraft, 'F');
+  assert.equal(falconTurn.heading, 230);
+
+  const numericTurn = Voice.parseCommand('two three zero turn right heading one four zero', options);
+  assert.equal(numericTurn.aircraft, 'N');
+  assert.equal(numericTurn.heading, 140);
+
+  const conciseNumericTurn = Voice.parseCommand('two three zero right heading one four zero', options);
+  assert.equal(conciseNumericTurn.aircraft, 'N');
+  assert.equal(conciseNumericTurn.heading, 140);
+
+  const speed = Voice.parseCommand('set speed 230', options);
+  assert.equal(speed.intent, 'set-field');
+  assert.equal(speed.aircraft, undefined);
+});
+
 test('interprets flexible local RT phrasing only when the essential command slots are present', () => {
   const options = { callsigns: [{ id: 'A', callsign: 'FALCON 11' }, { id: 'B', callsign: 'RAVEN 21' }] };
 

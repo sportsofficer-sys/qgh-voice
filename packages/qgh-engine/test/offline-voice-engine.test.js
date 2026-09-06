@@ -130,6 +130,27 @@ test('single exercise grammar supports its callsign, legacy calls and cache refr
   assert.ok(Buffer.byteLength(plan.grammarJson) < 490_000);
 });
 
+test('offline grammar admits spoken standalone numeric callsigns', () => {
+  const single = OfflineVoice.buildRecognitionPlan({ screen: 'single:console', callsigns: ['123'] });
+  for (const phrase of ['one two tree transmit for df', 'one hundred twenty three transmit for df']) {
+    assert.ok(single.grammar.includes(phrase), phrase);
+    assert.equal(Voice.parseCommand(phrase, { callsigns: [{ id: 'single', callsign: '123' }] }).aircraft, 'single');
+  }
+
+  const tactical = OfflineVoice.buildRecognitionPlan({
+    screen: 'tactical:console', callsigns: ['123', '456', '789', '999']
+  });
+  const command = 'one two tree turn right two tree zero';
+  const immediate = 'one two tree turn right now';
+  assert.ok(tactical.grammar.includes(command));
+  assert.ok(tactical.grammar.includes(immediate));
+  assert.equal(Voice.parseCommand(command, {
+    callsigns: [{ id: 'A', callsign: '123' }, { id: 'B', callsign: '456' },
+      { id: 'C', callsign: '789' }, { id: 'D', callsign: '999' }]
+  }).aircraft, 'A');
+  assert.ok(Buffer.byteLength(tactical.grammarJson) < 490_000);
+});
+
 test('forwards recognizer partial text and suppresses partials while finalizing', async () => {
   const runtime = loadEngineRuntime();
   const partials = [];

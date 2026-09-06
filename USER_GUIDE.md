@@ -1,6 +1,6 @@
 # QGH Simulator User Guide
 
-Web version 4.4.1 · Headphone Pilots
+Web version 4.4.2 · Numeric Callsigns
 
 QGH Simulator is an offline-first training aid for practising controller-led QGH procedures. It includes Single Aircraft QGH (Normal and U/S Compass) and Tactical QGH for two to four aircraft.
 
@@ -84,6 +84,7 @@ U/S Compass:
 Tactical QGH:
 
 - Begin every call with the exact visible callsign. A unique designator such as Raven is accepted, but use the full callsign if two aircraft share it.
+- Standalone numeric callsigns from **100 to 999** are accepted. For callsign **387**, say **TREE EIGHT SEVEN** before the instruction.
 - “Raven Twenty One turn right heading zero six zero.”
 - “Raven Twenty One continue zero six zero.” **Only while Raven Twenty One is already turning in that direction.**
 - “Raven Twenty One transmit for D/F.”
@@ -123,7 +124,7 @@ Wait for the initial pilot-pack download to finish while online before relying o
 
 ## Offline use
 
-Previously released Windows and Android applications contain the simulator and recognition model locally; this 4.4.1 release updates the web app only. The web edition works offline after its first successful load; recognition also needs its one-time, user-selected offline-model setup, and spoken pilot replies need the initial pilot-pack download to complete. No controller voice recording is sent to a QGH Simulator server or to a cloud speech service.
+Previously released Windows and Android applications contain the simulator and recognition model locally; this 4.4.2 release updates the web app only. The web edition works offline after its first successful load; recognition also needs its one-time, user-selected offline-model setup, and spoken pilot replies need the initial pilot-pack download to complete. No controller voice recording is sent to a QGH Simulator server or to a cloud speech service.
 
 ## Support and licence
 
