@@ -8,6 +8,7 @@ const test = require('node:test');
 const workspace = fs.readFileSync(path.join(__dirname, '..', 'voice-workspace.js'), 'utf8');
 const offlineEngine = fs.readFileSync(path.join(__dirname, '..', 'offline-voice-engine.js'), 'utf8');
 const guide = fs.readFileSync(path.join(__dirname, '..', 'user-guide.html'), 'utf8');
+const voiceStyles = fs.readFileSync(path.join(__dirname, '..', 'voice.css'), 'utf8');
 
 test('voice workspace is a local DOM adapter and does not contain flight-model logic', () => {
   assert.match(workspace, /element\.click\(\)/);
@@ -38,4 +39,11 @@ test('the in-app guide documents the shipped local voice workflow', () => {
   assert.match(guide, /Confirm termination/);
   assert.match(guide, /Raven Twenty One turn right heading zero six zero/);
   assert.match(guide, /unique designator/i);
+});
+
+test('phone voice dock follows the live browser viewport instead of Safari browser chrome', () => {
+  assert.match(workspace, /visualViewport/);
+  assert.match(workspace, /--qgh-browser-bottom-inset/);
+  assert.match(voiceStyles, /--qgh-browser-bottom-inset/);
+  assert.match(voiceStyles, /--qgh-phone-bottom-inset/);
 });

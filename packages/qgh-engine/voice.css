@@ -358,7 +358,10 @@
 }
 
 /* Desktop keeps the movable rail; phones get a reserved bottom dock. */
-:root { --qgh-voice-dock-height: 0px; }
+:root {
+  --qgh-voice-dock-height: 0px;
+  --qgh-browser-bottom-inset: 0px;
+}
 body:has(.voice-dock) { padding-right: 90px; }
 .voice-dock {
   --voice-safe-top: env(safe-area-inset-top, 0px);
@@ -403,7 +406,10 @@ body:has(.voice-dock) { padding-right: 90px; }
 .voice-confirmation strong { font-size: 11px; }
 
 @media (max-width: 600px) and (orientation: portrait) {
-  :root { --qgh-voice-dock-height: calc(120px + env(safe-area-inset-bottom, 0px)); }
+  :root {
+    --qgh-phone-bottom-inset: max(env(safe-area-inset-bottom, 0px), var(--qgh-browser-bottom-inset));
+    --qgh-voice-dock-height: calc(120px + var(--qgh-phone-bottom-inset));
+  }
   /* Keep the browser as the single scroll surface.  A fixed-height inner app made
      setup and exercise content look clipped on phones and was awkward to scroll. */
   body:has(.voice-dock) {
@@ -433,7 +439,7 @@ body:has(.voice-dock) { padding-right: 90px; }
   }
   .voice-dock {
     top: auto;
-    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    bottom: max(8px, var(--qgh-phone-bottom-inset));
     right: max(8px, env(safe-area-inset-right, 0px));
     left: max(8px, env(safe-area-inset-left, 0px));
     width: auto;

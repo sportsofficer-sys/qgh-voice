@@ -108,6 +108,21 @@
     return !screen || screen.classList.contains('active');
   }
 
+  function browserBottomInset() {
+    const viewport = root.visualViewport;
+    const layoutHeight = Number(root.innerHeight);
+    const visibleHeight = Number(viewport?.height);
+    const visibleTop = Number(viewport?.offsetTop || 0);
+    if (!viewport || !Number.isFinite(layoutHeight) || !Number.isFinite(visibleHeight)) return 0;
+    // iPhone Safari's bottom controls reduce visualViewport.height, but are not
+    // consistently included in env(safe-area-inset-bottom). Keep fixed UI clear.
+    return Math.max(0, Math.round(layoutHeight - visibleHeight - visibleTop));
+  }
+
+  function syncBrowserBottomInset() {
+    documentRef.documentElement?.style?.setProperty('--qgh-browser-bottom-inset', `${browserBottomInset()}px`);
+  }
+
   function result(ok, message) {
     return { ok: Boolean(ok), message };
   }
@@ -1856,6 +1871,7 @@
       listeningIndicator, engineNote, confirmationPanel: confirmation, confirmationDetail,
       confirmationButton, cancellationButton, lastCallDetail, announcement
     });
+    syncBrowserBottomInset();
     settingsToggle.addEventListener('click', () => {
       const opening = settings.hidden;
       setSettingsOpen(opening);
@@ -1927,7 +1943,15 @@
     root.addEventListener('pointermove', moveDock);
     root.addEventListener('pointerup', event => { endDockDrag(event); endPressToTalk(event); });
     root.addEventListener('pointercancel', event => { endDockDrag(event); endPressToTalk(event); });
+    const syncViewportLayout = () => {
+      syncBrowserBottomInset();
+      positionVoicePopovers();
+    };
+    root.visualViewport?.addEventListener?.('resize', syncViewportLayout);
+    root.visualViewport?.addEventListener?.('scroll', syncViewportLayout);
+    root.addEventListener('orientationchange', syncViewportLayout);
     root.addEventListener('resize', () => {
+      syncBrowserBottomInset();
       if (state.dock.dataset.phone !== String(phoneDock())) { restoreVoiceDockPosition(); return; }
       const left = Number.parseFloat(dock.style.left);
       const top = Number.parseFloat(dock.style.top);
