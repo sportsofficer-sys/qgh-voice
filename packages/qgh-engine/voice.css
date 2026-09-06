@@ -404,21 +404,33 @@ body:has(.voice-dock) { padding-right: 90px; }
 
 @media (max-width: 600px) and (orientation: portrait) {
   :root { --qgh-voice-dock-height: calc(120px + env(safe-area-inset-bottom, 0px)); }
-  body:has(.voice-dock) { padding: 0; height: 100dvh; overflow: hidden; }
+  /* Keep the browser as the single scroll surface.  A fixed-height inner app made
+     setup and exercise content look clipped on phones and was awkward to scroll. */
+  body:has(.voice-dock) {
+    padding: 0;
+    min-height: 100dvh;
+    height: auto;
+    overflow-x: clip;
+    overflow-y: visible;
+  }
   body:has(.voice-dock) :is(.app, .tactical-app, .entry-app) {
-    height: calc(100dvh - var(--qgh-voice-dock-height));
-    min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
+    min-height: 100dvh;
+    height: auto;
+    overflow: visible;
     margin: 0;
-    padding: 12px 12px 20px;
+    padding:
+      max(12px, env(safe-area-inset-top, 0px))
+      max(12px, env(safe-area-inset-right, 0px))
+      calc(var(--qgh-voice-dock-height) + 20px)
+      max(12px, env(safe-area-inset-left, 0px));
     width: 100%;
     max-width: none;
-    scrollbar-width: thin;
     scroll-padding-block: 12px;
   }
   body:has(.voice-dock) :is(.review-toolbar, .tactical-review-toolbar) { bottom: 8px; }
-  body:has(.voice-dock[data-edge='top']) { padding-top: calc(120px + env(safe-area-inset-top, 0px)); }
+  body:has(.voice-dock[data-edge='top']) :is(.app, .tactical-app, .entry-app) {
+    padding-top: calc(120px + env(safe-area-inset-top, 0px) + 20px);
+  }
   .voice-dock {
     top: auto;
     bottom: max(8px, env(safe-area-inset-bottom, 0px));
